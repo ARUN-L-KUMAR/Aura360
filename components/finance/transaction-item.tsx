@@ -82,9 +82,9 @@ export function TransactionItem({ transaction, onDelete, onUpdate }: Transaction
               <p className="font-medium truncate">{transaction.category}</p>
               <Badge className={`${config.badge} border-0`}>{transaction.type}</Badge>
             </div>
-            {transaction.description && (
-              <p className="text-sm text-muted-foreground truncate">{transaction.description}</p>
-            )}
+            <p className="text-sm text-muted-foreground truncate">
+              {transaction.description || "(No description)"}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
               {new Date(transaction.date).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -96,8 +96,8 @@ export function TransactionItem({ transaction, onDelete, onUpdate }: Transaction
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <p className={`text-lg font-bold ${config.color}`}>
-            {transaction.type === "income" ? "+" : "-"}$
-            {Number(transaction.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {transaction.type === "income" ? "+" : "-"}₹
+            {Number(transaction.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowEditDialog(true)}>

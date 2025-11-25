@@ -1,0 +1,195 @@
+{
+  "summary": {
+    "total_income": 234021.0,
+    "total_expenses": 53280.0,
+    "net_balance": 180741.0,
+    "date_range": {
+      "start": "2024-01-14",
+      "end": "2025-11-23"
+    },
+    "transaction_count": 266
+  },
+  "monthly_breakdown": [
+    {
+      "month": "2024-01",
+      "income": 4810.0,
+      "expenses": 0,
+      "net": 4810.0
+    },
+    {
+      "month": "2024-02",
+      "income": 18761.0,
+      "expenses": 98.0,
+      "net": 18663.0
+    },
+    {
+      "month": "2024-03",
+      "income": 19540.0,
+      "expenses": 7700.0,
+      "net": 11840.0
+    },
+    {
+      "month": "2024-04",
+      "income": 4031.0,
+      "expenses": 5632.0,
+      "net": -1601.0
+    },
+    {
+      "month": "2024-05",
+      "income": 5320.0,
+      "expenses": 4851.0,
+      "net": 469.0
+    },
+    {
+      "month": "2024-06",
+      "income": 11281.0,
+      "expenses": 5431.0,
+      "net": 5850.0
+    },
+    {
+      "month": "2024-07",
+      "income": 6930.0,
+      "expenses": 0,
+      "net": 6930.0
+    },
+    {
+      "month": "2024-08",
+      "income": 5880.0,
+      "expenses": 4428.0,
+      "net": 1452.0
+    },
+    {
+      "month": "2024-09",
+      "income": 8540.0,
+      "expenses": 3733.0,
+      "net": 4807.0
+    },
+    {
+      "month": "2024-10",
+      "income": 14824.0,
+      "expenses": 8500.0,
+      "net": 6324.0
+    },
+    {
+      "month": "2024-11",
+      "income": 6850.0,
+      "expenses": 1055.0,
+      "net": 5795.0
+    },
+    {
+      "month": "2024-12",
+      "income": 9100.0,
+      "expenses": 1400.0,
+      "net": 7700.0
+    },
+    {
+      "month": "2025-01",
+      "income": 13180.0,
+      "expenses": 5456.0,
+      "net": 7724.0
+    },
+    {
+      "month": "2025-02",
+      "income": 10692.0,
+      "expenses": 4176.0,
+      "net": 6516.0
+    },
+    {
+      "month": "2025-03",
+      "income": 17150.0,
+      "expenses": 720.0,
+      "net": 16430.0
+    },
+    {
+      "month": "2025-04",
+      "income": 4952.0,
+      "expenses": 0,
+      "net": 4952.0
+    },
+    {
+      "month": "2025-05",
+      "income": 8800.0,
+      "expenses": 0,
+      "net": 8800.0
+    },
+    {
+      "month": "2025-06",
+      "income": 12050.0,
+      "expenses": 0,
+      "net": 12050.0
+    },
+    {
+      "month": "2025-07",
+      "income": 17900.0,
+      "expenses": 100.0,
+      "net": 17800.0
+    },
+    {
+      "month": "2025-08",
+      "income": 8900.0,
+      "expenses": 0,
+      "net": 8900.0
+    },
+    {
+      "month": "2025-09",
+      "income": 7150.0,
+      "expenses": 0,
+      "net": 7150.0
+    },
+    {
+      "month": "2025-10",
+      "income": 6650.0,
+      "expenses": 0,
+      "net": 6650.0
+    },
+    {
+      "month": "2025-11",
+      "income": 10730.0,
+      "expenses": 0,
+      "net": 10730.0
+    }
+  ],
+  "top_categories": [
+    {
+      "category": "miscellaneous",
+      "amount": 15944.0
+    },
+    {
+      "category": "electronics",
+      "amount": 13184.0
+    },
+    {
+      "category": "food",
+      "amount": 9762.0
+    },
+    {
+      "category": "education",
+      "amount": 4435.0
+    },
+    {
+      "category": "shopping",
+      "amount": 4302.0
+    },
+    {
+      "category": "entertainment",
+      "amount": 1875.0
+    },
+    {
+      "category": "rent",
+      "amount": 1301.0
+    },
+    {
+      "category": "healthcare",
+      "amount": 1000.0
+    },
+    {
+      "category": "recharge",
+      "amount": 866.0
+    },
+    {
+      "category": "transport",
+      "amount": 391.0
+    }
+  ],
+  "insights": "📊 **Period**: 2024-01-14 to 2025-11-23\n📝 **Total Transactions**: 266\n💰 **Total Income**: ₹234,021.00\n💸 **Total Expenses**: ₹53,280.00\n💵 **Net Balance**: ₹180,741.00\n📈 **Average Monthly Income**: ₹10,174.83\n📉 **Average Monthly Expense**: ₹2,316.52\n\n🏷️ **Top Spending Categories**:\n  1. Miscellaneous: ₹15,944.00 (29.9%)\n  2. Electronics: ₹13,184.00 (24.7%)\n  3. Food: ₹9,762.00 (18.3%)\n  4. Education: ₹4,435.00 (8.3%)\n  5. Shopping: ₹4,302.00 (8.1%)\n\n💡 **Recommendations**:\n  • Consider meal planning to reduce food expenses\n  • Entertainment spending is high - set a monthly budget\n  • Great job maintaining positive balance! Consider investing surplus"
+}

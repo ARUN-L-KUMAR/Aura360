@@ -1,0 +1,2130 @@
+[
+  {
+    "date": "2024-01-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "amma+appa account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-01-23",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1500.0,
+    "description": "Balance in Account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-01-23",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 510.0,
+    "description": "Amount in hand",
+    "needs_review": false
+  },
+  {
+    "date": "2024-01-24",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1500.0,
+    "description": "Appa kudatha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-01-30",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa kudatha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 91.0,
+    "description": "Appa gpay",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-11",
+    "type": "income",
+    "category": "rent",
+    "amount": 1500.0,
+    "description": "appa rent  ku kudha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-12",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa kudatha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-13",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "amma amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-17",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "Patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-17",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-17",
+    "type": "income",
+    "category": "electronics",
+    "amount": 7000.0,
+    "description": "appa kudatha amount for phone",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-20",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "Amma account la irrutha  for Tnpsc",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "amma kudatha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 220.0,
+    "description": "appa paytm",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-21",
+    "type": "income",
+    "category": "rent",
+    "amount": 5500.0,
+    "description": "Deposit to My account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-22",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 250.0,
+    "description": "amma account la irruthu edutha",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-22",
+    "type": "income",
+    "category": "rent",
+    "amount": 1500.0,
+    "description": "Deposit to My account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-25",
+    "type": "income",
+    "category": "personal_care",
+    "amount": 100.0,
+    "description": "appa given for haircut",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-26",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa given",
+    "needs_review": false
+  },
+  {
+    "date": "2024-02-29",
+    "type": "expense",
+    "category": "food",
+    "amount": 98.0,
+    "description": "order",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-01",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 4330.0,
+    "description": "1st month Due(March)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-06",
+    "type": "income",
+    "category": "transport",
+    "amount": 100.0,
+    "description": "Anna for petrol",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa for chennai",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-11",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-11",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "amma account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-11",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "god",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-12",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-12",
+    "type": "income",
+    "category": "food",
+    "amount": 200.0,
+    "description": "Appa given for vegetables",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-12",
+    "type": "expense",
+    "category": "rent",
+    "amount": 1250.0,
+    "description": "Room rent",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-12",
+    "type": "income",
+    "category": "education",
+    "amount": 1420.0,
+    "description": "Balance in Account Before buying Notes",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-13",
+    "type": "income",
+    "category": "investment",
+    "amount": 1000.0,
+    "description": "Appa Emi account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-13",
+    "type": "expense",
+    "category": "education",
+    "amount": 420.0,
+    "description": "NoteBook",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-17",
+    "type": "expense",
+    "category": "education",
+    "amount": 1000.0,
+    "description": "Chennai spended",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-25",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 550.0,
+    "description": "appa kudatha amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-25",
+    "type": "income",
+    "category": "transport",
+    "amount": 13300.0,
+    "description": "Amount Credited  scholarship",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-26",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "mano",
+    "needs_review": false
+  },
+  {
+    "date": "2024-03-28",
+    "type": "income",
+    "category": "investment",
+    "amount": 670.0,
+    "description": "appa Emi amount balance",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-03",
+    "type": "expense",
+    "category": "food",
+    "amount": 292.0,
+    "description": "tea+milkshake +Maggie",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-04",
+    "type": "expense",
+    "category": "food",
+    "amount": 105.0,
+    "description": "Maggie +snacks",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-05",
+    "type": "expense",
+    "category": "food",
+    "amount": 270.0,
+    "description": "tea+juice +watermelon +food",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-06",
+    "type": "expense",
+    "category": "food",
+    "amount": 109.0,
+    "description": "juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-06",
+    "type": "expense",
+    "category": "shopping",
+    "amount": 300.0,
+    "description": "shoe",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-07",
+    "type": "income",
+    "category": "personal_care",
+    "amount": 450.0,
+    "description": "haircut money + appa account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-08",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa gpay la send panna amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-08",
+    "type": "expense",
+    "category": "food",
+    "amount": 550.0,
+    "description": "order (pendrive +shoe)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-09",
+    "type": "expense",
+    "category": "food",
+    "amount": 170.0,
+    "description": "order(chain+holder)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-10",
+    "type": "expense",
+    "category": "food",
+    "amount": 100.0,
+    "description": "bakery + juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-13",
+    "type": "expense",
+    "category": "food",
+    "amount": 100.0,
+    "description": "food",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-13",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 225.0,
+    "description": "topup + recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 250.0,
+    "description": "appa account la",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-16",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 700.0,
+    "description": "Instagram +manavalan",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-17",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "Patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-17",
+    "type": "expense",
+    "category": "food",
+    "amount": 100.0,
+    "description": "beef+(juice +ice cream (in kanchi &arcot))",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-18",
+    "type": "expense",
+    "category": "food",
+    "amount": 100.0,
+    "description": "beef + bakery",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-19",
+    "type": "expense",
+    "category": "transport",
+    "amount": 129.0,
+    "description": "petrol+recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-20",
+    "type": "expense",
+    "category": "food",
+    "amount": 160.0,
+    "description": "rice+snacks+chicken",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-22",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa gpay",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-22",
+    "type": "expense",
+    "category": "electronics",
+    "amount": 680.0,
+    "description": "keyboard +mouse",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-22",
+    "type": "expense",
+    "category": "electronics",
+    "amount": 354.0,
+    "description": "stand+mirror+keyholder+feviki+bulb+tape",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-22",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 80.0,
+    "description": "topup",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-25",
+    "type": "expense",
+    "category": "food",
+    "amount": 87.0,
+    "description": "tea+icecream",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-25",
+    "type": "income",
+    "category": "food",
+    "amount": 61.0,
+    "description": "milk+bannana +snacks",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-25",
+    "type": "expense",
+    "category": "food",
+    "amount": 90.0,
+    "description": "juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-25",
+    "type": "expense",
+    "category": "education",
+    "amount": 300.0,
+    "description": "revaluation",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-26",
+    "type": "expense",
+    "category": "food",
+    "amount": 70.0,
+    "description": "pradeep +juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-26",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 378.0,
+    "description": "desk",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-27",
+    "type": "expense",
+    "category": "food",
+    "amount": 153.0,
+    "description": "paratto + banana +watermelon +juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-28",
+    "type": "expense",
+    "category": "food",
+    "amount": 30.0,
+    "description": "order",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-29",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 400.0,
+    "description": "appa gpay",
+    "needs_review": false
+  },
+  {
+    "date": "2024-04-30",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 670.0,
+    "description": "appa gpay",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-01",
+    "type": "expense",
+    "category": "food",
+    "amount": 100.0,
+    "description": "food",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-02",
+    "type": "expense",
+    "category": "home",
+    "amount": 100.0,
+    "description": "supermarket",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-03",
+    "type": "income",
+    "category": "food",
+    "amount": 80.0,
+    "description": "bannana + pepsi",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-03",
+    "type": "expense",
+    "category": "food",
+    "amount": 60.0,
+    "description": "paratto",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-05",
+    "type": "expense",
+    "category": "food",
+    "amount": 30.0,
+    "description": "tea+juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-06",
+    "type": "expense",
+    "category": "food",
+    "amount": 116.0,
+    "description": "food",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-08",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 250.0,
+    "description": "appa gpay",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-08",
+    "type": "expense",
+    "category": "home",
+    "amount": 120.0,
+    "description": "supermarket",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-09",
+    "type": "expense",
+    "category": "entertainment",
+    "amount": 300.0,
+    "description": "gift",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-10",
+    "type": "expense",
+    "category": "food",
+    "amount": 40.0,
+    "description": "juice",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-11",
+    "type": "income",
+    "category": "healthcare",
+    "amount": 1000.0,
+    "description": "amma for lens",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-11",
+    "type": "expense",
+    "category": "food",
+    "amount": 80.0,
+    "description": "juice+Petrol",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-11",
+    "type": "expense",
+    "category": "healthcare",
+    "amount": 1000.0,
+    "description": "lens",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-11",
+    "type": "expense",
+    "category": "education",
+    "amount": 115.0,
+    "description": "electricity +record",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-12",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-12",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 40.0,
+    "description": "recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 700.0,
+    "description": "periama +patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-16",
+    "type": "expense",
+    "category": "transport",
+    "amount": 50.0,
+    "description": "petrol",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-17",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-18",
+    "type": "expense",
+    "category": "entertainment",
+    "amount": 200.0,
+    "description": "movie",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-19",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-20",
+    "type": "income",
+    "category": "personal_care",
+    "amount": 90.0,
+    "description": "haircut half amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-27",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Novitech internship",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-29",
+    "type": "income",
+    "category": "transport",
+    "amount": 500.0,
+    "description": "scholarship amount taken",
+    "needs_review": false
+  },
+  {
+    "date": "2024-05-31",
+    "type": "expense",
+    "category": "education",
+    "amount": 1500.0,
+    "description": "exam fees",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 3000.0,
+    "description": "appa given for lic",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-03",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 289.0,
+    "description": "Recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-04",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-04",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "appa given for xm fee",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-06",
+    "type": "expense",
+    "category": "shopping",
+    "amount": 750.0,
+    "description": "shoe+shirt+pant",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-09",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1100.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-10",
+    "type": "expense",
+    "category": "shopping",
+    "amount": 1638.0,
+    "description": "dress",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 231.0,
+    "description": "lic amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa(amma)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1600.0,
+    "description": "catering amount",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-19",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 350.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-06-21",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 2754.0,
+    "description": "lic",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-08",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 700.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-08",
+    "type": "income",
+    "category": "transport",
+    "amount": 1200.0,
+    "description": "amma+busspare",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-08",
+    "type": "income",
+    "category": "rent",
+    "amount": 2000.0,
+    "description": "appa rent",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-08",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-11",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 230.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-29",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "patti for kavadi",
+    "needs_review": false
+  },
+  {
+    "date": "2024-07-31",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-06",
+    "type": "income",
+    "category": "rent",
+    "amount": 2000.0,
+    "description": "appa (rent)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-07",
+    "type": "income",
+    "category": "electronics",
+    "amount": 130.0,
+    "description": "tirupati (teddy +anna+amma)+ hundi + cover +laddu",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 150.0,
+    "description": "House owner given plant remove",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-10",
+    "type": "expense",
+    "category": "rent",
+    "amount": 50.0,
+    "description": "dhanush rent",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 700.0,
+    "description": "amma account +patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-16",
+    "type": "expense",
+    "category": "electronics",
+    "amount": 3600.0,
+    "description": "laptop service",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-17",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 50.0,
+    "description": "recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-18",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-23",
+    "type": "expense",
+    "category": "electronics",
+    "amount": 550.0,
+    "description": "laptop keyboard",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-25",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1200.0,
+    "description": "patti given",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-27",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-08-27",
+    "type": "expense",
+    "category": "food",
+    "amount": 178.0,
+    "description": "food order",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-01",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 553.0,
+    "description": "Smytten",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-04",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 150.0,
+    "description": "kanchi to Tambaram",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-05",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 150.0,
+    "description": "t nagar to maduravoial to mandapam",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-06",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2440.0,
+    "description": "catering",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-09",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 3100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-15",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-15",
+    "type": "expense",
+    "category": "food",
+    "amount": 500.0,
+    "description": "Movie + Snacks + food+inba",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 400.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-20",
+    "type": "expense",
+    "category": "food",
+    "amount": 220.0,
+    "description": "juice+snacks+ticket+auto(symposium)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-23",
+    "type": "expense",
+    "category": "food",
+    "amount": 115.0,
+    "description": "food+ panni poori",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-24",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 409.0,
+    "description": "iron box",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-26",
+    "type": "expense",
+    "category": "shopping",
+    "amount": 1480.0,
+    "description": "dress",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-26",
+    "type": "expense",
+    "category": "food",
+    "amount": 156.0,
+    "description": "canteen + tea+snacks",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-27",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2024-09-29",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-02",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-02",
+    "type": "expense",
+    "category": "education",
+    "amount": 300.0,
+    "description": "photocopy",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-06",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-06",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-06",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 8000.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "amma account",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-27",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-28",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "gokul",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-28",
+    "type": "expense",
+    "category": "electronics",
+    "amount": 8000.0,
+    "description": "1st Month LAPTOP EMI",
+    "needs_review": false
+  },
+  {
+    "date": "2024-10-30",
+    "type": "income",
+    "category": "food",
+    "amount": 1824.0,
+    "description": "appa given for supermarket (supermarket+Re+juice)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-01",
+    "type": "expense",
+    "category": "entertainment",
+    "amount": 225.0,
+    "description": "cake+gift",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-02",
+    "type": "expense",
+    "category": "transport",
+    "amount": 110.0,
+    "description": "color paper decoration + petrol",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-03",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 50.0,
+    "description": "mano",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-04",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 420.0,
+    "description": "appa + amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-04",
+    "type": "expense",
+    "category": "entertainment",
+    "amount": 150.0,
+    "description": "rummy",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-04",
+    "type": "expense",
+    "category": "education",
+    "amount": 400.0,
+    "description": "Revaluation",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-07",
+    "type": "income",
+    "category": "rent",
+    "amount": 2000.0,
+    "description": "appa for rent",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-07",
+    "type": "expense",
+    "category": "food",
+    "amount": 120.0,
+    "description": "AN food + Dinner",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-13",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-24",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 900.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-28",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 330.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-11-28",
+    "type": "income",
+    "category": "shopping",
+    "amount": 1000.0,
+    "description": "my amount for diwali dress",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 600.0,
+    "description": "Appa + amma",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-04",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "madhan anna",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-06",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "Manavalan",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-07",
+    "type": "income",
+    "category": "education",
+    "amount": 4000.0,
+    "description": "Appa for (fees & rent)",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-07",
+    "type": "expense",
+    "category": "entertainment",
+    "amount": 1000.0,
+    "description": "gift",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-20",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1500.0,
+    "description": "Amma+appa",
+    "needs_review": false
+  },
+  {
+    "date": "2024-12-22",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "Kavitha",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 10000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-01",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "Joshua ()",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-03",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 1700.0,
+    "description": "Money Exchanged (Normal to Personal)",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-11",
+    "type": "expense",
+    "category": "food",
+    "amount": 273.0,
+    "description": "supermarket +vegetable +petrol",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-13",
+    "type": "income",
+    "category": "shopping",
+    "amount": 1000.0,
+    "description": "anna for dress(transfered to personal)",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-13",
+    "type": "income",
+    "category": "healthcare",
+    "amount": 180.0,
+    "description": "lenskart for gokul+gokul ku thara vendiya amount",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-13",
+    "type": "expense",
+    "category": "food",
+    "amount": 147.0,
+    "description": "dmart+chicken",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-13",
+    "type": "expense",
+    "category": "rent",
+    "amount": 1.0,
+    "description": "electricity bill for Dhanush",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-14",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2000.0,
+    "description": "patti for pongal",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-16",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 40.0,
+    "description": "Recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-18",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 51.0,
+    "description": "Recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-20",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 70.0,
+    "description": "cake for mukil",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-21",
+    "type": "expense",
+    "category": "food",
+    "amount": 42.0,
+    "description": "Food order",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-22",
+    "type": "expense",
+    "category": "shopping",
+    "amount": 134.0,
+    "description": "dress",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-24",
+    "type": "expense",
+    "category": "food",
+    "amount": 592.0,
+    "description": "(gluegun+soldering iron) + laptop stand+chicken",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-26",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 29.0,
+    "description": "Recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-27",
+    "type": "expense",
+    "category": "food",
+    "amount": 94.0,
+    "description": "bakery+snacks+recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-28",
+    "type": "expense",
+    "category": "food",
+    "amount": 170.0,
+    "description": "hospital +chicken",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-29",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 11.0,
+    "description": "recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-30",
+    "type": "expense",
+    "category": "food",
+    "amount": 80.0,
+    "description": "Bakery",
+    "needs_review": false
+  },
+  {
+    "date": "2025-01-31",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 22.0,
+    "description": "Recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2082.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-04",
+    "type": "expense",
+    "category": "food",
+    "amount": 2465.0,
+    "description": "petrol+dress+backcase+dress+chicken+dmart",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-11",
+    "type": "expense",
+    "category": "food",
+    "amount": 1225.0,
+    "description": "pant order+shirt order",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-13",
+    "type": "expense",
+    "category": "food",
+    "amount": 375.0,
+    "description": "Shirt order+recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-15",
+    "type": "expense",
+    "category": "recharge",
+    "amount": 29.0,
+    "description": "recharge",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-20",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 610.0,
+    "description": "appa + amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-23",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-24",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 7000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-02-28",
+    "type": "expense",
+    "category": "transport",
+    "amount": 82.0,
+    "description": "note+spare",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-01",
+    "type": "expense",
+    "category": "transport",
+    "amount": 20.0,
+    "description": "spare",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-02",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2100.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-08",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 300.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-08",
+    "type": "expense",
+    "category": "education",
+    "amount": 400.0,
+    "description": "kpm to Chennai to bookbank +book",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2700.0,
+    "description": "appa+amma+patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-20",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1300.0,
+    "description": "Anna + Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-28",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "kavi",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-29",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "sharika",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-29",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 10000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-03-31",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 750.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-07",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "anna",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 412.0,
+    "description": "amma account",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-13",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1500.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-15",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1340.0,
+    "description": "appa+amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-19",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-04-20",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-05-01",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 5000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-05-12",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 650.0,
+    "description": "appa + amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-05-15",
+    "type": "income",
+    "category": "transport",
+    "amount": 1000.0,
+    "description": "scholarship amount taken",
+    "needs_review": false
+  },
+  {
+    "date": "2025-05-22",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1150.0,
+    "description": "amma + appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-05-26",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-02",
+    "type": "income",
+    "category": "transport",
+    "amount": 500.0,
+    "description": "From Scholarship",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-02",
+    "type": "income",
+    "category": "rent",
+    "amount": 6000.0,
+    "description": "appa for new house advance",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-09",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 700.0,
+    "description": "Anna + unkown reason",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-18",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-20",
+    "type": "income",
+    "category": "rent",
+    "amount": 3250.0,
+    "description": "advance return (advance )(2000)",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-22",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-06-27",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 600.0,
+    "description": "appa for paal kachadhuku",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-02",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-09",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-23",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-30",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 200.0,
+    "description": "patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-31",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 16000.0,
+    "description": "appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-07-31",
+    "type": "expense",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "kavitha",
+    "needs_review": false
+  },
+  {
+    "date": "2025-08-03",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "Amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-08-04",
+    "type": "income",
+    "category": "rent",
+    "amount": 6000.0,
+    "description": "Appa for rent",
+    "needs_review": false
+  },
+  {
+    "date": "2025-08-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 800.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-08-18",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-08-31",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-09-05",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 400.0,
+    "description": "amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-09-07",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 5000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-09-10",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 250.0,
+    "description": "Amma + Free Hostel Money (150)",
+    "needs_review": false
+  },
+  {
+    "date": "2025-09-15",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-09-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-10-04",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 5000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-10-06",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 250.0,
+    "description": "appa+Amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-10-19",
+    "type": "income",
+    "category": "shopping",
+    "amount": 500.0,
+    "description": "Appa for diwali dress + Normal",
+    "needs_review": false
+  },
+  {
+    "date": "2025-10-21",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 800.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-10-22",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 100.0,
+    "description": "Amma",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-03",
+    "type": "income",
+    "category": "rent",
+    "amount": 6000.0,
+    "description": "amma for iv & rent",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-09",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 1000.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-16",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-17",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 2500.0,
+    "description": "Appa",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-18",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 500.0,
+    "description": "Patti",
+    "needs_review": false
+  },
+  {
+    "date": "2025-11-23",
+    "type": "income",
+    "category": "miscellaneous",
+    "amount": 230.0,
+    "description": "Appa + amma",
+    "needs_review": false
+  }
+]

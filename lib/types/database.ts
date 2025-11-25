@@ -73,6 +73,7 @@ export interface Database {
           category: string
           description: string | null
           date: string
+          needs_review: boolean
           created_at: string
           updated_at: string
         }
@@ -84,6 +85,7 @@ export interface Database {
           category: string
           description?: string | null
           date: string
+          needs_review?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -95,6 +97,7 @@ export interface Database {
           category?: string
           description?: string | null
           date?: string
+          needs_review?: boolean
           created_at?: string
           updated_at?: string
         }
