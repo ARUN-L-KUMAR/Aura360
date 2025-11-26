@@ -5,7 +5,7 @@ import { FinanceOverviewTab } from "@/components/finance/finance-overview-tab"
 import { TransactionHistoryTab } from "@/components/finance/transaction-history-tab"
 import { ReportsTab } from "@/components/finance/reports-tab"
 import { ShareTransactionModal } from "@/components/finance/share-transaction-modal"
-import { DollarSign, LayoutDashboard, History, BarChart3, ArrowUp, Share2 } from "lucide-react"
+import { DollarSign, LayoutDashboard, History, BarChart3, ArrowUp, Share2, ArrowLeft, Home, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 import {
   Tooltip,
   TooltipContent,
@@ -138,13 +139,81 @@ export default function FinancePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950 transition-colors duration-300">
+      {/* Top Navigation Bar */}
+      <div className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex h-14 items-center justify-between gap-4">
+            {/* Left Section - Back & Logo */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/dashboard")}
+                className="gap-1.5"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+              
+              <div className="hidden sm:block h-6 w-px bg-border" />
+              
+              <Link href="/" className="hidden sm:flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">A</span>
+                </div>
+                <span>Aura360</span>
+              </Link>
+            </div>
+
+            {/* Right Section - Navigation & Actions */}
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-1">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/">
+                    <Home className="h-4 w-4 mr-1.5" />
+                    Home
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/dashboard">
+                    <LayoutGrid className="h-4 w-4 mr-1.5" />
+                    Dashboard
+                  </Link>
+                </Button>
+              </div>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowShareModal(true)}
+                      className="gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      {!isMobile && "Add from GPay"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add expense from shared UPI transaction</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className={cn(
         "mx-auto max-w-7xl",
         isMobile ? "p-4 pb-24" : "p-6 md:p-10"
       )}>
         {/* Header */}
         <div className={cn(
-          "mb-6 flex items-center justify-between",
+          "mb-6 flex items-center",
           isMobile && "flex-col gap-4 items-start"
         )}>
           <div className="flex items-center gap-3">
@@ -167,32 +236,6 @@ export default function FinancePage() {
                 isMobile ? "text-xs" : "text-sm"
               )}>Track your income and expenses</p>
             </div>
-          </div>
-          
-          {/* Theme Toggle & Share Button */}
-          <div className={cn(
-            "flex items-center gap-2",
-            isMobile && "self-end -mt-12"
-          )}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size={isMobile ? "sm" : "default"}
-                    onClick={() => setShowShareModal(true)}
-                    className="gap-2"
-                  >
-                    <Share2 className={cn(isMobile ? "h-4 w-4" : "h-4 w-4")} />
-                    {!isMobile && "Add from GPay"}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Add expense from shared UPI transaction</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <ThemeToggle />
           </div>
         </div>
 

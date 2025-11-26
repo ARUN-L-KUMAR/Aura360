@@ -2,8 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { DragDropDashboard } from "@/components/fashion/drag-drop-dashboard"
 import { FashionTabs } from "@/components/fashion/fashion-tabs"
+import { ModuleHeader } from "@/components/ui/module-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shirt, Grid3X3, List } from "lucide-react"
+import { Grid3X3, List } from "lucide-react"
 
 export default async function FashionPage() {
   const supabase = await createClient()
@@ -23,28 +24,26 @@ export default async function FashionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-7xl p-6 md:p-10">
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-              <Shirt className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">Fashion</h1>
-              <p className="text-muted-foreground">Organize your wardrobe, manage your wishlist, and experiment with outfits</p>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto max-w-7xl p-4 sm:p-6 md:p-10 pb-24 md:pb-10">
+        <ModuleHeader
+          title="Fashion"
+          description="Organize your wardrobe and manage your style"
+          iconName="shirt"
+          iconBgColor="bg-indigo-100 dark:bg-indigo-900/50"
+          iconColor="text-indigo-600 dark:text-indigo-400"
+        />
 
         <Tabs defaultValue="dashboard" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-card/80 backdrop-blur-sm mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Grid3X3 className="w-4 h-4" />
-              Drag & Drop Dashboard
+              <span className="hidden sm:inline">Drag & Drop Dashboard</span>
+              <span className="sm:hidden">Dashboard</span>
             </TabsTrigger>
             <TabsTrigger value="tabs" className="flex items-center gap-2">
               <List className="w-4 h-4" />
-              Tabbed View
+              <span className="hidden sm:inline">Tabbed View</span>
+              <span className="sm:hidden">Tabs</span>
             </TabsTrigger>
           </TabsList>
 
