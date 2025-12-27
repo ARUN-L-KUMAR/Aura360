@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle2, AlertCircle, Loader2, Upload, Trash2, Info } from 'lucide-react'
+import { getApiUrl } from '@/lib/utils/api'
 
 export default function BulkImportPage() {
   const [importing, setImporting] = useState(false)
@@ -16,7 +17,7 @@ export default function BulkImportPage() {
   // Check import status
   const checkStatus = async () => {
     try {
-      const response = await fetch('/api/finance/bulk-import')
+      const response = await fetch(getApiUrl('/api/finance/bulk-import'))
       const data = await response.json()
       setStatus(data)
     } catch (err: any) {
@@ -31,7 +32,7 @@ export default function BulkImportPage() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/finance/bulk-import', {
+      const response = await fetch(getApiUrl('/api/finance/bulk-import'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -64,7 +65,7 @@ export default function BulkImportPage() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/finance/bulk-import', {
+      const response = await fetch(getApiUrl('/api/finance/bulk-import'), {
         method: 'DELETE'
       })
 
@@ -84,9 +85,9 @@ export default function BulkImportPage() {
   }
 
   // Load status on mount
-  useState(() => {
+  useEffect(() => {
     checkStatus()
-  })
+  }, [])
 
   return (
     <div className="container max-w-4xl py-10">

@@ -9,7 +9,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.2.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Backend-green?style=flat-square&logo=supabase)](https://supabase.com/)
+[![NeonDB](https://img.shields.io/badge/NeonDB-Serverless_Postgres-green?style=flat-square&logo=postgresql)](https://neon.tech/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-c5f74f?style=flat-square)](https://orm.drizzle.team/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1.9-38bdf8?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 
 </div>
@@ -116,12 +117,18 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 - **[Lucide React](https://lucide.dev/)** - Beautiful icons
 
 ### Backend & Database
-- **[Supabase](https://supabase.com/)** - Backend-as-a-Service
-  - PostgreSQL database
-  - Authentication
-  - Storage
-  - Real-time subscriptions
-  - Row Level Security (RLS)
+- **[NeonDB](https://neon.tech/)** - Serverless PostgreSQL
+  - Edge-compatible database
+  - Auto-scaling and branching
+  - Connection pooling
+- **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM
+  - Type-safe queries
+  - Schema migrations
+  - Edge runtime support
+- **[NextAuth.js v5](https://next-auth.js.org/)** - Authentication
+  - Credentials & OAuth
+  - Session management
+- **[Cloudinary](https://cloudinary.com/)** - Image storage & CDN
 
 ### Key Libraries
 - **[@dnd-kit](https://dndkit.com/)** - Drag and drop functionality
@@ -141,7 +148,7 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 
 - **Node.js** 18.x or higher
 - **pnpm** (recommended) or npm
-- **Supabase Account** ([Sign up here](https://supabase.com))
+- **NeonDB Account** ([Sign up here](https://neon.tech))
 - **Git**
 
 ### Installation
@@ -161,21 +168,34 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
    
    Create a `.env.local` file in the root directory:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   # Database (Required)
+   DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/dbname?sslmode=require
+   
+   # NextAuth (Required)
+   NEXTAUTH_SECRET=your-nextauth-secret  # Generate: openssl rand -base64 32
+   NEXTAUTH_URL=http://localhost:3000
+   
+   # Cloudinary (Required for image uploads)
+   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=your-api-key
+   CLOUDINARY_API_SECRET=your-api-secret
+   
+   # Google OAuth (Optional)
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
    ```
 
-   Get these values from your [Supabase project settings](https://app.supabase.com).
+   Get these values from your [NeonDB dashboard](https://console.neon.tech).
 
 4. **Set up the database**
    
    Run the SQL scripts in the `scripts/` folder in your Supabase SQL editor:
    ```bash
-   # In Supabase SQL Editor, run in order:
-   01-create-schema.sql
-   02-seed-data.sql (optional - for demo data)
-   create-storage-bucket.sql
-   update-fashion-schema.sql
+   # Push database schema
+   pnpm db:push
+   
+   # (Optional) Open Drizzle Studio
+   pnpm db:studio
    ```
 
 5. **Run the development server**
@@ -227,8 +247,13 @@ lifesync-app/
 │   ├── time/                     # Time logs components
 │   └── profile/                  # Profile components
 ├── lib/                          # Utilities
-│   ├── supabase/                 # Supabase client setup
+│   ├── db/                       # Database (Drizzle ORM)
+│   │   ├── index.ts              # Database client
+│   │   └── schema.ts             # Database schema
+│   ├── services/                 # Business logic services
 │   ├── types/                    # TypeScript type definitions
+│   ├── auth.ts                   # NextAuth configuration
+│   ├── cloudinary.ts             # Image upload helpers
 │   └── utils.ts                  # Helper functions
 ├── hooks/                        # Custom React hooks
 ├── public/                       # Static assets
@@ -328,40 +353,64 @@ Track how you spend your time throughout the day.
 
 ## 🗄️ Database Setup
 
-### Supabase Configuration
+### NeonDB Configuration
 
-1. **Create a new Supabase project** at [app.supabase.com](https://app.supabase.com)
+1. **Create a new NeonDB project** at [console.neon.tech](https://console.neon.tech)
 
 2. **Run database migrations**
    
-   Navigate to SQL Editor in Supabase and run the scripts in order:
-   - `scripts/01-create-schema.sql` - Creates all tables and relationships
-   - `scripts/02-seed-data.sql` - (Optional) Seeds demo data
-   - `scripts/create-storage-bucket.sql` - Sets up file storage
-   - `scripts/update-fashion-schema.sql` - Fashion module enhancements
-
-3. **Configure Row Level Security (RLS)**
+   Push your schema to the database:
+   ```bash
+   # Generate migration files
+   pnpm db:generate
    
-   The schema files include RLS policies to ensure users can only access their own data.
-
-4. **Set up Storage**
+   # Push schema to NeonDB
+   pnpm db:push
    
-   Storage buckets are created for:
-   - Fashion item images
+   # View database in Drizzle Studio (optional)
+   pnpm db:studio
+   ```
+
+3. **Multi-tenant Architecture**
+   
+   The database uses workspace-based multi-tenancy:
+   - Each user gets a personal workspace on signup
+   - All data is scoped to workspaces
+   - Future: Team workspaces with role-based access
+
+4. **Image Storage**
+   
+   Images are stored in Cloudinary:
+   - Fashion item photos
    - Profile pictures
-   - Other user uploads
+   - Food logs
 
 ### Database Tables
 
-- `users` - User profiles and preferences
+**Authentication & Multi-tenancy:**
+- `users` - User accounts and profiles
+- `accounts` - OAuth provider accounts
+- `sessions` - Active user sessions
+- `workspaces` - Workspace/tenant management
+- `workspace_members` - User-workspace relationships
+
+**Finance Module:**
+- `wallet_ledger` - Immutable transaction ledger
+- `wallet_balances` - Current balances per payment method
+- `transactions` - Legacy transaction table
+
+**Other Modules:**
 - `notes` - Note entries
-- `transactions` - Financial transactions
 - `fitness` - Workout and measurement logs
-- `meals` - Food intake logs
-- `fashion` - Wardrobe and wishlist items
+- `food` - Meal logs
+- `fashion_items` - Wardrobe and wishlist items
 - `skincare` - Skincare products and routines
 - `saved_items` - Bookmarked content
 - `time_logs` - Activity time tracking
+
+**System Tables:**
+- `audit_logs` - Activity tracking
+- `notifications` - User notifications
 
 ---
 
@@ -372,12 +421,24 @@ Track how you spend your time throughout the day.
 Create a `.env.local` file with the following:
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# Database (Required)
+DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/dbname?sslmode=require
 
-# Optional: OpenAI for AI features (future)
-# OPENAI_API_KEY=your-openai-key
+# NextAuth (Required)
+NEXTAUTH_SECRET=your-secret-key  # Generate: openssl rand -base64 32
+NEXTAUTH_URL=http://localhost:3000
+
+# Cloudinary (Required for uploads)
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# Google OAuth (Optional)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Optional: Analytics
+NEXT_PUBLIC_APP_URL=https://your-domain.com
 ```
 
 ### Next.js Config

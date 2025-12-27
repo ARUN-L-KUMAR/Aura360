@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Upload, X, Image as ImageIcon } from "lucide-react"
 import { toast } from "sonner"
+import { getApiUrl } from "@/lib/utils/api"
 
 interface ImageUploadProps {
   value: string
@@ -32,7 +33,7 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
       })
 
       // Upload to Cloudinary via API
-      const response = await fetch('/api/fashion/upload-image', {
+      const response = await fetch(getApiUrl('/api/fashion/upload-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
