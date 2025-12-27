@@ -1,24 +1,29 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, timeLogs } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { TimeLogsList } from "@/components/time/time-logs-list"
 import { AddTimeLogButton } from "@/components/time/add-time-log-button"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function TimeLogsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: logs } = await supabase
-    .from("time_logs")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
+  const logs = await db
+    .select()
+    .from(timeLogs)
+    .where(
+      and(
+        eq(timeLogs.workspaceId, user.workspaceId),
+        eq(timeLogs.userId, user.id)
+      )
+    )
+    .orderBy(desc(timeLogs.date))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

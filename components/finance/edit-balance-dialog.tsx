@@ -89,7 +89,10 @@ export function EditBalanceDialog({
 
       toast.success("✅ Balances updated successfully!")
       setOpen(false)
-      onBalanceUpdated()
+      
+      // Force a fresh reload of balance data with cache busting
+      await new Promise(resolve => setTimeout(resolve, 500)) // Small delay for DB to settle
+      await onBalanceUpdated()
     } catch (error) {
       console.error("Error updating balance:", error)
       toast.error("Failed to update balance")

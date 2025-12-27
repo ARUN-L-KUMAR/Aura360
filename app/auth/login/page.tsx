@@ -2,7 +2,6 @@
 
 import type React from "react"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,10 +9,9 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
-  console.log("[v0] Login page rendering...")
-
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -22,31 +20,26 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Login form submitted")
-
-    let supabase
-    try {
-      supabase = createClient()
-    } catch (err) {
-      console.error("[v0] Failed to create Supabase client:", err)
-      setError(err instanceof Error ? err.message : "Failed to connect to authentication service")
-      return
-    }
-
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log("[v0] Attempting to sign in...")
-      const { error } = await supabase.auth.signInWithPassword({
+      const result = await signIn("credentials", {
         email,
         password,
+        redirect: false,
       })
-      if (error) throw error
-      console.log("[v0] Sign in successful, redirecting to dashboard...")
-      router.push("/dashboard")
+
+      if (result?.error) {
+        setError("Invalid email or password")
+        return
+      }
+
+      if (result?.ok) {
+        router.push("/dashboard")
+        router.refresh()
+      }
     } catch (error: unknown) {
-      console.error("[v0] Sign in error:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)

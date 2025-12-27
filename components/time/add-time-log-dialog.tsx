@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface AddTimeLogDialogProps {
   open: boolean
@@ -36,33 +36,30 @@ export function AddTimeLogDialog({ open, onOpenChange }: AddTimeLogDialogProps) 
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const response = await fetch("/api/time", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activity,
+          category: category || undefined,
+          duration: Number.parseInt(duration),
+          date,
+          description: notes || undefined,
+        }),
+      })
 
-    if (!user) {
-      alert("You must be logged in to add a time log")
-      setIsLoading(false)
-      return
-    }
+      if (!response.ok) {
+        throw new Error("Failed to create time log")
+      }
 
-    const { error } = await supabase.from("time_logs").insert({
-      user_id: user.id,
-      activity,
-      category: category || null,
-      duration_minutes: Number.parseInt(duration),
-      date,
-      notes: notes || null,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating time log:", error)
-      alert("Failed to create log")
-    } else {
+      toast.success("Time log added successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("[Time] Error creating log:", error)
+      toast.error("Failed to create time log")
     }
 
     setIsLoading(false)

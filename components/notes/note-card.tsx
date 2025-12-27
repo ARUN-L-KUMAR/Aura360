@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Pin, Trash2, Edit } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditNoteDialog } from "./edit-note-dialog"
 
 interface Note {
   id: string
-  user_id: string
+  userId: string
   title: string
   content: string | null
   category: string | null
   tags: string[] | null
-  is_pinned: boolean
-  created_at: string
-  updated_at: string
+  isPinned: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface NoteCardProps {
@@ -35,36 +35,47 @@ export function NoteCard({ note, onDelete, onUpdate }: NoteCardProps) {
     if (!confirm("Are you sure you want to delete this note?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("notes").delete().eq("id", note.id)
+    try {
+      const response = await fetch(`/api/notes?id=${note.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting note:", error)
-      alert("Failed to delete note")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete note")
+      }
+
+      toast.success("Note deleted successfully")
       onDelete(note.id)
+    } catch (error) {
+      console.error("Error deleting note:", error)
+      toast.error("Failed to delete note")
     }
+
     setIsDeleting(false)
   }
 
   const handleTogglePin = async () => {
     setIsPinning(true)
-    const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from("notes")
-      .update({ is_pinned: !note.is_pinned })
-      .eq("id", note.id)
-      .select()
-      .single()
+    try {
+      const response = await fetch(`/api/notes?id=${note.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: !note.isPinned }),
+      })
 
-    if (error) {
-      console.error("[v0] Error toggling pin:", error)
-      alert("Failed to update note")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update note")
+      }
+
+      const data = await response.json()
       onUpdate(data)
+    } catch (error) {
+      console.error("Error toggling pin:", error)
+      toast.error("Failed to update note")
     }
+
     setIsPinning(false)
   }
 
@@ -77,11 +88,11 @@ export function NoteCard({ note, onDelete, onUpdate }: NoteCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={`h-8 w-8 shrink-0 ${note.is_pinned ? "text-teal-600" : "text-muted-foreground"}`}
+              className={`h-8 w-8 shrink-0 ${note.isPinned ? "text-teal-600" : "text-muted-foreground"}`}
               onClick={handleTogglePin}
               disabled={isPinning}
             >
-              <Pin className="h-4 w-4" fill={note.is_pinned ? "currentColor" : "none"} />
+              <Pin className="h-4 w-4" fill={note.isPinned ? "currentColor" : "none"} />
             </Button>
           </div>
           {note.category && (

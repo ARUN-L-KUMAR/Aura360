@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Shirt, ExternalLink, ShoppingCart, Star, Heart } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { EditFashionDialog } from "./edit-fashion-dialog"
 
 interface FashionItem {
@@ -46,17 +45,25 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
     if (!confirm("Are you sure you want to delete this item?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("fashion").delete().eq("id", item.id)
+    try {
+      const response = await fetch(`/api/fashion?id=${item.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting fashion item:", error)
-      alert("Failed to delete item")
-    } else {
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete item")
+      }
+
       onDelete(item.id)
+    } catch (error: any) {
+      console.error("[v0] Error deleting fashion item:", error)
+      alert(error.message || "Failed to delete item")
+    } finally {
+      setIsDeleting(false)
     }
-    setIsDeleting(false)
   }
 
   return (

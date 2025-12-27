@@ -17,8 +17,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { X } from "lucide-react"
+import { toast } from "sonner"
 import { ImageUpload } from "./image-upload"
 
 type FashionType = "buyed" | "need_to_buy"
@@ -98,42 +98,45 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from("fashion")
-      .update({
-        item_name: itemName,
-        category,
-        brand: brand || null,
-        color: color || null,
-        size: size || null,
-        purchase_date: purchaseDate || null,
-        price: price ? Number.parseFloat(price) : null,
-        image_url: imageUrl || null,
-        buying_link: buyingLink || null,
-        notes: notes || null,
-        type,
-        status: status || null,
-        occasion: occasion.length > 0 ? occasion : null,
-        season: season.length > 0 ? season : null,
-        expected_budget: expectedBudget ? Number.parseFloat(expectedBudget) : null,
-        buy_deadline: buyDeadline || null,
-        is_favorite: isFavorite,
+    try {
+      const response = await fetch(`/api/fashion?id=${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: itemName,
+          category,
+          brand: brand || null,
+          color: color || null,
+          size: size || null,
+          purchaseDate: purchaseDate || null,
+          price: price ? Number.parseFloat(price) : null,
+          imageUrl: imageUrl || null,
+          buyingLink: buyingLink || null,
+          notes: notes || null,
+          type,
+          status: status || null,
+          occasion: occasion.length > 0 ? occasion : null,
+          season: season.length > 0 ? season : null,
+          expectedBudget: expectedBudget ? Number.parseFloat(expectedBudget) : null,
+          buyDeadline: buyDeadline || null,
+          isFavorite: isFavorite,
+        }),
       })
-      .eq("id", item.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating fashion item:", error)
-      alert("Failed to update item")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update item")
+      }
+
+      const data = await response.json()
+      toast.success("Item updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("[v0] Error updating fashion item:", error)
+      toast.error("Failed to update item")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

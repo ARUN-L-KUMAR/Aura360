@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FashionCard } from "./fashion-card"
 import { Search, Plus, ShoppingCart } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface FashionItem {
   id: string
@@ -53,22 +53,26 @@ export function WishlistView({ items }: WishlistViewProps) {
   const handleMarkAsBought = async (item: FashionItem) => {
     if (!confirm(`Mark "${item.item_name}" as bought and move to wardrobe?`)) return
 
-    const supabase = createClient()
-
-    const { error } = await supabase
-      .from("fashion")
-      .update({
-        type: "buyed",
-        purchase_date: new Date().toISOString().split('T')[0], // Today's date
-        status: "New"
+    try {
+      const response = await fetch(`/api/fashion?id=${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "buyed",
+          purchaseDate: new Date().toISOString().split('T')[0],
+          status: "New"
+        }),
       })
-      .eq("id", item.id)
 
-    if (error) {
-      console.error("[v0] Error updating fashion item:", error)
-      alert("Failed to mark as bought")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to mark as bought")
+      }
+
+      toast.success("Item marked as bought")
       router.refresh()
+    } catch (error) {
+      console.error("[v0] Error updating fashion item:", error)
+      toast.error("Failed to mark as bought")
     }
   }
 

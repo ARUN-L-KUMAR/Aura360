@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { TrendingUp, TrendingDown, PiggyBank, IndianRupee, Calendar, Tag, FileText, Wallet, CreditCard, Banknote, Smartphone, Building2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -75,33 +74,30 @@ export function AddTransactionDialog({ open, onOpenChange, onTransactionAdded }:
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const finalCategory = category === "custom" ? customCategory : category
 
-    if (!user) {
-      alert("You must be logged in to add a transaction")
-      setIsLoading(false)
-      return
-    }
+      const response = await fetch("/api/finance/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          amount: Number.parseFloat(amount),
+          category: finalCategory,
+          paymentMethod: paymentMethod,
+          description: description || null,
+          date,
+        }),
+      })
 
-    const finalCategory = category === "custom" ? customCategory : category
+      const result = await response.json()
 
-    const { data, error } = await supabase.from("finances").insert({
-      user_id: user.id,
-      type,
-      amount: Number.parseFloat(amount),
-      category: finalCategory,
-      payment_method: paymentMethod,
-      description: description || null,
-      date,
-    }).select().single()
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to create transaction")
+      }
 
-    if (error) {
-      console.error("[v0] Error creating transaction:", error)
-      alert("Failed to create transaction")
-    } else {
       setType("expense")
       setAmount("")
       setCategory("")
@@ -110,14 +106,18 @@ export function AddTransactionDialog({ open, onOpenChange, onTransactionAdded }:
       setDescription("")
       setDate(new Date().toISOString().split("T")[0])
       onOpenChange(false)
-      if (onTransactionAdded && data) {
-        onTransactionAdded(data)
+      
+      if (onTransactionAdded && result.data) {
+        onTransactionAdded(result.data)
       } else {
         router.refresh()
       }
+    } catch (error: any) {
+      console.error("[v0] Error creating transaction:", error)
+      alert(error.message || "Failed to create transaction")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const getTypeIcon = (transactionType: string) => {

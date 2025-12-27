@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface CreateNoteDialogProps {
   open: boolean
@@ -35,40 +35,37 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const tagsArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
 
-    if (!user) {
-      alert("You must be logged in to create a note")
-      setIsLoading(false)
-      return
-    }
+      const response = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content: content || undefined,
+          category: category || undefined,
+          tags: tagsArray.length > 0 ? tagsArray : undefined,
+        }),
+      })
 
-    const tagsArray = tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
+      if (!response.ok) {
+        throw new Error("Failed to create note")
+      }
 
-    const { error } = await supabase.from("notes").insert({
-      user_id: user.id,
-      title,
-      content: content || null,
-      category: category || null,
-      tags: tagsArray.length > 0 ? tagsArray : null,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating note:", error)
-      alert("Failed to create note")
-    } else {
+      toast.success("Note created successfully")
       setTitle("")
       setContent("")
       setCategory("")
       setTags("")
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating note:", error)
+      toast.error("Failed to create note")
     }
 
     setIsLoading(false)

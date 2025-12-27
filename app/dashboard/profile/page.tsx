@@ -1,20 +1,20 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, users } from "@/lib/db"
+import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { ProfileForm } from "@/components/profile/profile-form"
 import { User, ArrowLeft, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 export default async function ProfilePage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
+  const [profile] = await db.select().from(users).where(eq(users.id, user.id))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

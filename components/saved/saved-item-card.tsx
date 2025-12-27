@@ -5,20 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, ExternalLink, Star } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditSavedItemDialog } from "./edit-saved-item-dialog"
 
 interface SavedItem {
   id: string
-  user_id: string
+  userId: string
   type: "article" | "video" | "product" | "recipe" | "other"
   title: string
   url: string | null
   description: string | null
   tags: string[] | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
+  isFavorite: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface SavedItemCardProps {
@@ -36,36 +36,47 @@ export function SavedItemCard({ item, onDelete, onUpdate }: SavedItemCardProps) 
     if (!confirm("Are you sure you want to delete this item?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("saved_items").delete().eq("id", item.id)
+    try {
+      const response = await fetch(`/api/saved?id=${item.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting saved item:", error)
-      alert("Failed to delete item")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete item")
+      }
+
+      toast.success("Item deleted successfully")
       onDelete(item.id)
+    } catch (error) {
+      console.error("Error deleting saved item:", error)
+      toast.error("Failed to delete item")
     }
+
     setIsDeleting(false)
   }
 
   const handleToggleFavorite = async () => {
     setIsFavoriting(true)
-    const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from("saved_items")
-      .update({ is_favorite: !item.is_favorite })
-      .eq("id", item.id)
-      .select()
-      .single()
+    try {
+      const response = await fetch(`/api/saved?id=${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: !item.isFavorite }),
+      })
 
-    if (error) {
-      console.error("[v0] Error toggling favorite:", error)
-      alert("Failed to update item")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update item")
+      }
+
+      const data = await response.json()
       onUpdate(data)
+    } catch (error) {
+      console.error("Error toggling favorite:", error)
+      toast.error("Failed to update item")
     }
+
     setIsFavoriting(false)
   }
 
@@ -78,11 +89,11 @@ export function SavedItemCard({ item, onDelete, onUpdate }: SavedItemCardProps) 
             <Button
               variant="ghost"
               size="icon"
-              className={`h-8 w-8 shrink-0 ${item.is_favorite ? "text-yellow-500" : "text-muted-foreground"}`}
+              className={`h-8 w-8 shrink-0 ${item.isFavorite ? "text-yellow-500" : "text-muted-foreground"}`}
               onClick={handleToggleFavorite}
               disabled={isFavoriting}
             >
-              <Star className="h-4 w-4" fill={item.is_favorite ? "currentColor" : "none"} />
+              <Star className="h-4 w-4" fill={item.isFavorite ? "currentColor" : "none"} />
             </Button>
           </div>
           <Badge variant="secondary" className="w-fit capitalize">

@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, fashionItems } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { DragDropDashboard } from "@/components/fashion/drag-drop-dashboard"
 import { FashionTabs } from "@/components/fashion/fashion-tabs"
@@ -7,20 +9,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Grid3X3, List } from "lucide-react"
 
 export default async function FashionPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: items } = await supabase
-    .from("fashion")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+  const items = await db
+    .select()
+    .from(fashionItems)
+    .where(
+      and(
+        eq(fashionItems.workspaceId, user.workspaceId),
+        eq(fashionItems.userId, user.id)
+      )
+    )
+    .orderBy(desc(fashionItems.createdAt))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

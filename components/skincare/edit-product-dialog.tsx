@@ -16,23 +16,23 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface SkincareProduct {
   id: string
-  user_id: string
-  product_name: string
+  userId: string
+  productName: string
   brand: string | null
   category: string
-  routine_time: "morning" | "evening" | "both" | null
+  routineTime: "morning" | "evening" | "both" | null
   frequency: string | null
-  purchase_date: string | null
-  expiry_date: string | null
+  purchaseDate: string | null
+  expiryDate: string | null
   price: number | null
   rating: number | null
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface EditProductDialogProps {
@@ -43,26 +43,26 @@ interface EditProductDialogProps {
 }
 
 export function EditProductDialog({ product, open, onOpenChange, onUpdate }: EditProductDialogProps) {
-  const [productName, setProductName] = useState(product.product_name)
+  const [productName, setProductName] = useState(product.productName)
   const [brand, setBrand] = useState(product.brand || "")
   const [category, setCategory] = useState(product.category)
-  const [routineTime, setRoutineTime] = useState<"morning" | "evening" | "both" | "">(product.routine_time || "")
+  const [routineTime, setRoutineTime] = useState<"morning" | "evening" | "both" | "">(product.routineTime || "")
   const [frequency, setFrequency] = useState(product.frequency || "")
-  const [purchaseDate, setPurchaseDate] = useState(product.purchase_date || "")
-  const [expiryDate, setExpiryDate] = useState(product.expiry_date || "")
+  const [purchaseDate, setPurchaseDate] = useState(product.purchaseDate || "")
+  const [expiryDate, setExpiryDate] = useState(product.expiryDate || "")
   const [price, setPrice] = useState(product.price?.toString() || "")
   const [rating, setRating] = useState(product.rating?.toString() || "")
   const [notes, setNotes] = useState(product.notes || "")
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    setProductName(product.product_name)
+    setProductName(product.productName)
     setBrand(product.brand || "")
     setCategory(product.category)
-    setRoutineTime(product.routine_time || "")
+    setRoutineTime(product.routineTime || "")
     setFrequency(product.frequency || "")
-    setPurchaseDate(product.purchase_date || "")
-    setExpiryDate(product.expiry_date || "")
+    setPurchaseDate(product.purchaseDate || "")
+    setExpiryDate(product.expiryDate || "")
     setPrice(product.price?.toString() || "")
     setRating(product.rating?.toString() || "")
     setNotes(product.notes || "")
@@ -72,35 +72,38 @@ export function EditProductDialog({ product, open, onOpenChange, onUpdate }: Edi
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from("skincare")
-      .update({
-        product_name: productName,
-        brand: brand || null,
-        category,
-        routine_time: routineTime || null,
-        frequency: frequency || null,
-        purchase_date: purchaseDate || null,
-        expiry_date: expiryDate || null,
-        price: price ? Number.parseFloat(price) : null,
-        rating: rating ? Number.parseInt(rating) : null,
-        notes: notes || null,
+    try {
+      const response = await fetch(`/api/skincare?id=${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName,
+          brand: brand || undefined,
+          category,
+          routineTime: routineTime || undefined,
+          frequency: frequency || undefined,
+          purchaseDate: purchaseDate || undefined,
+          expiryDate: expiryDate || undefined,
+          price: price ? Number.parseFloat(price) : undefined,
+          rating: rating ? Number.parseInt(rating) : undefined,
+          notes: notes || undefined,
+        }),
       })
-      .eq("id", product.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating skincare product:", error)
-      alert("Failed to update product")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update skincare product")
+      }
+
+      const data = await response.json()
+      toast.success("Product updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("Error updating skincare product:", error)
+      toast.error("Failed to update product")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

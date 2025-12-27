@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, TrendingUp, TrendingDown, PiggyBank } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 
 interface Transaction {
@@ -14,6 +13,7 @@ interface Transaction {
   amount: number
   category: string
   description: string | null
+  payment_method: string | null
   date: string
   created_at: string
   updated_at: string
@@ -33,17 +33,25 @@ export function TransactionItem({ transaction, onDelete, onUpdate }: Transaction
     if (!confirm("Are you sure you want to delete this transaction?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("finances").delete().eq("id", transaction.id)
+    try {
+      const response = await fetch(`/api/finance/transactions/${transaction.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting transaction:", error)
-      alert("Failed to delete transaction")
-    } else {
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to delete transaction")
+      }
+
       onDelete(transaction.id)
+    } catch (error: any) {
+      console.error("[v0] Error deleting transaction:", error)
+      alert(error.message || "Failed to delete transaction")
+    } finally {
+      setIsDeleting(false)
     }
-    setIsDeleting(false)
   }
 
   const typeConfig = {

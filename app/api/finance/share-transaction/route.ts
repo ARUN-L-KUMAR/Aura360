@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getWorkspaceContext } from '@/lib/auth-helpers'
+import { db, transactions } from '@/lib/db'
 
 /**
  * Share Transaction API Route
@@ -139,19 +140,7 @@ function parseSharedText(text: string): Partial<ShareTransactionBody> {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please log in to add transactions.' },
-        { status: 401 }
-      )
-    }
+    const context = await getWorkspaceContext()
 
     // Parse request body
     let body: ShareTransactionBody & { text?: string; title?: string }
@@ -177,7 +166,9 @@ export async function POST(request: Request) {
     const date = parseDate(body.date ?? parsedData.date)
     const description = body.description ?? parsedData.description ?? ''
     const category = body.category ?? (description ? detectCategory(description) : 'Other')
-    const payment_method = body.payment_method ?? parsedData.payment_method ?? 'upi'
+    const rawPaymentMethod = body.payment_method ?? parsedData.payment_method ?? 'upi'
+    // Map payment method to schema enum (wallet -> other)
+    const payment_method = rawPaymentMethod === 'wallet' ? 'other' : rawPaymentMethod
 
     // Validate amount
     if (!amount || amount <= 0) {
@@ -188,22 +179,20 @@ export async function POST(request: Request) {
     }
 
     // Insert transaction
-    const { data: transaction, error: insertError } = await supabase
-      .from('finances')
-      .insert({
-        user_id: user.id,
-        type: 'expense',
-        amount,
+    const [transaction] = await db
+      .insert(transactions)
+      .values({
+        ...context,
+        type: 'expense' as const,
+        amount: amount.toString(),
         category,
-        description: description || null,
-        payment_method,
+        description: description || `Payment via ${payment_method.toUpperCase()}`,
+        paymentMethod: payment_method as 'cash' | 'card' | 'upi' | 'bank_transfer' | 'other',
         date,
       })
-      .select()
-      .single()
+      .returning()
 
-    if (insertError) {
-      console.error('Error inserting shared transaction:', insertError)
+    if (!transaction) {
       return NextResponse.json(
         { error: 'Failed to save transaction. Please try again.' },
         { status: 500 }

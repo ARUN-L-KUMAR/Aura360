@@ -4,24 +4,24 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Star } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditProductDialog } from "./edit-product-dialog"
 
 interface SkincareProduct {
   id: string
-  user_id: string
-  product_name: string
+  userId: string
+  productName: string
   brand: string | null
   category: string
-  routine_time: "morning" | "evening" | "both" | null
+  routineTime: "morning" | "evening" | "both" | null
   frequency: string | null
-  purchase_date: string | null
-  expiry_date: string | null
+  purchaseDate: string | null
+  expiryDate: string | null
   price: number | null
   rating: number | null
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface ProductItemProps {
@@ -38,16 +38,23 @@ export function ProductItem({ product, onDelete, onUpdate }: ProductItemProps) {
     if (!confirm("Are you sure you want to delete this product?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("skincare").delete().eq("id", product.id)
+    try {
+      const response = await fetch(`/api/skincare?id=${product.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting skincare product:", error)
-      alert("Failed to delete product")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete skincare product")
+      }
+
+      toast.success("Product deleted successfully")
       onDelete(product.id)
+    } catch (error) {
+      console.error("Error deleting skincare product:", error)
+      toast.error("Failed to delete product")
     }
+
     setIsDeleting(false)
   }
 
@@ -56,10 +63,10 @@ export function ProductItem({ product, onDelete, onUpdate }: ProductItemProps) {
       <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <p className="font-medium truncate">{product.product_name}</p>
-            {product.routine_time && (
+            <p className="font-medium truncate">{product.productName}</p>
+            {product.routineTime && (
               <Badge variant="secondary" className="capitalize">
-                {product.routine_time}
+                {product.routineTime}
               </Badge>
             )}
           </div>
@@ -77,7 +84,7 @@ export function ProductItem({ product, onDelete, onUpdate }: ProductItemProps) {
               </>
             )}
           </div>
-          {product.expiry_date && (
+          {product.expiryDate && (
             <p className="text-xs text-muted-foreground mt-1">
               Expires: {new Date(product.expiry_date).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
             </p>

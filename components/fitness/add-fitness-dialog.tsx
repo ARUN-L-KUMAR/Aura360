@@ -16,8 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface AddFitnessDialogProps {
   open: boolean
@@ -41,46 +41,43 @@ export function AddFitnessDialog({ open, onOpenChange }: AddFitnessDialogProps) 
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const entryData: any = {
+        type,
+        date,
+        notes: notes || undefined,
+      }
 
-    if (!user) {
-      alert("You must be logged in to add a fitness entry")
-      setIsLoading(false)
-      return
-    }
+      if (type === "workout") {
+        entryData.workoutType = workoutType
+        entryData.durationMinutes = duration ? Number.parseInt(duration) : undefined
+        entryData.caloriesBurned = calories ? Number.parseInt(calories) : undefined
+      } else if (type === "measurement") {
+        entryData.measurementType = measurementType
+        entryData.measurementValue = measurementValue ? Number.parseFloat(measurementValue) : undefined
+        entryData.measurementUnit = measurementUnit
+      }
 
-    const entryData: any = {
-      user_id: user.id,
-      type,
-      date,
-      notes: notes || null,
-    }
+      const response = await fetch("/api/fitness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entryData),
+      })
 
-    if (type === "workout") {
-      entryData.workout_type = workoutType
-      entryData.duration_minutes = duration ? Number.parseInt(duration) : null
-      entryData.calories_burned = calories ? Number.parseInt(calories) : null
-    } else if (type === "measurement") {
-      entryData.measurement_type = measurementType
-      entryData.measurement_value = measurementValue ? Number.parseFloat(measurementValue) : null
-      entryData.measurement_unit = measurementUnit
-    }
+      if (!response.ok) {
+        throw new Error("Failed to create fitness entry")
+      }
 
-    const { error } = await supabase.from("fitness").insert(entryData)
-
-    if (error) {
-      console.error("[v0] Error creating fitness entry:", error)
-      alert("Failed to create entry")
-    } else {
+      toast.success("Fitness entry added successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating fitness entry:", error)
+      toast.error("Failed to create entry")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const resetForm = () => {

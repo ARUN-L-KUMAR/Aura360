@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, skincare as skincareTable } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { SkincareRoutine } from "@/components/skincare/skincare-routine"
 import { ProductsList } from "@/components/skincare/products-list"
@@ -6,20 +8,23 @@ import { AddProductButton } from "@/components/skincare/add-product-button"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function SkincarePage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: products } = await supabase
-    .from("skincare")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+  const products = await db
+    .select()
+    .from(skincareTable)
+    .where(
+      and(
+        eq(skincareTable.workspaceId, user.workspaceId),
+        eq(skincareTable.userId, user.id)
+      )
+    )
+    .orderBy(desc(skincareTable.createdAt))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

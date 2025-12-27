@@ -16,8 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface AddMealDialogProps {
   open: boolean
@@ -40,36 +40,33 @@ export function AddMealDialog({ open, onOpenChange }: AddMealDialogProps) {
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const response = await fetch("/api/food", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mealType,
+          foodName,
+          calories: calories ? Number.parseInt(calories) : undefined,
+          protein: protein ? Number.parseFloat(protein) : undefined,
+          carbs: carbs ? Number.parseFloat(carbs) : undefined,
+          fats: fats ? Number.parseFloat(fats) : undefined,
+          date,
+          notes: notes || undefined,
+        }),
+      })
 
-    if (!user) {
-      alert("You must be logged in to add a meal")
-      setIsLoading(false)
-      return
-    }
+      if (!response.ok) {
+        throw new Error("Failed to create meal")
+      }
 
-    const { error } = await supabase.from("food").insert({
-      user_id: user.id,
-      meal_type: mealType,
-      food_name: foodName,
-      calories: calories ? Number.parseInt(calories) : null,
-      protein: protein ? Number.parseFloat(protein) : null,
-      carbs: carbs ? Number.parseFloat(carbs) : null,
-      fats: fats ? Number.parseFloat(fats) : null,
-      date,
-      notes: notes || null,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating meal:", error)
-      alert("Failed to create meal")
-    } else {
+      toast.success("Meal added successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating meal:", error)
+      toast.error("Failed to create meal")
     }
 
     setIsLoading(false)

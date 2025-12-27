@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, fitness as fitnessTable } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { FitnessStats } from "@/components/fitness/fitness-stats"
 import { FitnessLog } from "@/components/fitness/fitness-log"
@@ -6,20 +8,23 @@ import { AddFitnessButton } from "@/components/fitness/add-fitness-button"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function FitnessPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: fitnessData } = await supabase
-    .from("fitness")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
+  const fitnessData = await db
+    .select()
+    .from(fitnessTable)
+    .where(
+      and(
+        eq(fitnessTable.workspaceId, user.workspaceId),
+        eq(fitnessTable.userId, user.id)
+      )
+    )
+    .orderBy(desc(fitnessTable.date))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

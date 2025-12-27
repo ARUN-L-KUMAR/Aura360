@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Calendar, Tag } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -242,10 +241,15 @@ export function TransactionsList({ initialTransactions }: TransactionsListProps)
     if (!confirm("Are you sure you want to delete this transaction?")) return
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase.from("finances").delete().eq("id", transactionId)
+      const response = await fetch(`/api/finance/transactions/${transactionId}`, {
+        method: "DELETE",
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to delete transaction")
+      }
 
       setTransactions((prev) => prev.filter((t) => t.id !== transactionId))
       toast({

@@ -16,22 +16,22 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface FitnessEntry {
   id: string
-  user_id: string
+  userId: string
   type: "workout" | "measurement" | "goal"
-  workout_type: string | null
-  duration_minutes: number | null
-  calories_burned: number | null
-  measurement_type: string | null
-  measurement_value: number | null
-  measurement_unit: string | null
+  workoutType: string | null
+  durationMinutes: number | null
+  caloriesBurned: number | null
+  measurementType: string | null
+  measurementValue: number | null
+  measurementUnit: string | null
   date: string
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface EditFitnessDialogProps {
@@ -43,24 +43,24 @@ interface EditFitnessDialogProps {
 
 export function EditFitnessDialog({ entry, open, onOpenChange, onUpdate }: EditFitnessDialogProps) {
   const [type, setType] = useState<"workout" | "measurement" | "goal">(entry.type)
-  const [workoutType, setWorkoutType] = useState(entry.workout_type || "")
-  const [duration, setDuration] = useState(entry.duration_minutes?.toString() || "")
-  const [calories, setCalories] = useState(entry.calories_burned?.toString() || "")
-  const [measurementType, setMeasurementType] = useState(entry.measurement_type || "")
-  const [measurementValue, setMeasurementValue] = useState(entry.measurement_value?.toString() || "")
-  const [measurementUnit, setMeasurementUnit] = useState(entry.measurement_unit || "")
+  const [workoutType, setWorkoutType] = useState(entry.workoutType || "")
+  const [duration, setDuration] = useState(entry.durationMinutes?.toString() || "")
+  const [calories, setCalories] = useState(entry.caloriesBurned?.toString() || "")
+  const [measurementType, setMeasurementType] = useState(entry.measurementType || "")
+  const [measurementValue, setMeasurementValue] = useState(entry.measurementValue?.toString() || "")
+  const [measurementUnit, setMeasurementUnit] = useState(entry.measurementUnit || "")
   const [date, setDate] = useState(entry.date)
   const [notes, setNotes] = useState(entry.notes || "")
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     setType(entry.type)
-    setWorkoutType(entry.workout_type || "")
-    setDuration(entry.duration_minutes?.toString() || "")
-    setCalories(entry.calories_burned?.toString() || "")
-    setMeasurementType(entry.measurement_type || "")
-    setMeasurementValue(entry.measurement_value?.toString() || "")
-    setMeasurementUnit(entry.measurement_unit || "")
+    setWorkoutType(entry.workoutType || "")
+    setDuration(entry.durationMinutes?.toString() || "")
+    setCalories(entry.caloriesBurned?.toString() || "")
+    setMeasurementType(entry.measurementType || "")
+    setMeasurementValue(entry.measurementValue?.toString() || "")
+    setMeasurementUnit(entry.measurementUnit || "")
     setDate(entry.date)
     setNotes(entry.notes || "")
   }, [entry])
@@ -69,38 +69,46 @@ export function EditFitnessDialog({ entry, open, onOpenChange, onUpdate }: EditF
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
+    try {
+      const entryData: any = {
+        type,
+        date,
+        notes: notes || undefined,
+        workoutType: undefined,
+        durationMinutes: undefined,
+        caloriesBurned: undefined,
+        measurementType: undefined,
+        measurementValue: undefined,
+        measurementUnit: undefined,
+      }
 
-    const entryData: any = {
-      type,
-      date,
-      notes: notes || null,
-      workout_type: null,
-      duration_minutes: null,
-      calories_burned: null,
-      measurement_type: null,
-      measurement_value: null,
-      measurement_unit: null,
-    }
+      if (type === "workout") {
+        entryData.workoutType = workoutType
+        entryData.durationMinutes = duration ? Number.parseInt(duration) : undefined
+        entryData.caloriesBurned = calories ? Number.parseInt(calories) : undefined
+      } else if (type === "measurement") {
+        entryData.measurementType = measurementType
+        entryData.measurementValue = measurementValue ? Number.parseFloat(measurementValue) : undefined
+        entryData.measurementUnit = measurementUnit
+      }
 
-    if (type === "workout") {
-      entryData.workout_type = workoutType
-      entryData.duration_minutes = duration ? Number.parseInt(duration) : null
-      entryData.calories_burned = calories ? Number.parseInt(calories) : null
-    } else if (type === "measurement") {
-      entryData.measurement_type = measurementType
-      entryData.measurement_value = measurementValue ? Number.parseFloat(measurementValue) : null
-      entryData.measurement_unit = measurementUnit
-    }
+      const response = await fetch(`/api/fitness?id=${entry.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entryData),
+      })
 
-    const { data, error } = await supabase.from("fitness").update(entryData).eq("id", entry.id).select().single()
+      if (!response.ok) {
+        throw new Error("Failed to update fitness entry")
+      }
 
-    if (error) {
-      console.error("[v0] Error updating fitness entry:", error)
-      alert("Failed to update entry")
-    } else if (data) {
+      const data = await response.json()
+      toast.success("Fitness entry updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("Error updating fitness entry:", error)
+      toast.error("Failed to update entry")
     }
 
     setIsLoading(false)

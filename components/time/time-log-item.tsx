@@ -4,19 +4,19 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Clock } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditTimeLogDialog } from "./edit-time-log-dialog"
 
 interface TimeLog {
   id: string
-  user_id: string
+  userId: string
   activity: string
   category: string | null
-  duration_minutes: number
+  duration: number
   date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
+  description: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 interface TimeLogItemProps {
@@ -33,21 +33,28 @@ export function TimeLogItem({ log, onDelete, onUpdate }: TimeLogItemProps) {
     if (!confirm("Are you sure you want to delete this time log?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("time_logs").delete().eq("id", log.id)
+    try {
+      const response = await fetch(`/api/time?id=${log.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting time log:", error)
-      alert("Failed to delete log")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete time log")
+      }
+
+      toast.success("Time log deleted successfully")
       onDelete(log.id)
+    } catch (error) {
+      console.error("Error deleting time log:", error)
+      toast.error("Failed to delete time log")
     }
+
     setIsDeleting(false)
   }
 
-  const hours = Math.floor(log.duration_minutes / 60)
-  const minutes = log.duration_minutes % 60
+  const hours = Math.floor(log.duration / 60)
+  const minutes = log.duration % 60
 
   return (
     <>

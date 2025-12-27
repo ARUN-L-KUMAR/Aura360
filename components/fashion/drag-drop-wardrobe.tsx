@@ -24,7 +24,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Shirt, ExternalLink, ShoppingCart, Star, GripVertical } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface FashionItem {
   id: string
@@ -75,15 +75,20 @@ function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardPr
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this item?")) return
 
-    const supabase = createClient()
+    try {
+      const response = await fetch(`/api/fashion?id=${item.id}`, {
+        method: "DELETE",
+      })
 
-    const { error } = await supabase.from("fashion").delete().eq("id", item.id)
+      if (!response.ok) {
+        throw new Error("Failed to delete item")
+      }
 
-    if (error) {
-      console.error("[v0] Error deleting fashion item:", error)
-      alert("Failed to delete item")
-    } else {
+      toast.success("Item deleted successfully")
       onDelete(item.id)
+    } catch (error) {
+      console.error("[v0] Error deleting fashion item:", error)
+      toast.error("Failed to delete item")
     }
   }
 

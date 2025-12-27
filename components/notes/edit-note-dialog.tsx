@@ -15,18 +15,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface Note {
   id: string
-  user_id: string
+  userId: string
   title: string
   content: string | null
   category: string | null
   tags: string[] | null
-  is_pinned: boolean
-  created_at: string
-  updated_at: string
+  isPinned: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface EditNoteDialogProps {
@@ -54,31 +54,34 @@ export function EditNoteDialog({ note, open, onOpenChange, onUpdate }: EditNoteD
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
+    try {
+      const tagsArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
 
-    const tagsArray = tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
-
-    const { data, error } = await supabase
-      .from("notes")
-      .update({
-        title,
-        content: content || null,
-        category: category || null,
-        tags: tagsArray.length > 0 ? tagsArray : null,
+      const response = await fetch(`/api/notes?id=${note.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content: content || undefined,
+          category: category || undefined,
+          tags: tagsArray.length > 0 ? tagsArray : undefined,
+        }),
       })
-      .eq("id", note.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating note:", error)
-      alert("Failed to update note")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update note")
+      }
+
+      const data = await response.json()
+      toast.success("Note updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("Error updating note:", error)
+      toast.error("Failed to update note")
     }
 
     setIsLoading(false)

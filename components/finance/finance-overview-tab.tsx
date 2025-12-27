@@ -56,7 +56,15 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
     try {
       setIsLoadingBalance(true)
       setBalanceError(null)
-      const response = await fetch("/api/finance/balances")
+      
+      // Add cache-busting timestamp
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/finance/balances?_=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        }
+      })
       const result = await response.json()
 
       if (response.status === 503) {
@@ -66,7 +74,24 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
       }
 
       if (response.ok && result.data) {
-        setBalanceData(result.data)
+        // Transform new wallet balance structure to old format
+        const balances = result.data
+        const cashBalance = balances.find((b: any) => b.paymentMethod === "cash")?.currentBalance || 0
+        const accountBalance = balances.find((b: any) => b.paymentMethod === "upi")?.currentBalance || 0
+        const cardBalance = balances.find((b: any) => b.paymentMethod === "card")?.currentBalance || 0
+        const bankBalance = balances.find((b: any) => b.paymentMethod === "bank_transfer")?.currentBalance || 0
+        
+        const realBalance = parseFloat(cashBalance) + parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance)
+        
+        setBalanceData({
+          id: null,
+          cash_balance: parseFloat(cashBalance),
+          account_balance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance), // Combined digital balances
+          real_balance: realBalance,
+          expected_balance: 0, // Will be calculated from transactions
+          difference: 0, // Will be calculated
+          updated_at: new Date().toISOString(),
+        })
       } else {
         setBalanceData({
           id: null,
@@ -99,9 +124,10 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
       .filter((t) => t.type === "investment")
       .reduce((sum, t) => sum + Number(t.amount), 0)
 
-    const requiredBalance = income - expenses - investments
-
-    return { income, expenses, investments, requiredBalance }
+    // Y = Income - Expense (the net flow)
+    const netFlow = income - expenses
+    
+    return { income, expenses, investments, netFlow }
   }, [transactions])
 
   // Category spending breakdown for pie chart
@@ -269,7 +295,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
         "grid gap-3",
         isMobile ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 gap-4"
       )}>
-        {/* Required Balance */}
+        {/* Net Flow (Y) */}
         <Card className="backdrop-blur-sm bg-card/80 border-l-4 border-l-blue-500">
           <CardHeader className={cn(
             "flex flex-row items-center justify-between",
@@ -278,7 +304,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
             <CardTitle className={cn(
               "font-medium text-muted-foreground",
               isMobile ? "text-xs" : "text-sm"
-            )}>Required Balance</CardTitle>
+            )}>Net Flow (Y)</CardTitle>
             <div className={cn(
               "rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center",
               isMobile ? "w-8 h-8" : "w-10 h-10"
@@ -294,9 +320,9 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
               "font-bold text-blue-600 dark:text-blue-400",
               isMobile ? "text-2xl" : "text-3xl"
             )}>
-              ₹{stats.requiredBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              ₹{stats.netFlow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Income − Expenses − Investments</p>
+            <p className="text-xs text-muted-foreground mt-1">Income − Expense</p>
           </CardContent>
         </Card>
 
@@ -336,14 +362,14 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                 )}>
                   ₹{availableBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Cash + Bank / UPI</p>
+                <p className="text-xs text-muted-foreground mt-1">Cash + Bank / UPI (Manual Entry)</p>
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Difference */}
-        <Card className={`backdrop-blur-sm bg-card/80 border ${getDifferenceBgColor(difference)}`}>
+        {/* Required Balance */}
+        <Card className={`backdrop-blur-sm bg-card/80 border-l-4 border-l-orange-500`}>
           <CardHeader className={cn(
             "flex flex-row items-center justify-between",
             isMobile ? "pb-1 pt-4" : "pb-2"
@@ -352,20 +378,14 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
               "font-medium text-muted-foreground flex items-center gap-1",
               isMobile ? "text-xs" : "text-sm"
             )}>
-              {difference >= 0 ? (
-                <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-              )}
-              Difference
+              Required Balance
             </CardTitle>
             <div className={cn(
-              "rounded-lg flex items-center justify-center",
-              isMobile ? "w-8 h-8" : "w-10 h-10",
-              difference >= 0 ? "bg-green-50 dark:bg-green-950/50" : "bg-red-50 dark:bg-red-950/50"
+              "rounded-lg flex items-center justify-center bg-orange-50 dark:bg-orange-950/50",
+              isMobile ? "w-8 h-8" : "w-10 h-10"
             )}>
               <Banknote className={cn(
-                getDifferenceColor(difference),
+                "text-orange-600 dark:text-orange-400",
                 isMobile ? "w-4 h-4" : "w-5 h-5"
               )} />
             </div>
@@ -376,14 +396,13 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
             ) : (
               <>
                 <div className={cn(
-                  "font-bold",
-                  isMobile ? "text-2xl" : "text-3xl",
-                  getDifferenceColor(difference)
+                  "font-bold text-orange-600 dark:text-orange-400",
+                  isMobile ? "text-2xl" : "text-3xl"
                 )}>
-                  {difference >= 0 ? "+" : ""}₹{Math.abs(difference).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  ₹{(availableBalance - stats.netFlow).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
-                <p className={`text-xs mt-1 font-medium ${getDifferenceColor(difference)}`}>
-                  {getDifferenceLabel(difference)}
+                <p className={`text-xs mt-1 text-muted-foreground`}>
+                  Available Balance − Net Flow
                 </p>
               </>
             )}

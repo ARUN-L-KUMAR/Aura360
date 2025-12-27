@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { TrendingUp, TrendingDown, PiggyBank, IndianRupee, Calendar, Tag, FileText, Wallet, CreditCard, Banknote, Smartphone, Building2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -91,32 +90,38 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const finalCategory = category === "custom" ? customCategory : category
+    try {
+      const finalCategory = category === "custom" ? customCategory : category
 
-    const { data, error } = await supabase
-      .from("finances")
-      .update({
-        type,
-        amount: Number.parseFloat(amount),
-        category: finalCategory,
-        payment_method: paymentMethod,
-        description: description || null,
-        date,
+      const response = await fetch(`/api/finance/transactions/${transaction.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          amount: Number.parseFloat(amount),
+          category: finalCategory,
+          paymentMethod: paymentMethod,
+          description: description || null,
+          date,
+        }),
       })
-      .eq("id", transaction.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating transaction:", error)
-      alert("Failed to update transaction")
-    } else if (data) {
-      onUpdate(data)
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update transaction")
+      }
+
+      onUpdate(result.data)
       onOpenChange(false)
+    } catch (error: any) {
+      console.error("[v0] Error updating transaction:", error)
+      alert(error.message || "Failed to update transaction")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const getTypeIcon = (transactionType: string) => {

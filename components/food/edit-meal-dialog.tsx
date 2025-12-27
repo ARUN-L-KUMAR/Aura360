@@ -16,21 +16,21 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface Meal {
   id: string
-  user_id: string
-  meal_type: "breakfast" | "lunch" | "dinner" | "snack"
-  food_name: string
+  userId: string
+  mealType: "breakfast" | "lunch" | "dinner" | "snack"
+  foodName: string
   calories: number | null
   protein: number | null
   carbs: number | null
   fats: number | null
   date: string
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface EditMealDialogProps {
@@ -41,8 +41,8 @@ interface EditMealDialogProps {
 }
 
 export function EditMealDialog({ meal, open, onOpenChange, onUpdate }: EditMealDialogProps) {
-  const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">(meal.meal_type)
-  const [foodName, setFoodName] = useState(meal.food_name)
+  const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">(meal.mealType)
+  const [foodName, setFoodName] = useState(meal.foodName)
   const [calories, setCalories] = useState(meal.calories?.toString() || "")
   const [protein, setProtein] = useState(meal.protein?.toString() || "")
   const [carbs, setCarbs] = useState(meal.carbs?.toString() || "")
@@ -52,8 +52,8 @@ export function EditMealDialog({ meal, open, onOpenChange, onUpdate }: EditMealD
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    setMealType(meal.meal_type)
-    setFoodName(meal.food_name)
+    setMealType(meal.mealType)
+    setFoodName(meal.foodName)
     setCalories(meal.calories?.toString() || "")
     setProtein(meal.protein?.toString() || "")
     setCarbs(meal.carbs?.toString() || "")
@@ -66,33 +66,36 @@ export function EditMealDialog({ meal, open, onOpenChange, onUpdate }: EditMealD
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from("food")
-      .update({
-        meal_type: mealType,
-        food_name: foodName,
-        calories: calories ? Number.parseInt(calories) : null,
-        protein: protein ? Number.parseFloat(protein) : null,
-        carbs: carbs ? Number.parseFloat(carbs) : null,
-        fats: fats ? Number.parseFloat(fats) : null,
-        date,
-        notes: notes || null,
+    try {
+      const response = await fetch(`/api/food?id=${meal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mealType,
+          foodName,
+          calories: calories ? Number.parseInt(calories) : undefined,
+          protein: protein ? Number.parseFloat(protein) : undefined,
+          carbs: carbs ? Number.parseFloat(carbs) : undefined,
+          fats: fats ? Number.parseFloat(fats) : undefined,
+          date,
+          notes: notes || undefined,
+        }),
       })
-      .eq("id", meal.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating meal:", error)
-      alert("Failed to update meal")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update meal")
+      }
+
+      const data = await response.json()
+      toast.success("Meal updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("Error updating meal:", error)
+      toast.error("Failed to update meal")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

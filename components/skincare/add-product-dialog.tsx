@@ -16,8 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface AddProductDialogProps {
   open: boolean
@@ -42,38 +42,35 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const response = await fetch("/api/skincare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName,
+          brand: brand || undefined,
+          category,
+          routineTime: routineTime || undefined,
+          frequency: frequency || undefined,
+          purchaseDate: purchaseDate || undefined,
+          expiryDate: expiryDate || undefined,
+          price: price ? Number.parseFloat(price) : undefined,
+          rating: rating ? Number.parseInt(rating) : undefined,
+          notes: notes || undefined,
+        }),
+      })
 
-    if (!user) {
-      alert("You must be logged in to add a product")
-      setIsLoading(false)
-      return
-    }
+      if (!response.ok) {
+        throw new Error("Failed to create skincare product")
+      }
 
-    const { error } = await supabase.from("skincare").insert({
-      user_id: user.id,
-      product_name: productName,
-      brand: brand || null,
-      category,
-      routine_time: routineTime || null,
-      frequency: frequency || null,
-      purchase_date: purchaseDate || null,
-      expiry_date: expiryDate || null,
-      price: price ? Number.parseFloat(price) : null,
-      rating: rating ? Number.parseInt(rating) : null,
-      notes: notes || null,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating skincare product:", error)
-      alert("Failed to create product")
-    } else {
+      toast.success("Product added successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating skincare product:", error)
+      toast.error("Failed to create product")
     }
 
     setIsLoading(false)

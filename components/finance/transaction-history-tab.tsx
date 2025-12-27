@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Download, Plus, Filter, X, Wallet, AlertCircle, CheckCircle2, Table, FileSpreadsheet, CreditCard, Banknote, Smartphone, Building2, ChevronDown, SlidersHorizontal } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import { AddTransactionDialog } from "./add-transaction-dialog"
 import { EditBalanceDialog } from "./edit-balance-dialog"
@@ -291,7 +290,24 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
       }
 
       if (response.ok && result.data) {
-        setBalanceData(result.data)
+        // Transform wallet balance array to expected format
+        const balances = result.data
+        const cashBalance = balances.find((b: any) => b.paymentMethod === "cash")?.currentBalance || "0"
+        const accountBalance = balances.find((b: any) => b.paymentMethod === "upi")?.currentBalance || "0"
+        const cardBalance = balances.find((b: any) => b.paymentMethod === "card")?.currentBalance || "0"
+        const bankBalance = balances.find((b: any) => b.paymentMethod === "bank_transfer")?.currentBalance || "0"
+        
+        const realBalance = parseFloat(cashBalance) + parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance)
+        
+        setBalanceData({
+          id: null,
+          cash_balance: parseFloat(cashBalance),
+          account_balance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance),
+          real_balance: realBalance,
+          expected_balance: 0,
+          difference: 0,
+          updated_at: new Date().toISOString(),
+        })
       } else {
         setBalanceData({
           id: null,
@@ -314,25 +330,19 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   // Fetch transactions from database
   const fetchTransactions = async (showToast = false) => {
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const response = await fetch("/api/finance/transactions")
+      const result = await response.json()
       
-      if (!user) return
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch transactions")
+      }
       
-      const { data, error } = await supabase
-        .from("finances")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("date", { ascending: false })
-      
-      if (error) throw error
-      
-      if (data) {
-        setTransactions(data)
+      if (result.data) {
+        setTransactions(result.data)
         if (showToast) {
           toast({
             title: "Data Refreshed",
-            description: `Loaded ${data.length} transactions`,
+            description: `Loaded ${result.data.length} transactions`,
           })
         }
       }
@@ -379,10 +389,15 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
     if (!confirm("Are you sure you want to delete this transaction?")) return
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase.from("finances").delete().eq("id", transactionId)
+      const response = await fetch(`/api/finance/transactions/${transactionId}`, {
+        method: "DELETE",
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to delete transaction")
+      }
 
       setTransactions((prev) => prev.filter((t) => t.id !== transactionId))
       toast({
@@ -469,9 +484,12 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
       .filter((t) => t.type === "investment")
       .reduce((sum, t) => sum + Number(t.amount), 0)
 
+    // Y = Income - Expense (the net flow)
+    const netFlow = income - expenses
+    // Balance is still calculated for display purposes
     const balance = income - expenses - investments
 
-    return { income, expenses, investments, balance }
+    return { income, expenses, investments, balance, netFlow }
   }, [transactions])
 
   return (
@@ -649,26 +667,26 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
           <CardContent className="space-y-6">
             {/* Balance Comparison */}
             <div className="grid md:grid-cols-3 gap-4">
-              {/* Required Balance */}
+              {/* Net Flow (Y) */}
               <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Required Balance (Expected)
+                  Net Flow (Y)
                 </p>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  ₹{stats.balance.toLocaleString("en-IN", {
+                  ₹{stats.netFlow.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  = Income - Expenses - Investments
+                  = Income - Expense
                 </p>
               </div>
 
-              {/* Real Balance */}
+              {/* Available Balance */}
               <div className="bg-purple-50 dark:bg-purple-950/50 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Available Balance (Real)
+                  Available Balance
                 </p>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                   ₹{balanceData.real_balance.toLocaleString("en-IN", {
@@ -677,32 +695,23 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  = GPay + Cash
+                  = GPay + Cash (Manual Entry)
                 </p>
               </div>
 
-              {/* Difference */}
-              <div className={`${balanceData.real_balance - stats.balance >= 0 ? 'bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800'} rounded-lg p-4 border`}>
+              {/* Required Balance */}
+              <div className="bg-orange-50 dark:bg-orange-950/50 border-orange-200 dark:border-orange-800 rounded-lg p-4 border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                  {balanceData.real_balance - stats.balance === 0 ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  Difference / Mismatch
+                  Required Balance
                 </p>
-                <p className={`text-3xl font-bold ${balanceData.real_balance - stats.balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  ₹{Math.abs(balanceData.real_balance - stats.balance).toLocaleString("en-IN", {
+                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  ₹{(balanceData.real_balance - stats.netFlow).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className={`text-xs mt-2 font-medium ${balanceData.real_balance - stats.balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {balanceData.real_balance - stats.balance === 0 
-                    ? "✓ Perfect Match" 
-                    : balanceData.real_balance - stats.balance > 0 
-                      ? "Extra Money (Not Logged)" 
-                      : "Missing Money"}
+                <p className="text-xs text-muted-foreground mt-2">
+                  = Available Balance - Net Flow
                 </p>
               </div>
             </div>
@@ -710,7 +719,7 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
             {/* Individual Balances */}
             <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-                Real Balance Breakdown
+                Available Balance Breakdown
               </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="flex items-center justify-between">
@@ -739,17 +748,6 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                 </div>
               </div>
             </div>
-
-            {/* Interpretation Help */}
-            {balanceData.real_balance - stats.balance !== 0 && (
-              <div className={`${balanceData.real_balance - stats.balance > 0 ? 'bg-green-50 dark:bg-green-950/50 border-l-4 border-l-green-500' : 'bg-red-50 dark:bg-red-950/50 border-l-4 border-l-red-500'} rounded p-3`}>
-                <p className={`text-sm font-medium ${balanceData.real_balance - stats.balance > 0 ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
-                  💡 {balanceData.real_balance - stats.balance > 0 
-                    ? "You have extra money that might not be logged as income or expense. Check if you missed recording any transactions."
-                    : "You're missing money compared to your records. You might have forgotten to log some expenses or income."}
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}

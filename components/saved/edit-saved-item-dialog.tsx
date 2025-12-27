@@ -16,19 +16,19 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface SavedItem {
   id: string
-  user_id: string
+  userId: string
   type: "article" | "video" | "product" | "recipe" | "other"
   title: string
   url: string | null
   description: string | null
   tags: string[] | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
+  isFavorite: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface EditSavedItemDialogProps {
@@ -58,35 +58,38 @@ export function EditSavedItemDialog({ item, open, onOpenChange, onUpdate }: Edit
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
+    try {
+      const tagsArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
 
-    const tagsArray = tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
-
-    const { data, error } = await supabase
-      .from("saved_items")
-      .update({
-        type,
-        title,
-        url: url || null,
-        description: description || null,
-        tags: tagsArray.length > 0 ? tagsArray : null,
+      const response = await fetch(`/api/saved?id=${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          title,
+          url: url || undefined,
+          description: description || undefined,
+          tags: tagsArray.length > 0 ? tagsArray : undefined,
+        }),
       })
-      .eq("id", item.id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error("[v0] Error updating saved item:", error)
-      alert("Failed to update item")
-    } else if (data) {
+      if (!response.ok) {
+        throw new Error("Failed to update item")
+      }
+
+      const data = await response.json()
+      toast.success("Item updated successfully")
       onUpdate(data)
       onOpenChange(false)
+    } catch (error) {
+      console.error("Error updating saved item:", error)
+      toast.error("Failed to update item")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

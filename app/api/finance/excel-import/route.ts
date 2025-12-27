@@ -1,31 +1,24 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getWorkspaceContext } from '@/lib/auth-helpers'
+import { db, transactions } from '@/lib/db'
+import { eq, and, sql } from 'drizzle-orm'
 import type { FinanceTransaction } from '@/lib/types/finance'
 
 /**
  * Bulk Import Transactions from Excel Upload
  * POST /api/finance/excel-import
  * 
- * Accepts an array of validated transactions and inserts them into Supabase
+ * Accepts an array of validated transactions and inserts them into the database
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const context = await getWorkspaceContext()
 
     // Parse request body
     const body = await request.json()
-    const { transactions } = body as { transactions: FinanceTransaction[] }
+    const { transactions: transactionsToImport } = body as { transactions: FinanceTransaction[] }
 
-    if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+    if (!transactionsToImport || !Array.isArray(transactionsToImport) || transactionsToImport.length === 0) {
       return NextResponse.json(
         { error: 'No transactions provided' },
         { status: 400 }
@@ -33,14 +26,14 @@ export async function POST(request: Request) {
     }
 
     // Validate and prepare transactions
-    const transactionsToInsert = transactions.map((transaction, index) => {
+    const validatedTransactions = transactionsToImport.map((transaction, index) => {
       // Validate required fields
       if (!transaction.type || !transaction.amount || !transaction.category || !transaction.date || !transaction.description) {
         throw new Error(`Transaction at index ${index} is missing required fields`)
       }
 
       // Validate type
-      if (!['income', 'expense', 'investment', 'transfer'].includes(transaction.type)) {
+      if (!['income', 'expense', 'investment'].includes(transaction.type)) {
         throw new Error(`Invalid transaction type at index ${index}: ${transaction.type}`)
       }
 
@@ -55,59 +48,42 @@ export async function POST(request: Request) {
       }
 
       return {
-        user_id: user.id,
-        type: transaction.type,
-        amount: transaction.amount,
+        ...context,
+        type: transaction.type as 'income' | 'expense' | 'investment',
+        amount: transaction.amount.toString(),
         category: transaction.category.trim(),
         date: transaction.date,
         description: transaction.description.trim(),
-        payment_method: transaction.payment_method || null,
+        paymentMethod: (transaction.payment_method as 'cash' | 'card' | 'upi' | 'bank_transfer' | 'other') || null,
         notes: transaction.notes || null,
-        needs_review: false
       }
     })
 
-    // Batch insert for better performance
-    const BATCH_SIZE = 100
-    const batches = []
-    for (let i = 0; i < transactionsToInsert.length; i += BATCH_SIZE) {
-      batches.push(transactionsToInsert.slice(i, i + BATCH_SIZE))
+    // Insert all transactions using Drizzle
+    try {
+      const inserted = await db
+        .insert(transactions)
+        .values(validatedTransactions)
+        .returning()
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully imported ${inserted.length} transactions`,
+        imported: inserted.length,
+        failed: 0,
+        errors: null
+      })
+    } catch (insertError: any) {
+      console.error('Insert error:', insertError)
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to insert transactions', 
+          details: insertError.message 
+        },
+        { status: 500 }
+      )
     }
-
-    let successCount = 0
-    let failedCount = 0
-    const errors: Array<{ row: number; error: string }> = []
-
-    // Insert each batch
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i]
-      console.log(`Inserting batch ${i + 1}/${batches.length} (${batch.length} records)...`)
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert(batch)
-        .select()
-
-      if (error) {
-        console.error(`Error in batch ${i + 1}:`, error)
-        failedCount += batch.length
-        errors.push({
-          row: i * BATCH_SIZE,
-          error: error.message
-        })
-      } else {
-        successCount += data?.length || 0
-      }
-    }
-
-    // Return results
-    return NextResponse.json({
-      success: true,
-      message: `Successfully imported ${successCount} transactions${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
-      imported: successCount,
-      failed: failedCount,
-      errors: errors.length > 0 ? errors : null
-    })
 
   } catch (error: any) {
     console.error('Excel import error:', error)
@@ -128,32 +104,21 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const context = await getWorkspaceContext()
 
     // Get transaction count
-    const { count, error } = await supabase
-      .from('transactions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Failed to get transaction count', details: error.message },
-        { status: 500 }
+    const count = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.workspaceId, context.workspaceId),
+          eq(transactions.userId, context.userId)
+        )
       )
-    }
 
     return NextResponse.json({
-      count: count || 0
+      count: count[0]?.count || 0
     })
 
   } catch (error: any) {

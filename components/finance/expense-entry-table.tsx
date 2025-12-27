@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Check, Trash2, Plus, Upload, Save, ChevronDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 interface ExpenseRow {
@@ -246,29 +245,26 @@ export function ExpenseEntryTable({ onTransactionsSaved }: ExpenseEntryTableProp
       }
 
       try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-          toast({
-            title: "Authentication Error",
-            description: "Please log in to save transactions",
-            variant: "destructive",
-          })
-          return
-        }
-
-        const { error } = await supabase.from("finances").insert({
-          user_id: user.id,
-          type: "expense",
-          amount: parseFloat(row.amount),
-          category: row.category.trim(),
-          date: row.date,
-          description: row.description.trim() || null,
-          payment_method: "upi",
+        const response = await fetch("/api/finance/transactions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "expense",
+            amount: parseFloat(row.amount),
+            category: row.category.trim(),
+            date: row.date,
+            description: row.description.trim() || null,
+            paymentMethod: "upi",
+          }),
         })
 
-        if (error) throw error
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || "Failed to save expense")
+        }
 
         setData((old) => old.map((r) => (r.id === row.id ? { ...r, isSaved: true } : r)))
 
@@ -304,31 +300,30 @@ export function ExpenseEntryTable({ onTransactionsSaved }: ExpenseEntryTableProp
     setIsSavingAll(true)
 
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to save transactions",
-          variant: "destructive",
+      const promises = unsavedRows.map((row) =>
+        fetch("/api/finance/transactions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "expense",
+            amount: parseFloat(row.amount),
+            category: row.category.trim(),
+            date: row.date,
+            description: row.description.trim() || null,
+            paymentMethod: "upi",
+          }),
         })
-        return
+      )
+
+      const responses = await Promise.all(promises)
+      const results = await Promise.all(responses.map((r) => r.json()))
+
+      const failures = results.filter((r) => !r.success)
+      if (failures.length > 0) {
+        throw new Error(`Failed to save ${failures.length} expense(s)`)
       }
-
-      const transactions = unsavedRows.map((row) => ({
-        user_id: user.id,
-        type: "expense" as const,
-        amount: parseFloat(row.amount),
-        category: row.category.trim(),
-        date: row.date,
-        description: row.description.trim() || null,
-        payment_method: "upi",
-      }))
-
-      const { error } = await supabase.from("finances").insert(transactions)
-
-      if (error) throw error
 
       setData((old) =>
         old.map((row) =>

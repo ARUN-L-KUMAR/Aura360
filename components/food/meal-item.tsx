@@ -4,22 +4,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Coffee, Sun, Moon, Cookie } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditMealDialog } from "./edit-meal-dialog"
 
 interface Meal {
   id: string
-  user_id: string
-  meal_type: "breakfast" | "lunch" | "dinner" | "snack"
-  food_name: string
+  userId: string
+  mealType: "breakfast" | "lunch" | "dinner" | "snack"
+  foodName: string
   calories: number | null
   protein: number | null
   carbs: number | null
   fats: number | null
   date: string
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface MealItemProps {
@@ -36,16 +36,23 @@ export function MealItem({ meal, onDelete, onUpdate }: MealItemProps) {
     if (!confirm("Are you sure you want to delete this meal?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("food").delete().eq("id", meal.id)
+    try {
+      const response = await fetch(`/api/food?id=${meal.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting meal:", error)
-      alert("Failed to delete meal")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete meal")
+      }
+
+      toast.success("Meal deleted successfully")
       onDelete(meal.id)
+    } catch (error) {
+      console.error("Error deleting meal:", error)
+      toast.error("Failed to delete meal")
     }
+
     setIsDeleting(false)
   }
 
@@ -76,7 +83,7 @@ export function MealItem({ meal, onDelete, onUpdate }: MealItemProps) {
     },
   }
 
-  const config = mealConfig[meal.meal_type]
+  const config = mealConfig[meal.mealType]
   const Icon = config.icon
 
   return (

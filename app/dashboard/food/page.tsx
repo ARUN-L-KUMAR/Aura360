@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, food as foodTable } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { FoodStats } from "@/components/food/food-stats"
 import { MealsList } from "@/components/food/meals-list"
@@ -6,20 +8,23 @@ import { AddMealButton } from "@/components/food/add-meal-button"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function FoodPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: meals } = await supabase
-    .from("food")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
+  const meals = await db
+    .select()
+    .from(foodTable)
+    .where(
+      and(
+        eq(foodTable.workspaceId, user.workspaceId),
+        eq(foodTable.userId, user.id)
+      )
+    )
+    .orderBy(desc(foodTable.date))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">

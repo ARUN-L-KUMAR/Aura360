@@ -17,8 +17,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { X } from "lucide-react"
 import { ImageUpload } from "./image-upload"
 
@@ -118,48 +118,39 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const response = await fetch("/api/fashion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: itemName,
+          category,
+          brand: brand || undefined,
+          color: color || undefined,
+          size: size || undefined,
+          purchaseDate: purchaseDate || undefined,
+          price: price ? Number.parseFloat(price) : undefined,
+          imageUrl: imageUrl || undefined,
+          notes: notes || undefined,
+          status: type === "buyed" ? "wardrobe" : "wishlist",
+          isFavorite,
+        }),
+      })
 
-    if (!user) {
-      alert("You must be logged in to add a fashion item")
-      setIsLoading(false)
-      return
-    }
+      if (!response.ok) {
+        throw new Error("Failed to create fashion item")
+      }
 
-    const { error } = await supabase.from("fashion").insert({
-      user_id: user.id,
-      item_name: itemName,
-      category,
-      brand: brand || null,
-      color: color || null,
-      size: size || null,
-      purchase_date: purchaseDate || null,
-      price: price ? Number.parseFloat(price) : null,
-      image_url: imageUrl || null,
-      buying_link: buyingLink || null,
-      notes: notes || null,
-      type,
-      status: status || null,
-      occasion: occasion.length > 0 ? occasion : null,
-      season: season.length > 0 ? season : null,
-      expected_budget: expectedBudget ? Number.parseFloat(expectedBudget) : null,
-      buy_deadline: buyDeadline || null,
-      is_favorite: isFavorite,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating fashion item:", error)
-      alert(`Failed to create item: ${error.message || 'Unknown error'}`)
-    } else {
+      toast.success("Fashion item added successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating fashion item:", error)
+      toast.error("Failed to create fashion item")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const resetForm = () => {

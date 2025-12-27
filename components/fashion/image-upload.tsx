@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Upload, X, Image as ImageIcon } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface ImageUploadProps {
   value: string
@@ -22,36 +22,37 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
   const uploadImage = async (file: File) => {
     try {
       setUploading(true)
-      const supabase = createClient()
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
+      // Convert file to base64
+      const reader = new FileReader()
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
 
-      // Create unique filename
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`
-
-      // Upload file to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('fashion-images')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
+      // Upload to Cloudinary via API
+      const response = await fetch('/api/fashion/upload-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          image: base64Data,
+          folder: 'fashion'
         })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to upload image')
+      }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('fashion-images')
-        .getPublicUrl(fileName)
-
-      onChange(publicUrl)
-      setPreview(publicUrl)
+      const data = await response.json()
+      
+      onChange(data.url)
+      setPreview(data.url)
+      toast.success('Image uploaded successfully')
     } catch (error) {
       console.error('Error uploading image:', error)
-      alert('Failed to upload image. Please try again.')
+      toast.error('Failed to upload image. Please try again.')
     } finally {
       setUploading(false)
     }

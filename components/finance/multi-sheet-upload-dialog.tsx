@@ -14,7 +14,6 @@ import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, TrendingUp, Trendin
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { parseMultiSheetExcel, getExcelSheets, type ParsedTransaction } from "@/lib/utils/multi-sheet-parser"
-import { createClient } from "@/lib/supabase/client"
 
 export function MultiSheetUploadDialog() {
   const { toast } = useToast()
@@ -28,6 +27,7 @@ export function MultiSheetUploadDialog() {
   const [availableSheets, setAvailableSheets] = useState<string[]>([])
   const [selectedSheets, setSelectedSheets] = useState<Set<string>>(new Set())
   const [importedFiles, setImportedFiles] = useState<Set<string>>(new Set())
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, succeeded: 0, failed: 0 })
 
   // Recalculate summary whenever parsedData changes
   useEffect(() => {
@@ -411,106 +411,86 @@ export function MultiSheetUploadDialog() {
     }
 
     setIsImporting(true)
+    setImportProgress({ current: 0, total: transactionsToImport.length, succeeded: 0, failed: 0 })
 
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const batchSize = 100 // Process 100 at a time for visible progress
+      let succeeded = 0
+      let failed = 0
 
-      if (!user) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to import transactions",
-          variant: "destructive",
-        })
-        return
-      }
+      for (let i = 0; i < transactionsToImport.length; i += batchSize) {
+        const batch = transactionsToImport.slice(i, i + batchSize)
+        const newTransactions = batch.map(t => ({
+          type: t.type,
+          amount: t.amount || 0,
+          category: t.category || "Uncategorized",
+          date: t.date || new Date().toISOString().split('T')[0],
+          description: t.description || "No description",
+          paymentMethod: t.payment_method || "other",
+        }))
 
-      // Fetch existing transactions to check for duplicates
-      const { data: existingTransactions, error: fetchError } = await supabase
-        .from('finances')
-        .select('type, amount, date, description')
-        .eq('user_id', user.id)
+        try {
+          // Import batch
+          const response = await fetch("/api/finance/transactions/bulk", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              transactions: newTransactions,
+            }),
+          })
 
-      if (fetchError) {
-        console.error('Error fetching existing transactions:', fetchError)
-      }
+          const result = await response.json()
 
-      // Create a Set of unique transaction signatures for quick lookup
-      const existingSignatures = new Set(
-        (existingTransactions || []).map(t => 
-          `${t.type}-${t.amount}-${t.date}-${(t.description || '').toLowerCase().trim()}`
-        )
-      )
-
-      // Filter out duplicates
-      const newTransactions = transactionsToImport.filter(t => {
-        const signature = `${t.type}-${t.amount}-${t.date}-${(t.description || '').toLowerCase().trim()}`
-        return !existingSignatures.has(signature)
-      })
-
-      const duplicateCount = transactionsToImport.length - newTransactions.length
-
-      if (newTransactions.length === 0) {
-        toast({
-          title: "No New Transactions",
-          description: `All ${transactionsToImport.length} transactions already exist in your database`,
-          variant: "destructive",
-        })
-        setIsImporting(false)
-        return
-      }
-
-      if (duplicateCount > 0) {
-        toast({
-          title: "Duplicates Detected",
-          description: `${duplicateCount} duplicate transactions will be skipped`,
-        })
-      }
-
-      // Prepare data for Supabase
-      const transactions = newTransactions.map(t => ({
-        user_id: user.id,
-        type: t.type,
-        amount: t.amount,
-        category: t.category,
-        date: t.date,
-        description: t.description || null,
-        payment_method: t.payment_method || 'other',
-        needs_review: t.needs_review || false, // NEW: Include needs_review flag
-      }))
-
-      // Insert in batches of 100
-      const batchSize = 100
-      let successCount = 0
-      let failCount = 0
-
-      for (let i = 0; i < transactions.length; i += batchSize) {
-        const batch = transactions.slice(i, i + batchSize)
-        const { error } = await supabase.from('finances').insert(batch)
-
-        if (error) {
-          console.error('Batch insert error:', error)
-          failCount += batch.length
-        } else {
-          successCount += batch.length
+          if (response.ok && result.data) {
+            succeeded += result.data.succeeded
+            failed += result.data.failed
+          } else {
+            failed += batch.length
+          }
+        } catch (error) {
+          failed += batch.length
         }
-      }
 
-      if (successCount > 0) {
-        toast({
-          title: "Import Successful",
-          description: `${successCount} new transactions imported${duplicateCount > 0 ? `, ${duplicateCount} duplicates skipped` : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        // Update progress after each batch
+        setImportProgress({
+          current: i + batch.length,
+          total: transactionsToImport.length,
+          succeeded,
+          failed,
         })
 
-        // Close dialog and refresh page
-        setIsOpen(false)
-        window.location.reload()
-      } else {
-        throw new Error('All transactions failed to import')
+        // Small delay to show progress
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
+
+      // Show final result
+      if (failed > 0) {
+        toast({
+          title: "Import Completed with Errors",
+          description: `${succeeded} succeeded, ${failed} failed`,
+          variant: "destructive",
+        })
+        // Wait a moment to show error status
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      } else {
+        // Success popup - show for 3 seconds
+        toast({
+          title: "✅ Import Successful!",
+          description: `Successfully imported all ${succeeded} transactions. Refreshing page...`,
+          duration: 3000, // 3 seconds
+        })
+        // Wait 3 seconds to show success status
+        await new Promise(resolve => setTimeout(resolve, 3000))
+      }
+      
+      handleReset()
+      setIsOpen(false)
+      window.location.reload()
     } catch (error: any) {
       toast({
-        title: "Import Failed",
+        title: "❌ Import Failed",
         description: error.message || "Failed to import transactions",
         variant: "destructive",
       })
@@ -980,10 +960,34 @@ export function MultiSheetUploadDialog() {
             </div>
           </div>
 
+          {/* Import Progress */}
+          {isImporting && importProgress.total > 0 && (
+            <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-medium">Importing Transactions</span>
+                <span className="text-muted-foreground">
+                  {importProgress.current} / {importProgress.total}
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div 
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300" 
+                  style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className="text-green-600 dark:text-green-400">✓ {importProgress.succeeded} succeeded</span>
+                {importProgress.failed > 0 && (
+                  <span className="text-destructive">✗ {importProgress.failed} failed</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           {parsedData.length > 0 && (
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleReset}>
+              <Button variant="outline" onClick={handleReset} disabled={isImporting}>
                 Cancel
               </Button>
               <Button
@@ -992,7 +996,7 @@ export function MultiSheetUploadDialog() {
                 className="gap-2"
               >
                 {isImporting ? (
-                  <>Importing...</>
+                  <>Importing... {importProgress.current}/{importProgress.total}</>
                 ) : (
                   <>
                     <Upload className="h-4 w-4" />

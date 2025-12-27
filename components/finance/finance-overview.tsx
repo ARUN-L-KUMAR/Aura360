@@ -59,7 +59,24 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
       }
 
       if (response.ok && result.data) {
-        setBalanceData(result.data)
+        // Transform wallet balance array to expected format
+        const balances = result.data
+        const cashBalance = balances.find((b: any) => b.paymentMethod === "cash")?.currentBalance || "0"
+        const accountBalance = balances.find((b: any) => b.paymentMethod === "upi")?.currentBalance || "0"
+        const cardBalance = balances.find((b: any) => b.paymentMethod === "card")?.currentBalance || "0"
+        const bankBalance = balances.find((b: any) => b.paymentMethod === "bank_transfer")?.currentBalance || "0"
+        
+        const realBalance = parseFloat(cashBalance) + parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance)
+        
+        setBalanceData({
+          id: null,
+          cash_balance: parseFloat(cashBalance),
+          account_balance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance),
+          real_balance: realBalance,
+          expected_balance: 0,
+          difference: 0,
+          updated_at: new Date().toISOString(),
+        })
       } else {
         // Initialize with default zero balances
         setBalanceData({
@@ -93,9 +110,11 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
       .filter((t) => t.type === "investment")
       .reduce((sum, t) => sum + Number(t.amount), 0)
 
+    // Y = Income - Expense (the net flow)
+    const netFlow = income - expenses
     const balance = income - expenses - investments
 
-    return { income, expenses, investments, balance }
+    return { income, expenses, investments, balance, netFlow }
   }, [transactions])
 
   const getDifferenceColor = (diff: number) => {
@@ -237,26 +256,26 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
           <CardContent className="space-y-6">
             {/* Balance Comparison */}
             <div className="grid md:grid-cols-3 gap-4">
-              {/* Required Balance */}
+              {/* Net Flow (Y) */}
               <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Required Balance (Expected)
+                  Net Flow (Y)
                 </p>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  ₹{stats.balance.toLocaleString("en-IN", {
+                  ₹{stats.netFlow.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  = Income - Expenses - Investments
+                  = Income - Expense
                 </p>
               </div>
 
-              {/* Real Balance */}
+              {/* Available Balance */}
               <div className="bg-purple-50 dark:bg-purple-950/50 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Available Balance (Real)
+                  Available Balance
                 </p>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                   ₹{balanceData.real_balance.toLocaleString("en-IN", {
@@ -265,28 +284,23 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
                   })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  = GPay + Cash
+                  = GPay + Cash (Manual Entry)
                 </p>
               </div>
 
-              {/* Difference */}
-              <div className={`${getDifferenceBgColor(balanceData.real_balance - stats.balance)} rounded-lg p-4 border ${balanceData.real_balance - stats.balance === 0 ? 'border-green-200 dark:border-green-800' : balanceData.real_balance - stats.balance > 0 ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                  {balanceData.real_balance - stats.balance === 0 ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4" />
-                  )}
-                  Difference / Mismatch
+              {/* Required Balance */}
+              <div className="bg-orange-50 dark:bg-orange-950/50 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Required Balance
                 </p>
-                <p className={`text-3xl font-bold ${getDifferenceColor(balanceData.real_balance - stats.balance)}`}>
-                  ₹{Math.abs(balanceData.real_balance - stats.balance).toLocaleString("en-IN", {
+                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  ₹{(balanceData.real_balance - stats.netFlow).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className={`text-xs mt-2 font-medium ${getDifferenceColor(balanceData.real_balance - stats.balance)}`}>
-                  {getDifferenceLabel(balanceData.real_balance - stats.balance)}
+                <p className="text-xs text-muted-foreground mt-2">
+                  = Available Balance - Net Flow
                 </p>
               </div>
             </div>
@@ -294,7 +308,7 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
             {/* Individual Balances */}
             <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
-                Real Balance Breakdown
+                Available Balance Breakdown
               </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="flex items-center justify-between">
@@ -323,17 +337,6 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
                 </div>
               </div>
             </div>
-
-            {/* Interpretation Help */}
-            {balanceData.difference !== 0 && (
-              <div className={`${balanceData.difference > 0 ? 'bg-green-50 dark:bg-green-950/50 border-l-4 border-l-green-500' : 'bg-red-50 dark:bg-red-950/50 border-l-4 border-l-red-500'} rounded p-3`}>
-                <p className={`text-sm font-medium ${balanceData.difference > 0 ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
-                  💡 {balanceData.difference > 0 
-                    ? "You have extra money that might not be logged as income or expense. Check if you missed recording any transactions."
-                    : "You're missing money compared to your records. You might have forgotten to log some expenses or income."}
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}

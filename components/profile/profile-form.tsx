@@ -7,19 +7,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import type { User } from "@supabase/supabase-js"
 import { Camera, Upload, X, User as UserIcon, Loader2, Mail, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+
+interface User {
+  id: string
+  email: string | null
+}
 
 interface Profile {
   id: string
   email: string
-  full_name: string | null
-  avatar_url: string | null
-  created_at: string
-  updated_at: string
+  fullName: string | null
+  avatarUrl: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 interface ProfileFormProps {
@@ -28,9 +32,9 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ user, profile }: ProfileFormProps) {
-  const [fullName, setFullName] = useState(profile?.full_name || "")
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "")
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url || null)
+  const [fullName, setFullName] = useState(profile?.fullName || "")
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || "")
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatarUrl || null)
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -48,12 +52,12 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   // Handle file selection
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file")
+      toast.error("Please select an image file")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB")
+      toast.error("Image must be less than 5MB")
       return
     }
 
@@ -67,46 +71,30 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       }
       reader.readAsDataURL(file)
 
-      // Upload to Supabase Storage
-      const supabase = createClient()
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
+      // Upload to Cloudinary via API
+      const formData = new FormData()
+      formData.append("avatar", file)
 
-      const { error: uploadError, data } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-        })
+      const response = await fetch("/api/profile/avatar", {
+        method: "POST",
+        body: formData,
+      })
 
-      if (uploadError) {
-        console.error("Upload error:", uploadError)
-        // If bucket doesn't exist, store as base64 or URL
-        if (uploadError.message.includes("Bucket not found")) {
-          alert("Avatar storage is not configured. Please enter a URL instead.")
-          setAvatarPreview(null)
-        } else {
-          alert("Failed to upload image: " + uploadError.message)
-          setAvatarPreview(profile?.avatar_url || null)
-        }
-        return
+      if (!response.ok) {
+        throw new Error("Failed to upload avatar")
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath)
-
-      setAvatarUrl(publicUrl)
+      const data = await response.json()
+      setAvatarUrl(data.avatarUrl)
+      toast.success("Avatar uploaded successfully")
     } catch (error) {
       console.error("Error uploading:", error)
-      alert("Failed to upload image")
-      setAvatarPreview(profile?.avatar_url || null)
+      toast.error("Failed to upload image")
+      setAvatarPreview(profile?.avatarUrl || null)
     } finally {
       setIsUploading(false)
     }
-  }, [user.id, profile?.avatar_url])
+  }, [profile?.avatarUrl])
 
   // Handle drag events
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -149,47 +137,32 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-
-    if (profile) {
-      const { error } = await supabase
-        .from("users")
-        .update({
-          full_name: fullName || null,
-          avatar_url: avatarUrl || null,
-        })
-        .eq("id", user.id)
-
-      if (error) {
-        console.error("[v0] Error updating profile:", error)
-        alert("Failed to update profile")
-      } else {
-        alert("Profile updated successfully!")
-        router.refresh()
-      }
-    } else {
-      const { error } = await supabase.from("users").insert({
-        id: user.id,
-        email: user.email!,
-        full_name: fullName || null,
-        avatar_url: avatarUrl || null,
+    try {
+      const response = await fetch("/api/profile", {
+        method: profile ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: fullName || undefined,
+          avatarUrl: avatarUrl || undefined,
+        }),
       })
 
-      if (error) {
-        console.error("[v0] Error creating profile:", error)
-        alert("Failed to create profile")
-      } else {
-        alert("Profile created successfully!")
-        router.refresh()
+      if (!response.ok) {
+        throw new Error("Failed to update profile")
       }
+
+      toast.success(profile ? "Profile updated successfully!" : "Profile created successfully!")
+      router.refresh()
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      toast.error("Failed to update profile")
     }
 
     setIsLoading(false)
   }
 
   const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    await fetch("/api/auth/signout", { method: "POST" })
     router.push("/")
   }
 

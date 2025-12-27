@@ -4,23 +4,23 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Activity, Ruler, Target } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 import { EditFitnessDialog } from "./edit-fitness-dialog"
 
 interface FitnessEntry {
   id: string
-  user_id: string
+  userId: string
   type: "workout" | "measurement" | "goal"
-  workout_type: string | null
-  duration_minutes: number | null
-  calories_burned: number | null
-  measurement_type: string | null
-  measurement_value: number | null
-  measurement_unit: string | null
+  workoutType: string | null
+  durationMinutes: number | null
+  caloriesBurned: number | null
+  measurementType: string | null
+  measurementValue: number | null
+  measurementUnit: string | null
   date: string
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface FitnessItemProps {
@@ -37,16 +37,23 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
     if (!confirm("Are you sure you want to delete this entry?")) return
 
     setIsDeleting(true)
-    const supabase = createClient()
 
-    const { error } = await supabase.from("fitness").delete().eq("id", entry.id)
+    try {
+      const response = await fetch(`/api/fitness?id=${entry.id}`, {
+        method: "DELETE",
+      })
 
-    if (error) {
-      console.error("[v0] Error deleting fitness entry:", error)
-      alert("Failed to delete entry")
-    } else {
+      if (!response.ok) {
+        throw new Error("Failed to delete fitness entry")
+      }
+
+      toast.success("Fitness entry deleted successfully")
       onDelete(entry.id)
+    } catch (error) {
+      console.error("Error deleting fitness entry:", error)
+      toast.error("Failed to delete entry")
     }
+
     setIsDeleting(false)
   }
 
@@ -76,7 +83,7 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
 
   const getDisplayText = () => {
     if (entry.type === "workout") {
-      return `${entry.workout_type} - ${entry.duration_minutes} min${entry.calories_burned ? `, ${entry.calories_burned} cal` : ""}`
+      return `${entry.workoutType} - ${entry.durationMinutes} min${entry.caloriesBurned ? `, ${entry.caloriesBurned} cal` : ""}`
     }
     if (entry.type === "measurement") {
       return `${entry.measurement_type}: ${entry.measurement_value} ${entry.measurement_unit}`

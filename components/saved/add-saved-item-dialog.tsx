@@ -16,8 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface AddSavedItemDialogProps {
   open: boolean
@@ -37,38 +37,35 @@ export function AddSavedItemDialog({ open, onOpenChange }: AddSavedItemDialogPro
     e.preventDefault()
     setIsLoading(true)
 
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const tagsArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
 
-    if (!user) {
-      alert("You must be logged in to save an item")
-      setIsLoading(false)
-      return
-    }
+      const response = await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          title,
+          url: url || undefined,
+          description: description || undefined,
+          tags: tagsArray.length > 0 ? tagsArray : undefined,
+        }),
+      })
 
-    const tagsArray = tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
+      if (!response.ok) {
+        throw new Error("Failed to save item")
+      }
 
-    const { error } = await supabase.from("saved_items").insert({
-      user_id: user.id,
-      type,
-      title,
-      url: url || null,
-      description: description || null,
-      tags: tagsArray.length > 0 ? tagsArray : null,
-    })
-
-    if (error) {
-      console.error("[v0] Error creating saved item:", error)
-      alert("Failed to save item")
-    } else {
+      toast.success("Item saved successfully")
       resetForm()
       onOpenChange(false)
       router.refresh()
+    } catch (error) {
+      console.error("Error creating saved item:", error)
+      toast.error("Failed to save item")
     }
 
     setIsLoading(false)

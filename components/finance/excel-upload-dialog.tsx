@@ -23,7 +23,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { parseExcelFile } from '@/lib/utils/excel-parser'
 import type { ParsedExcelRow } from '@/lib/types/finance'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { DownloadSampleButton } from './download-sample-button'
 
@@ -39,6 +38,7 @@ export function ExcelUploadDialog({ onImportComplete }: ExcelUploadDialogProps) 
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, succeeded: 0, failed: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,88 +109,75 @@ export function ExcelUploadDialog({ onImportComplete }: ExcelUploadDialogProps) 
 
     setImporting(true)
     setError(null)
+    setImportProgress({ current: 0, total: validTransactions.length, succeeded: 0, failed: 0 })
+
+    // Show initial toast
+    toast({
+      title: "Importing Transactions",
+      description: `Processing ${validTransactions.length} transactions...`,
+    })
 
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      // Import all valid transactions
+      const newTransactions = validTransactions
 
-      if (!user) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to import transactions",
-          variant: "destructive",
-        })
-        return
-      }
+      // Import transactions using API with progress tracking
+      const total = newTransactions.length
+      let completed = 0
+      let succeeded = 0
+      let failed = 0
 
-      const { data: existingTransactions, error: fetchError } = await supabase
-        .from('finances')
-        .select('type, amount, date, description')
-        .eq('user_id', user.id)
+      const promises = newTransactions.map(async (t, index) => {
+        try {
+          const response = await fetch("/api/finance/transactions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type: t.type,
+              amount: t.amount,
+              category: t.category,
+              date: t.date,
+              description: t.description || null,
+              paymentMethod: "upi",
+            }),
+          })
 
-      if (fetchError) {
-        console.error('Error fetching existing transactions:', fetchError)
-      }
+          const result = await response.json()
+          completed++
+          
+          if (response.ok) {
+            succeeded++
+          } else {
+            failed++
+          }
 
-      const existingSignatures = new Set(
-        (existingTransactions || []).map(t => 
-          `${t.type}-${t.amount}-${t.date}-${(t.description || '').toLowerCase().trim()}`
-        )
-      )
+          // Update progress state
+          setImportProgress({ current: completed, total, succeeded, failed })
 
-      const newTransactions = validTransactions.filter(t => {
-        const signature = `${t.type}-${t.amount}-${t.date}-${(t.description || '').toLowerCase().trim()}`
-        return !existingSignatures.has(signature)
+          // Show progress every 10 transactions or at the end
+          if (completed % 10 === 0 || completed === total) {
+            toast({
+              title: "Import Progress",
+              description: `${completed}/${total} transactions processed (${succeeded} success, ${failed} failed)`,
+            })
+          }
+
+          return { success: response.ok, data: result }
+        } catch (error) {
+          completed++
+          failed++
+          return { success: false, error }
+        }
       })
 
-      const duplicateCount = validTransactions.length - newTransactions.length
+      await Promise.all(promises)
 
-      if (newTransactions.length === 0) {
+      if (succeeded > 0) {
         toast({
-          title: "No New Transactions",
-          description: `All ${validTransactions.length} transactions already exist in your database`,
-          variant: "destructive",
-        })
-        setImporting(false)
-        return
-      }
-
-      if (duplicateCount > 0) {
-        toast({
-          title: "Duplicates Detected",
-          description: `${duplicateCount} duplicate transactions will be skipped`,
-        })
-      }
-
-      const transactions = newTransactions.map(t => ({
-        user_id: user.id,
-        type: t.type,
-        amount: t.amount,
-        category: t.category,
-        date: t.date,
-        description: t.description || null,
-      }))
-
-      const batchSize = 100
-      let successCount = 0
-      let failCount = 0
-
-      for (let i = 0; i < transactions.length; i += batchSize) {
-        const batch = transactions.slice(i, i + batchSize)
-        const { error } = await supabase.from('finances').insert(batch)
-
-        if (error) {
-          console.error('Batch insert error:', error)
-          failCount += batch.length
-        } else {
-          successCount += batch.length
-        }
-      }
-
-      if (successCount > 0) {
-        toast({
-          title: "Import Successful",
-          description: `${successCount} new transactions imported${duplicateCount > 0 ? `, ${duplicateCount} duplicates skipped` : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`,
+          title: "Import Complete! ✅",
+          description: `Successfully imported ${succeeded} of ${total} transactions${failed > 0 ? `. ${failed} failed.` : ''}`,
         })
 
         setOpen(false)
@@ -493,27 +480,65 @@ export function ExcelUploadDialog({ onImportComplete }: ExcelUploadDialogProps) 
 
           {/* Action Buttons */}
           {parsedData.length > 0 && (
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleReset}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleImport}
-                disabled={importing || validCount === 0}
-                className="gap-2"
-              >
-                {importing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Importing...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Import {validCount} Transaction{validCount !== 1 ? 's' : ''}
-                  </>
-                )}
-              </Button>
+            <div className="space-y-4">
+              {/* Import Progress Bar */}
+              {importing && importProgress.total > 0 && (
+                <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Import Progress</span>
+                    <span className="text-muted-foreground">
+                      {importProgress.current} / {importProgress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${(importProgress.current / importProgress.total) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      {importProgress.succeeded} succeeded
+                    </span>
+                    {importProgress.failed > 0 && (
+                      <span className="flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3 text-red-600" />
+                        {importProgress.failed} failed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleReset}
+                  disabled={importing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={importing || validCount === 0}
+                  className="gap-2"
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importing... {importProgress.current}/{importProgress.total}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Import {validCount} Transaction{validCount !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
         </div>

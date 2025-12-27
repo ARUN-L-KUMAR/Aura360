@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { createClient } from "@/lib/supabase/client"
+import { useSession, signOut } from "next-auth/react"
 import { 
   Sparkles, 
   DollarSign, 
@@ -109,9 +109,6 @@ const benefits = [
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -121,40 +118,22 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Check if user is logged in
-  useEffect(() => {
-    const checkUser = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("full_name, avatar_url")
-          .eq("id", user.id)
-          .single()
-        setProfile(profile)
-      }
-      setIsLoading(false)
-    }
-    checkUser()
-  }, [])
+  // Check if user is logged in with NextAuth
+  const { data: session, status } = useSession()
+  const user = session?.user
+  const isLoading = status === "loading"
 
   // Get user initials
   const getInitials = () => {
-    if (profile?.full_name) {
-      return profile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    if (user?.name) {
+      return user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
     }
     return user?.email?.charAt(0).toUpperCase() || "U"
   }
 
   // Handle sign out
   const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
+    await signOut({ callbackUrl: "/" })
   }
 
   return (
@@ -201,10 +180,10 @@ export default function LandingPage() {
                   </Link>
                   <Link href="/dashboard/profile" className="flex items-center gap-2 group">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900 dark:to-blue-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-teal-500 transition-all overflow-hidden">
-                      {profile?.avatar_url ? (
+                      {user?.image ? (
                         <img 
-                          src={profile.avatar_url} 
-                          alt={profile.full_name || "Profile"} 
+                          src={user.image} 
+                          alt={user.name || "Profile"} 
                           className="w-full h-full object-cover"
                         />
                       ) : (

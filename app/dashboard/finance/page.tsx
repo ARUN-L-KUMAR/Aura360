@@ -5,11 +5,11 @@ import { FinanceOverviewTab } from "@/components/finance/finance-overview-tab"
 import { TransactionHistoryTab } from "@/components/finance/transaction-history-tab"
 import { ReportsTab } from "@/components/finance/reports-tab"
 import { ShareTransactionModal } from "@/components/finance/share-transaction-modal"
-import { DollarSign, LayoutDashboard, History, BarChart3, ArrowUp, Share2, ArrowLeft, Home, LayoutGrid } from "lucide-react"
+import { DollarSign, LayoutDashboard, History, BarChart3, ArrowUp, Share2, ArrowLeft, Home, LayoutGrid, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { createClient } from "@/lib/supabase/client"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -23,28 +23,54 @@ import {
 
 interface Transaction {
   id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
+  userId: string
+  workspaceId: string
+  type: "income" | "expense" | "investment" | "transfer"
+  amount: string
   category: string
-  description: string | null
+  description: string
   date: string
-  needs_review: boolean
-  created_at: string
-  updated_at: string
+  paymentMethod: string | null
+  notes: string | null
+  needsReview: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface BalanceData {
-  cash_balance: number
-  account_balance: number
+  cash: number
+  card: number
+  upi: number
+  bank_transfer: number
+}
+
+// Helper to transform transaction format for components
+const transformTransactions = (transactions: Transaction[]) => {
+  return transactions
+    .filter(t => t.type !== "transfer") // Filter out transfer type as components don't support it
+    .map(t => ({
+      id: t.id,
+      user_id: t.userId,
+      type: t.type as "income" | "expense" | "investment",
+      amount: parseFloat(t.amount),
+      category: t.category,
+      description: t.description,
+      date: t.date,
+      payment_method: t.paymentMethod,
+      needs_review: t.needsReview,
+      created_at: t.createdAt,
+      updated_at: t.updatedAt,
+    }))
 }
 
 export default function FinancePage() {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { data: session, status } = useSession()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeMainTab, setActiveMainTab] = useState("overview")
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -64,67 +90,120 @@ export default function FinancePage() {
   }
 
   useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login")
+      return
+    }
+
+    if (status === "loading") {
+      return
+    }
+
     async function loadData() {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        router.push("/auth/login")
-        return
-      }
-
-      // Fetch all transactions with pagination (Supabase limit is 1000 per request)
-      let allTransactions: Transaction[] = []
-      let offset = 0
-      const pageSize = 1000
-      let hasMore = true
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("finances")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("date", { ascending: false })
-          .range(offset, offset + pageSize - 1)
-
-        if (error) {
-          console.error('❌ [PAGE] Error fetching transactions:', error)
-          break
-        }
-
-        if (!data || data.length === 0) {
-          hasMore = false
-        } else {
-          allTransactions = [...allTransactions, ...data]
-          offset += pageSize
-        }
-      }
-
-      setTransactions(allTransactions)
-      
-      // Fetch balance data
       try {
-        const balanceResponse = await fetch("/api/finance/balances")
-        if (balanceResponse.ok) {
-          const balanceResult = await balanceResponse.json()
-          if (balanceResult.data) {
-            setBalanceData({
-              cash_balance: balanceResult.data.cash_balance,
-              account_balance: balanceResult.data.account_balance,
-            })
+        // Fetch all transactions from new API
+        const response = await fetch("/api/finance/transactions?limit=10000")
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch transactions")
+        }
+
+        const result = await response.json()
+        
+        if (result.success) {
+          setTransactions(result.data || [])
+        }
+        
+        // Fetch balance data from wallet balances API
+        try {
+          const balanceResponse = await fetch("/api/finance/balances")
+          if (balanceResponse.ok) {
+            const balanceResult = await balanceResponse.json()
+            if (balanceResult.success && balanceResult.data) {
+              // Convert wallet balances to old format for compatibility
+              const balances = balanceResult.data
+              setBalanceData({
+                cash: balances.find((b: any) => b.paymentMethod === "cash")?.balance || 0,
+                card: balances.find((b: any) => b.paymentMethod === "card")?.balance || 0,
+                upi: balances.find((b: any) => b.paymentMethod === "upi")?.balance || 0,
+                bank_transfer: balances.find((b: any) => b.paymentMethod === "bank_transfer")?.balance || 0,
+              })
+            }
           }
+        } catch (error) {
+          console.error("Error fetching balance data:", error)
         }
       } catch (error) {
-        console.error("Error fetching balance data:", error)
+        console.error("Error loading finance data:", error)
+      } finally {
+        setIsLoading(false)
       }
-      
-      setIsLoading(false)
     }
 
     loadData()
-  }, [router])
+  }, [router, status])
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      // Clear existing data first
+      setTransactions([])
+      setBalanceData(null)
+      
+      // Fetch fresh data with cache-busting
+      const timestamp = new Date().getTime()
+      
+      // Fetch all transactions from new API
+      const response = await fetch(`/api/finance/transactions?limit=10000&_=${timestamp}`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch transactions")
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setTransactions(result.data || [])
+      }
+      
+      // Fetch balance data from wallet balances API
+      const balanceResponse = await fetch(`/api/finance/balances?_=${timestamp}`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
+      
+      if (balanceResponse.ok) {
+        const balanceResult = await balanceResponse.json()
+        if (balanceResult.success && balanceResult.data) {
+          // Convert wallet balances to old format for compatibility
+          const balances = balanceResult.data
+          setBalanceData({
+            cash: balances.find((b: any) => b.paymentMethod === "cash")?.balance || 0,
+            card: balances.find((b: any) => b.paymentMethod === "card")?.balance || 0,
+            upi: balances.find((b: any) => b.paymentMethod === "upi")?.balance || 0,
+            bank_transfer: balances.find((b: any) => b.paymentMethod === "bank_transfer")?.balance || 0,
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing finance data:", error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -237,6 +316,19 @@ export default function FinancePage() {
               )}>Track your income and expenses</p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            size={isMobile ? "sm" : "default"}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="gap-2 ml-auto"
+          >
+            <RefreshCw className={cn(
+              "h-4 w-4",
+              isRefreshing && "animate-spin"
+            )} />
+            {!isMobile && (isRefreshing ? "Refreshing..." : "Refresh")}
+          </Button>
         </div>
 
         {/* Main Tabs - Mobile Optimized */}
@@ -290,17 +382,23 @@ export default function FinancePage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-0">
-            <FinanceOverviewTab transactions={transactions} />
+            <FinanceOverviewTab transactions={transformTransactions(transactions)} />
           </TabsContent>
 
           {/* Transaction History Tab */}
           <TabsContent value="transactions" className="mt-0">
-            <TransactionHistoryTab initialTransactions={transactions} />
+            <TransactionHistoryTab initialTransactions={transformTransactions(transactions)} />
           </TabsContent>
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="mt-0">
-            <ReportsTab transactions={transactions} balanceData={balanceData} />
+            <ReportsTab 
+              transactions={transformTransactions(transactions)} 
+              balanceData={balanceData ? {
+                cash_balance: balanceData.cash,
+                account_balance: balanceData.upi + balanceData.card + balanceData.bank_transfer
+              } : null}
+            />
           </TabsContent>
         </Tabs>
       </div>

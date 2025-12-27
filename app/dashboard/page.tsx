@@ -1,45 +1,58 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
+import { getAuthSession } from "@/lib/auth-helpers"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StickyNote, DollarSign, Dumbbell, UtensilsCrossed, Bookmark, Shirt, Sparkles, Clock, User, Settings, Plus, TrendingUp, Calendar, Home, ChevronRight, Activity } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { db, transactions, notes } from "@/lib/db"
+import { eq, and, count, desc } from "drizzle-orm"
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  // Fetch actual stats from database
+  const workspaceId = user.workspaceId
+  const userId = user.id
 
-  // Fetch user profile for avatar
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name, avatar_url")
-    .eq("id", user.id)
-    .single()
+  // Count transactions
+  const [transactionStats] = await db
+    .select({ count: count() })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.workspaceId, workspaceId),
+        eq(transactions.userId, userId)
+      )
+    )
 
-  // Fetch some stats
-  const { count: notesCount } = await supabase
-    .from("notes")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
+  // Count notes
+  const [noteStats] = await db
+    .select({ count: count() })
+    .from(notes)
+    .where(
+      and(
+        eq(notes.workspaceId, workspaceId),
+        eq(notes.userId, userId)
+      )
+    )
 
-  const { count: transactionsCount } = await supabase
-    .from("finances")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
+  // Fetch recent transactions
+  const recentTransactions = await db
+    .select()
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.workspaceId, workspaceId),
+        eq(transactions.userId, userId)
+      )
+    )
+    .orderBy(desc(transactions.createdAt))
+    .limit(5)
 
-  const { data: recentTransactions } = await supabase
-    .from("finances")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
-    .limit(3)
+  const transactionsCount = transactionStats?.count || 0
+  const notesCount = noteStats?.count || 0
+  const profile = null
 
   const modules = [
     {

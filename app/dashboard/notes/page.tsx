@@ -1,25 +1,29 @@
-import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { NotesGrid } from "@/components/notes/notes-grid"
 import { CreateNoteButton } from "@/components/notes/create-note-button"
 import { ModuleHeader } from "@/components/ui/module-header"
+import { getAuthSession } from "@/lib/auth-helpers"
+import { db, notes as notesTable } from "@/lib/db"
+import { eq, and, desc } from "drizzle-orm"
 
 export default async function NotesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getAuthSession()
+  const user = session.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
-  const { data: notes } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("is_pinned", { ascending: false })
-    .order("updated_at", { ascending: false })
+  const notes = await db
+    .select()
+    .from(notesTable)
+    .where(
+      and(
+        eq(notesTable.workspaceId, user.workspaceId),
+        eq(notesTable.userId, user.id)
+      )
+    )
+    .orderBy(desc(notesTable.isPinned), desc(notesTable.updatedAt))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
