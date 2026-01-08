@@ -1,12 +1,14 @@
 /**
  * User Registration API
- * Creates user + workspace in one transaction
+ * Creates user + workspace + sends verification email
  */
 
 import { NextResponse } from "next/server"
-import { db, users, workspaces } from "@/lib/db"
+import { db, users, workspaces, verificationTokens } from "@/lib/db"
 import { eq } from "drizzle-orm"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
+import { sendVerificationEmail } from "@/lib/resend"
 
 export async function POST(request: Request) {
   try {
@@ -38,13 +40,14 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user (no transaction support in neon-http driver)
+    // Create user (emailVerified is null by default)
     const [newUser] = await db
       .insert(users)
       .values({
         email,
         name: name || email.split("@")[0],
         password: hashedPassword,
+        // emailVerified: null - user must verify email
       })
       .returning()
 
@@ -64,9 +67,28 @@ export async function POST(request: Request) {
       })
       .returning()
 
+    // Generate verification token
+    const token = crypto.randomBytes(32).toString("hex")
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+    // Store verification token
+    await db.insert(verificationTokens).values({
+      identifier: email,
+      token,
+      expires,
+    })
+
+    // Send verification email
+    const emailResult = await sendVerificationEmail(email, token, newUser.name || undefined)
+
+    if (!emailResult.success) {
+      console.error("[Registration] Failed to send verification email:", emailResult.error)
+      // Don't fail registration if email fails - user can resend
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Account created successfully",
+      message: "Account created. Please check your email to verify.",
       userId: newUser.id,
       workspaceId: workspace.id,
     })

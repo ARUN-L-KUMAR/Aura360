@@ -109,7 +109,7 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Notifications (placeholder for future) */}
+          {/* Notifications */}
           <Card className="backdrop-blur-sm bg-card/80">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -119,9 +119,34 @@ export default async function SettingsPage() {
               <CardDescription>Manage notification preferences</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground p-4 rounded-lg bg-muted/30 text-center">
-                Notification settings coming soon
-              </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-medium">Email Notifications</p>
+                    <p className="text-xs text-muted-foreground">Receive updates via email</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Managed via email settings
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                  <div>
+                    <p className="text-sm font-medium">Browser Notifications</p>
+                    <p className="text-xs text-muted-foreground">Get browser push notifications</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Enable in browser settings
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    <strong>Note:</strong> Notification preferences are currently managed through your browser and email settings. 
+                    Advanced notification controls will be available in a future update.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

@@ -12,11 +12,11 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 
 const updateProfileSchema = z.object({
-  name: z.string().optional(),
+  fullName: z.string().optional(),
   email: z.string().email().optional(),
   phoneNumber: z.string().optional(),
   bio: z.string().optional(),
-  image: z.string().optional(),
+  avatarUrl: z.string().optional(),
 })
 
 /**
@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
       .select({
         id: users.id,
         email: users.email,
-        name: users.name,
+        fullName: users.name,
         phoneNumber: users.phoneNumber,
         bio: users.bio,
-        image: users.image,
+        avatarUrl: users.image,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
@@ -75,25 +75,45 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
     
+    // Map frontend field names to database field names
+    const updateData: any = {
+      updatedAt: new Date(),
+    }
+    if (data.fullName !== undefined) updateData.name = data.fullName
+    if (data.avatarUrl !== undefined) updateData.image = data.avatarUrl
+    if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber
+    if (data.bio !== undefined) updateData.bio = data.bio
+    if (data.email !== undefined) updateData.email = data.email
+    
     const [updated] = await db
       .update(users)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(users.id, context.userId))
       .returning({
         id: users.id,
         email: users.email,
-        name: users.name,
+        fullName: users.name,
         phoneNumber: users.phoneNumber,
         bio: users.bio,
-        image: users.image,
+        avatarUrl: users.image,
         updatedAt: users.updatedAt,
       })
     
-    // Audit log
-    await auditUpdate(context, "user", context.userId, existing, updated)
+    // Audit log with full user object
+    const existingForAudit = {
+      ...existing,
+      fullName: existing.name,
+      avatarUrl: existing.image,
+    }
+    const updatedForAudit = {
+      ...updated,
+      name: data.fullName || existing.name,
+      image: data.avatarUrl || existing.image,
+      emailVerified: existing.emailVerified,
+      password: existing.password,
+      createdAt: existing.createdAt,
+    }
+    await auditUpdate(context, "user", context.userId, existingForAudit, updatedForAudit)
     
     return NextResponse.json(updated)
   } catch (error) {
@@ -164,10 +184,10 @@ export async function POST(request: NextRequest) {
       .where(eq(users.id, context.userId))
       .returning({
         id: users.id,
-        image: users.image,
+        avatarUrl: users.image,
       })
     
-    return NextResponse.json({ imageUrl: updated.image })
+    return NextResponse.json({ avatarUrl: updated.avatarUrl })
   } catch (error) {
     console.error("[Profile API] Upload error:", error)
     return NextResponse.json(

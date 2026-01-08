@@ -12,8 +12,8 @@
  */
 
 import NextAuth, { type NextAuthConfig } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import GoogleProvider from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google"
 import { db } from "@/lib/db"
 import { users, workspaces, workspaceMembers, accounts } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
@@ -22,11 +22,11 @@ import bcrypt from "bcryptjs"
 export const authConfig: NextAuthConfig = {
   // No adapter needed for JWT strategy
   providers: [
-    GoogleProvider({
+    Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    CredentialsProvider({
+    Credentials({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
@@ -46,6 +46,11 @@ export const authConfig: NextAuthConfig = {
 
         if (!user || !user.password) {
           throw new Error("Invalid email or password")
+        }
+
+        // Check if email is verified
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email before signing in")
         }
 
         // Verify password
@@ -72,7 +77,7 @@ export const authConfig: NextAuthConfig = {
       // Initial sign in
       if (user && user.id) {
         token.id = user.id
-        
+
         // Get user's primary workspace
         const [workspace] = await db
           .select()
@@ -154,7 +159,7 @@ export const authConfig: NextAuthConfig = {
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET,
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)

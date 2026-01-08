@@ -16,6 +16,23 @@ export default async function ProfilePage() {
 
   const [profile] = await db.select().from(users).where(eq(users.id, user.id))
 
+  // Transform to match ProfileForm expectations
+  const profileData = profile ? {
+    id: profile.id,
+    email: profile.email,
+    fullName: profile.name,
+    avatarUrl: profile.image,
+    createdAt: profile.createdAt?.toISOString(),
+    updatedAt: profile.updatedAt?.toISOString(),
+  } : null
+
+  const userData = {
+    id: user.id,
+    email: user.email,
+    createdAt: profile?.createdAt,
+    updatedAt: profile?.updatedAt,
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
       <div className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
@@ -50,7 +67,7 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <ProfileForm user={user} profile={profile} />
+        <ProfileForm user={userData} profile={profileData} />
       </div>
     </div>
   )
