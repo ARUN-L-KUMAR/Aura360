@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Aur360 - Your Personal Life Management Dashboard",
+  title: "Aura360 - Your Personal Life Management Dashboard",
   description: "Unified dashboard for productivity, wellness, and personal growth",
   generator: "v0.app",
   manifest: "/manifest.json",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Aur360",
+    title: "Aura360",
   },
 }
 
