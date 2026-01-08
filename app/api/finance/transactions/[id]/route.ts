@@ -7,11 +7,11 @@ import { auditUpdate, auditDelete } from "@/lib/audit"
 // DELETE /api/finance/transactions/[id]
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getWorkspaceContext()
-    const { id } = params
+    const { id } = await params
 
     // Verify transaction exists and belongs to user
     const [transaction] = await db
@@ -65,11 +65,11 @@ export async function DELETE(
 // PATCH /api/finance/transactions/[id]
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const context = await getWorkspaceContext()
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
 
     // Verify transaction exists and belongs to user

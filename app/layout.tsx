@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   description: "Unified dashboard for productivity, wellness, and personal growth",
   generator: "v0.app",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
