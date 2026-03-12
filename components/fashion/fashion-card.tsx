@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Shirt, Star } from "lucide-react"
+import { Trash2, Edit, Shirt, Star, ExternalLink } from "lucide-react"
 import { useState } from "react"
 import { EditFashionDialog } from "./edit-fashion-dialog"
 import type { FashionItem } from "@/lib/types/fashion"
@@ -17,6 +17,8 @@ interface FashionCardProps {
 export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const buyingLink = item.metadata?.buyingLink
+  const condition = item.metadata?.condition
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this item?")) return
@@ -107,11 +109,21 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
           <div className="text-sm text-muted-foreground space-y-1">
             {item.brand && <p>Brand: {item.brand}</p>}
             {item.size && <p>Size: {item.size}</p>}
+            {condition && <p>Condition: {condition}</p>}
             {item.price && <p className="font-medium text-foreground">₹{Number(item.price).toFixed(2)}</p>}
             {item.wearCount !== null && item.wearCount !== undefined && (
               <p>Worn: {item.wearCount} {item.wearCount === 1 ? 'time' : 'times'}</p>
             )}
           </div>
+
+          {buyingLink && (
+            <Button asChild variant="ghost" size="sm" className="h-8 w-full justify-start px-0 text-xs text-indigo-600 hover:text-indigo-700">
+              <a href={buyingLink} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Open Buying Link
+              </a>
+            </Button>
+          )}
 
           <div className="flex items-center gap-2 pt-2">
             <Button

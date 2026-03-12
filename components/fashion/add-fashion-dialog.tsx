@@ -133,7 +133,16 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
           imageUrl: imageUrl || undefined,
           notes: notes || undefined,
           status: type === "buyed" ? "wardrobe" : "wishlist",
+          tags: occasion.length > 0 ? occasion : undefined,
           isFavorite,
+          metadata: {
+            buyingLink: buyingLink || undefined,
+            occasion: occasion.length > 0 ? occasion : undefined,
+            season: season.length > 0 ? season : undefined,
+            expectedBudget: type === "need_to_buy" && expectedBudget ? Number.parseFloat(expectedBudget) : undefined,
+            buyDeadline: type === "need_to_buy" ? buyDeadline || undefined : undefined,
+            condition: type === "buyed" ? status || undefined : undefined,
+          },
         }),
       })
 
@@ -363,7 +372,7 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
 
             {type === "buyed" && (
               <div className="grid gap-2">
-                <Label htmlFor="status">Status (Optional)</Label>
+                <Label htmlFor="status">Condition (Optional)</Label>
                 <Input
                   id="status"
                   placeholder="e.g., New, Worn, Needs Wash"

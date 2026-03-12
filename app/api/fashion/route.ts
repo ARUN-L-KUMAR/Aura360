@@ -11,6 +11,17 @@ import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary"
 import { eq, and, desc } from "drizzle-orm"
 import { z } from "zod"
 
+const fashionMetadataSchema = z
+  .object({
+    buyingLink: z.string().optional(),
+    occasion: z.array(z.string()).optional(),
+    season: z.array(z.string()).optional(),
+    expectedBudget: z.number().optional(),
+    buyDeadline: z.string().optional(),
+    condition: z.string().optional(),
+  })
+  .passthrough()
+
 const createFashionSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -29,6 +40,7 @@ const createFashionSchema = z.object({
   tags: z.array(z.string()).optional(),
   isFavorite: z.boolean().optional(),
   notes: z.string().optional(),
+  metadata: fashionMetadataSchema.optional(),
 })
 
 const updateFashionSchema = createFashionSchema.partial()

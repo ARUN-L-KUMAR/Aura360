@@ -35,6 +35,9 @@ interface SortableWishlistCardProps {
 }
 
 function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: SortableWishlistCardProps) {
+  const buyingLink = item.metadata?.buyingLink
+  const expectedBudget = item.metadata?.expectedBudget
+
   const {
     attributes,
     listeners,
@@ -149,8 +152,17 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
             )}
           </div>
           {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
-          {item.price && <p className="text-xs font-medium text-foreground">Budget: ₹{Number(item.price).toFixed(0)}</p>}
+            {(expectedBudget ?? item.price) && <p className="text-xs font-medium text-foreground">Budget: ₹{Number(expectedBudget ?? item.price).toFixed(0)}</p>}
         </div>
+
+          {buyingLink && (
+            <Button asChild variant="ghost" size="sm" className="h-7 w-full justify-start px-0 text-xs text-indigo-600 hover:text-indigo-700">
+              <a href={buyingLink} target="_blank" rel="noreferrer" onPointerDown={(e) => e.stopPropagation()}>
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Open Buying Link
+              </a>
+            </Button>
+          )}
 
         <div className="flex items-center gap-1 pt-1">
           <Button

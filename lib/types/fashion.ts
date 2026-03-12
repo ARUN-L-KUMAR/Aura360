@@ -3,6 +3,16 @@
  * Matches the database schema from lib/db/schema.ts
  */
 
+export interface FashionMetadata {
+  buyingLink?: string
+  occasion?: string[]
+  season?: string[]
+  expectedBudget?: number
+  buyDeadline?: string
+  condition?: string
+  [key: string]: any
+}
+
 export interface FashionItem {
   id: string
   workspaceId: string
@@ -24,7 +34,7 @@ export interface FashionItem {
   tags: string[] | null
   isFavorite: boolean
   notes: string | null
-  metadata?: Record<string, any> | null
+  metadata?: FashionMetadata | null
   createdAt: Date | string
   updatedAt: Date | string
 }
