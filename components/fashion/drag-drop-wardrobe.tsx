@@ -25,30 +25,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Shirt, ExternalLink, ShoppingCart, Star, GripVertical } from "lucide-react"
 import { toast } from "sonner"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import { EditFashionDialog } from "./edit-fashion-dialog"
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface SortableFashionCardProps {
   item: FashionItem
@@ -57,6 +35,8 @@ interface SortableFashionCardProps {
 }
 
 function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardProps) {
+  const [showEditDialog, setShowEditDialog] = useState(false)
+
   const {
     attributes,
     listeners,
@@ -93,86 +73,86 @@ function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardPr
   }
 
   return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing ${
-        isDragging ? 'shadow-2xl scale-105' : ''
-      }`}
-    >
-      {/* Drag Handle */}
-      <div
-        className="absolute top-2 left-2 z-10 p-1 rounded bg-black/20 hover:bg-black/40 transition-colors"
-        {...attributes}
-        {...listeners}
+    <>
+      <Card
+        ref={setNodeRef}
+        style={style}
+        className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-2xl scale-105' : ''
+          }`}
       >
-        <GripVertical className="w-4 h-4 text-white" />
-      </div>
-
-      <CardContent className="p-4 space-y-3">
-        <div className="aspect-square w-full overflow-hidden bg-muted relative rounded-lg">
-          {item.image_url ? (
-            <img
-              src={item.image_url}
-              alt={item.item_name}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "/placeholder.jpg";
-                target.className = "w-full h-full object-cover opacity-50";
-              }}
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
-              <Shirt className="w-12 h-12 text-indigo-400 dark:text-indigo-600" />
-            </div>
-          )}
+        {/* Drag Handle */}
+        <div
+          className="absolute top-2 left-2 z-10 p-1 rounded bg-black/20 hover:bg-black/40 transition-colors"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-4 h-4 text-white" />
         </div>
 
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm line-clamp-1">{item.item_name}</h3>
-            {item.is_favorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
-          </div>
-          <div className="flex items-center gap-1 mt-1">
-            <Badge variant="secondary" className="text-xs">
-              {item.category}
-            </Badge>
-            {item.color && (
-              <Badge variant="outline" className="text-xs">
-                {item.color}
-              </Badge>
+        <CardContent className="p-4 space-y-3">
+          <div className="aspect-square w-full overflow-hidden bg-muted relative rounded-lg">
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/placeholder.jpg";
+                  target.className = "w-full h-full object-cover opacity-50";
+                }}
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
+                <Shirt className="w-12 h-12 text-indigo-400 dark:text-indigo-600" />
+              </div>
             )}
           </div>
-          {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
-          {item.price && <p className="text-xs font-medium text-foreground">₹{Number(item.price).toFixed(0)}</p>}
-        </div>
 
-        <div className="flex items-center gap-1 pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 bg-transparent text-xs h-7"
-            onClick={() => {
-              // TODO: Open edit dialog
-              console.log('Edit item:', item.id)
-            }}
-          >
-            <Edit className="h-3 w-3 mr-1" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-xs h-7 px-2"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+              {item.isFavorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <Badge variant="secondary" className="text-xs">
+                {item.category}
+              </Badge>
+              {item.color && (
+                <Badge variant="outline" className="text-xs">
+                  {item.color}
+                </Badge>
+              )}
+            </div>
+            {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
+            {item.price && <p className="text-xs font-medium text-foreground">₹{Number(item.price).toFixed(0)}</p>}
+          </div>
+
+          <div className="flex items-center gap-1 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 bg-transparent text-xs h-7"
+              onClick={() => setShowEditDialog(true)}
+            >
+              <Edit className="h-3 w-3 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-xs h-7 px-2"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <EditFashionDialog item={item} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
+    </>
   )
 }
 

@@ -8,19 +8,7 @@ import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Calendar, 
 import { useToast } from "@/hooks/use-toast"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  payment_method: string | null
-  date: string
-  created_at: string
-  updated_at: string
-}
+import type { Transaction } from "@/lib/types/finance"
 
 interface TransactionsListProps {
   initialTransactions: Transaction[]
@@ -71,7 +59,7 @@ function TypeTable({ type, transactions, onDelete, onEdit }: TypeTableProps) {
     }
   }
 
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const totalAmount = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
 
   return (
     <div className="space-y-4">

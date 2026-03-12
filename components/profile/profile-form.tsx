@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useRouter } from "next/navigation"
-import { signOut } from "next-auth/react"
 import { Camera, Upload, X, User as UserIcon, Loader2, Mail, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -165,7 +164,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   }
 
   const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/" })
+    await fetch("/api/auth/signout", { method: "POST" })
+    router.push("/")
   }
 
   return (
@@ -174,7 +174,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       <Card className="backdrop-blur-sm bg-card/80 overflow-hidden">
         {/* Header Background */}
         <div className="h-32 bg-gradient-to-br from-teal-500 via-blue-500 to-purple-500" />
-
+        
         {/* Profile Info */}
         <div className="px-6 pb-6">
           {/* Avatar Section - positioned to overlap the header */}
@@ -189,16 +189,16 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               onDrop={handleDrop}
             >
               <Avatar className="w-full h-full">
-                <AvatarImage
-                  src={avatarPreview || avatarUrl}
-                  alt={fullName || "Profile"}
+                <AvatarImage 
+                  src={avatarPreview || avatarUrl} 
+                  alt={fullName || "Profile"} 
                   className="object-cover"
                 />
                 <AvatarFallback className="text-3xl font-semibold bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900 dark:to-blue-900 text-teal-700 dark:text-teal-300">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
-
+              
               {/* Upload Overlay */}
               <button
                 type="button"
@@ -212,7 +212,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                   <Camera className="w-8 h-8 text-white" />
                 )}
               </button>
-
+              
               {/* Remove button */}
               {(avatarPreview || avatarUrl) && !isUploading && (
                 <button
@@ -224,7 +224,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                 </button>
               )}
             </div>
-
+            
             <input
               ref={fileInputRef}
               type="file"
@@ -233,7 +233,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               onChange={handleInputChange}
             />
           </div>
-
+          
           {/* User Name & Email */}
           <div className="space-y-1">
             <h2 className="text-2xl font-bold">
@@ -261,11 +261,11 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             {/* Avatar Upload Section */}
             <div className="space-y-3">
               <Label>Profile Picture</Label>
-              <div
+              <div 
                 className={cn(
                   "border-2 border-dashed rounded-xl p-6 text-center transition-all",
-                  isDragging
-                    ? "border-teal-500 bg-teal-50 dark:bg-teal-950/30"
+                  isDragging 
+                    ? "border-teal-500 bg-teal-50 dark:bg-teal-950/30" 
                     : "border-muted-foreground/25 hover:border-teal-500/50"
                 )}
                 onDragOver={handleDragOver}
@@ -276,9 +276,9 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                 <p className="text-sm text-muted-foreground mb-2">
                   Drag and drop an image here, or
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
+                <Button 
+                  type="button" 
+                  variant="outline" 
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
@@ -324,7 +324,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={user.email ?? ""} disabled className="bg-muted" />
+              <Input id="email" type="email" value={user.email} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
@@ -338,9 +338,9 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               />
             </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
               className="w-full bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700"
             >
               {isLoading ? (
@@ -371,31 +371,31 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               <div>
                 <p className="text-sm font-medium">Account Created</p>
                 <p className="text-sm text-muted-foreground">
-                  {profile?.createdAt
+                  {profile?.createdAt 
                     ? new Date(profile.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
                     : "N/A"
                   }
                 </p>
               </div>
               <Calendar className="w-5 h-5 text-muted-foreground" />
             </div>
-
+            
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
               <div>
                 <p className="text-sm font-medium">Last Updated</p>
                 <p className="text-sm text-muted-foreground">
-                  {profile?.updatedAt
+                  {profile?.updatedAt 
                     ? new Date(profile.updatedAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                     : "N/A"
                   }
                 </p>
@@ -403,8 +403,8 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               <UserIcon className="w-5 h-5 text-muted-foreground" />
             </div>
 
-            <Button
-              variant="destructive"
+            <Button 
+              variant="destructive" 
               onClick={handleSignOut}
               className="w-full"
             >

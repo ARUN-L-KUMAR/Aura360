@@ -3,33 +3,10 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Shirt, ExternalLink, ShoppingCart, Star, Heart } from "lucide-react"
+import { Trash2, Edit, Shirt, Star } from "lucide-react"
 import { useState } from "react"
 import { EditFashionDialog } from "./edit-fashion-dialog"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface FashionCardProps {
   item: FashionItem
@@ -70,11 +47,11 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
     <>
       <Card className="group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden">
         <CardHeader className="p-0">
-          {item.image_url ? (
+          {item.imageUrl ? (
             <div className="aspect-square w-full overflow-hidden bg-muted relative">
               <img
-                src={item.image_url}
-                alt={item.item_name}
+                src={item.imageUrl}
+                alt={item.name}
                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -93,11 +70,11 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
         <CardContent className="p-4 space-y-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg line-clamp-1">{item.item_name}</h3>
-              {item.is_favorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
+              <h3 className="font-semibold text-lg line-clamp-1">{item.name}</h3>
+              {item.isFavorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs capitalize">
                 {item.category}
               </Badge>
               {item.color && (
@@ -105,22 +82,22 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
                   {item.color}
                 </Badge>
               )}
-              {item.status && (
-                <Badge variant="outline" className="text-xs">
-                  {item.status}
+              {item.subcategory && (
+                <Badge variant="outline" className="text-xs capitalize">
+                  {item.subcategory}
                 </Badge>
               )}
             </div>
-            {item.occasion && item.occasion.length > 0 && (
+            {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {item.occasion.slice(0, 2).map((occ) => (
-                  <Badge key={occ} variant="outline" className="text-xs capitalize">
-                    {occ}
+                {item.tags.slice(0, 2).map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-xs capitalize">
+                    {tag}
                   </Badge>
                 ))}
-                {item.occasion.length > 2 && (
+                {item.tags.length > 2 && (
                   <Badge variant="outline" className="text-xs">
-                    +{item.occasion.length - 2}
+                    +{item.tags.length - 2}
                   </Badge>
                 )}
               </div>
@@ -130,19 +107,9 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
           <div className="text-sm text-muted-foreground space-y-1">
             {item.brand && <p>Brand: {item.brand}</p>}
             {item.size && <p>Size: {item.size}</p>}
-            {item.type === "buyed" && item.price && <p className="font-medium text-foreground">₹{Number(item.price).toFixed(2)}</p>}
-            {item.type === "need_to_buy" && item.expected_budget && <p className="font-medium text-foreground">Budget: ₹{Number(item.expected_budget).toFixed(2)}</p>}
-            {item.buying_link && (
-              <Button
-                variant="default"
-                size="sm"
-                className="w-full mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
-                onClick={() => window.open(item.buying_link!, '_blank', 'noopener,noreferrer')}
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                {item.type === "buyed" ? "Buy Again" : "Buy Now"}
-                <ExternalLink className="h-3 w-3 ml-2" />
-              </Button>
+            {item.price && <p className="font-medium text-foreground">₹{Number(item.price).toFixed(2)}</p>}
+            {item.wearCount !== null && item.wearCount !== undefined && (
+              <p>Worn: {item.wearCount} {item.wearCount === 1 ? 'time' : 'times'}</p>
             )}
           </div>
 

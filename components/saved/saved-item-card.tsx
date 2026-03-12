@@ -11,14 +11,16 @@ import { EditSavedItemDialog } from "./edit-saved-item-dialog"
 interface SavedItem {
   id: string
   userId: string
+  workspaceId: string
   type: "article" | "video" | "product" | "recipe" | "other"
   title: string
   url: string | null
   description: string | null
+  imageUrl?: string | null
   tags: string[] | null
   isFavorite: boolean
-  createdAt: string
-  updatedAt: string
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 interface SavedItemCardProps {

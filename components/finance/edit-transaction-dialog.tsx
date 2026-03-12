@@ -19,6 +19,7 @@ import { useState, useEffect } from "react"
 import { TrendingUp, TrendingDown, PiggyBank, IndianRupee, Calendar, Tag, FileText, Wallet, CreditCard, Banknote, Smartphone, Building2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import type { Transaction } from "@/lib/types/finance"
 
 // Payment method options
 const paymentMethods = [
@@ -38,19 +39,6 @@ const categoryOptions = {
   investment: ["Stocks", "Mutual Funds", "SIP", "Fixed Deposit", "Gold", "Crypto", "Real Estate", "Other Investment"],
 }
 
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  payment_method: string | null
-  date: string
-  created_at: string
-  updated_at: string
-}
-
 interface EditTransactionDialogProps {
   transaction: Transaction
   open: boolean
@@ -64,7 +52,7 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
   const [amount, setAmount] = useState(transaction.amount.toString())
   const [category, setCategory] = useState(transaction.category)
   const [customCategory, setCustomCategory] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState(transaction.payment_method || "upi")
+  const [paymentMethod, setPaymentMethod] = useState(transaction.paymentMethod || "upi")
   const [description, setDescription] = useState(transaction.description || "")
   const [date, setDate] = useState(transaction.date)
   const [isLoading, setIsLoading] = useState(false)
@@ -81,7 +69,7 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
       setCategory(transaction.category)
       setCustomCategory("")
     }
-    setPaymentMethod(transaction.payment_method || "upi")
+    setPaymentMethod(transaction.paymentMethod || "upi")
     setDescription(transaction.description || "")
     setDate(transaction.date)
   }, [transaction])

@@ -4,22 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FitnessItem } from "./fitness-item"
-
-interface FitnessEntry {
-  id: string
-  user_id: string
-  type: "workout" | "measurement" | "goal"
-  workout_type: string | null
-  duration_minutes: number | null
-  calories_burned: number | null
-  measurement_type: string | null
-  measurement_value: number | null
-  measurement_unit: string | null
-  date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { FitnessEntry } from "@/lib/types/fitness"
 
 interface FitnessLogProps {
   initialData: FitnessEntry[]

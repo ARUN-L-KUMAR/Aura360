@@ -4,21 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MealItem } from "./meal-item"
-
-interface Meal {
-  id: string
-  user_id: string
-  meal_type: "breakfast" | "lunch" | "dinner" | "snack"
-  food_name: string
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { Meal } from "@/lib/types/food"
 
 interface MealsListProps {
   initialMeals: Meal[]
@@ -28,7 +14,7 @@ export function MealsList({ initialMeals }: MealsListProps) {
   const [meals, setMeals] = useState<Meal[]>(initialMeals)
   const [filterType, setFilterType] = useState<string>("all")
 
-  const filteredMeals = meals.filter((meal) => filterType === "all" || meal.meal_type === filterType)
+  const filteredMeals = meals.filter((meal) => filterType === "all" || meal.mealType === filterType)
 
   const handleMealDeleted = (mealId: string) => {
     setMeals((prev) => prev.filter((meal) => meal.id !== mealId))

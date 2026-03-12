@@ -20,32 +20,7 @@ import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { toast } from "sonner"
 import { ImageUpload } from "./image-upload"
-
-type FashionType = "buyed" | "need_to_buy"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface EditFashionDialogProps {
   item: FashionItem
@@ -55,43 +30,44 @@ interface EditFashionDialogProps {
 }
 
 export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFashionDialogProps) {
-  const [itemName, setItemName] = useState(item.item_name)
+  const [itemName, setItemName] = useState(item.name)
   const [category, setCategory] = useState(item.category)
+  const [subcategory, setSubcategory] = useState(item.subcategory || "")
   const [brand, setBrand] = useState(item.brand || "")
   const [color, setColor] = useState(item.color || "")
   const [size, setSize] = useState(item.size || "")
-  const [purchaseDate, setPurchaseDate] = useState(item.purchase_date || "")
+  const [purchaseDate, setPurchaseDate] = useState(
+    item.purchaseDate ? (typeof item.purchaseDate === 'string' ? item.purchaseDate : item.purchaseDate.toISOString().split('T')[0]) : ""
+  )
   const [price, setPrice] = useState(item.price?.toString() || "")
-  const [imageUrl, setImageUrl] = useState(item.image_url || "")
-  const [buyingLink, setBuyingLink] = useState(item.buying_link || "")
+  const [imageUrl, setImageUrl] = useState(item.imageUrl || "")
   const [notes, setNotes] = useState(item.notes || "")
-  const [type, setType] = useState<FashionType>(item.type || "buyed")
-  const [status, setStatus] = useState(item.status || "")
-  const [occasion, setOccasion] = useState<string[]>(item.occasion || [])
-  const [season, setSeason] = useState<string[]>(item.season || [])
-  const [expectedBudget, setExpectedBudget] = useState(item.expected_budget?.toString() || "")
-  const [buyDeadline, setBuyDeadline] = useState(item.buy_deadline || "")
-  const [isFavorite, setIsFavorite] = useState(item.is_favorite || false)
+  const [status, setStatus] = useState<"wardrobe" | "wishlist" | "sold" | "donated">(item.status || "wardrobe")
+  const [tags, setTags] = useState<string[]>(item.tags || [])
+  const [tagInput, setTagInput] = useState("")
+  const [isFavorite, setIsFavorite] = useState(item.isFavorite || false)
+  const [occasion, setOccasion] = useState<string[]>([])
+  const [season, setSeason] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    setItemName(item.item_name)
+    setItemName(item.name)
     setCategory(item.category)
+    setSubcategory(item.subcategory || "")
     setBrand(item.brand || "")
     setColor(item.color || "")
     setSize(item.size || "")
-    setPurchaseDate(item.purchase_date || "")
+    setPurchaseDate(
+      item.purchaseDate ? (typeof item.purchaseDate === 'string' ? item.purchaseDate : item.purchaseDate.toISOString().split('T')[0]) : ""
+    )
     setPrice(item.price?.toString() || "")
-    setImageUrl(item.image_url || "")
-    setBuyingLink(item.buying_link || "")
+    setImageUrl(item.imageUrl || "")
     setNotes(item.notes || "")
-    setType(item.type || "buyed")
-    setStatus(item.status || "")
-    setOccasion(item.occasion || [])
-    setSeason(item.season || [])
-    setExpectedBudget(item.expected_budget?.toString() || "")
-    setBuyDeadline(item.buy_deadline || "")
-    setIsFavorite(item.is_favorite || false)
+    setStatus(item.status || "wardrobe")
+    setTags(item.tags || [])
+    setIsFavorite(item.isFavorite || false)
+    setOccasion((item.metadata?.occasion as string[]) || [])
+    setSeason((item.metadata?.season as string[]) || [])
   }, [item])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,21 +81,21 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
         body: JSON.stringify({
           name: itemName,
           category,
-          brand: brand || null,
-          color: color || null,
-          size: size || null,
-          purchaseDate: purchaseDate || null,
-          price: price ? Number.parseFloat(price) : null,
-          imageUrl: imageUrl || null,
-          buyingLink: buyingLink || null,
-          notes: notes || null,
-          type,
-          status: status || null,
-          occasion: occasion.length > 0 ? occasion : null,
-          season: season.length > 0 ? season : null,
-          expectedBudget: expectedBudget ? Number.parseFloat(expectedBudget) : null,
-          buyDeadline: buyDeadline || null,
-          isFavorite: isFavorite,
+          subcategory: subcategory || undefined,
+          brand: brand || undefined,
+          color: color || undefined,
+          size: size || undefined,
+          purchaseDate: purchaseDate || undefined,
+          price: price ? Number.parseFloat(price) : undefined,
+          imageUrl: imageUrl || undefined,
+          notes: notes || undefined,
+          status,
+          tags: tags.length > 0 ? tags : undefined,
+          isFavorite,
+          metadata: {
+            occasion: occasion.length > 0 ? occasion : undefined,
+            season: season.length > 0 ? season : undefined,
+          },
         }),
       })
 
@@ -132,11 +108,22 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
       onUpdate(data)
       onOpenChange(false)
     } catch (error) {
-      console.error("[v0] Error updating fashion item:", error)
+      console.error("Error updating fashion item:", error)
       toast.error("Failed to update item")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()])
+      setTagInput("")
+    }
+  }
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove))
   }
 
   return (
@@ -148,17 +135,17 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
             <DialogDescription>Make changes to your wardrobe or wishlist item</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* Type Toggle */}
+            {/* Status Toggle */}
             <div className="grid gap-2">
-              <Label>Type</Label>
+              <Label>Status</Label>
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="edit-type-toggle"
-                  checked={type === "buyed"}
-                  onCheckedChange={(checked) => setType(checked ? "buyed" : "need_to_buy")}
+                  id="edit-status-toggle"
+                  checked={status === "wardrobe"}
+                  onCheckedChange={(checked) => setStatus(checked ? "wardrobe" : "wishlist")}
                 />
-                <Label htmlFor="edit-type-toggle" className="text-sm">
-                  {type === "buyed" ? "Already Bought (Wardrobe)" : "Need to Buy (Wishlist)"}
+                <Label htmlFor="edit-status-toggle" className="text-sm">
+                  {status === "wardrobe" ? "In Wardrobe" : "In Wishlist"}
                 </Label>
               </div>
             </div>
@@ -185,6 +172,18 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
                 />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="edit-subcategory">Subcategory</Label>
+                <Input
+                  id="edit-subcategory"
+                  placeholder="e.g., Denim, Running"
+                  value={subcategory}
+                  onChange={(e) => setSubcategory(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label htmlFor="edit-brand">Brand</Label>
                 <Input
                   id="edit-brand"
@@ -193,9 +192,6 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
                   onChange={(e) => setBrand(e.target.value)}
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-color">Color</Label>
                 <Input
@@ -205,6 +201,9 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
                   onChange={(e) => setColor(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-size">Size</Label>
                 <Input
@@ -214,55 +213,28 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
                   onChange={(e) => setSize(e.target.value)}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-price">Price</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </div>
             </div>
 
-            {type === "buyed" ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-purchase-date">Purchase Date</Label>
-                  <Input
-                    id="edit-purchase-date"
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-price">Price</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-expected-budget">Expected Budget</Label>
-                  <Input
-                    id="edit-expected-budget"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={expectedBudget}
-                    onChange={(e) => setExpectedBudget(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-buy-deadline">Buy Deadline</Label>
-                  <Input
-                    id="edit-buy-deadline"
-                    type="date"
-                    value={buyDeadline}
-                    onChange={(e) => setBuyDeadline(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="edit-purchase-date">Purchase Date</Label>
+              <Input
+                id="edit-purchase-date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
+            </div>
 
             <ImageUpload
               value={imageUrl}
@@ -272,48 +244,40 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
             />
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-buying-link">Buying Link (Optional)</Label>
+              <Label htmlFor="edit-tags">Tags</Label>
               <div className="flex gap-2">
                 <Input
-                  id="edit-buying-link"
-                  type="url"
-                  placeholder="https://example.com/buy"
-                  value={buyingLink}
-                  onChange={(e) => setBuyingLink(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (buyingLink && (buyingLink.includes('amazon.com') || buyingLink.includes('flipkart.com') || buyingLink.includes('myntra.com'))) {
-                      // Simple fetch logic for edit dialog
-                      setIsLoading(true)
-                      fetch(`/api/scrape-product?url=${encodeURIComponent(buyingLink)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                          if (data.product_name) setItemName(data.product_name)
-                          if (data.category) setCategory(data.category)
-                          if (data.brand) setBrand(data.brand)
-                          if (data.color) setColor(data.color)
-                          if (data.size) setSize(Array.isArray(data.size) ? data.size.join(", ") : data.size)
-                          if (data.price?.current) setPrice(data.price.current.replace(/[^\d.]/g, ''))
-                          if (data.images?.[0]) setImageUrl(data.images[0])
-                          if (data.description) setNotes(data.description)
-                        })
-                        .catch(error => {
-                          console.error("Error fetching product data:", error)
-                          alert(`Failed to fetch product data: ${error.message || 'Unknown error'}`)
-                        })
-                        .finally(() => setIsLoading(false))
+                  id="edit-tags"
+                  placeholder="Add tag (e.g., casual, summer)"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addTag()
                     }
                   }}
-                  disabled={isLoading || !buyingLink}
-                  className="px-4"
-                >
-                  {isLoading ? "Fetching..." : "Fetch"}
+                />
+                <Button type="button" variant="outline" onClick={addTag}>
+                  Add
                 </Button>
               </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Occasion and Season */}
@@ -362,18 +326,6 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
                 </div>
               </div>
             </div>
-
-            {type === "buyed" && (
-              <div className="grid gap-2">
-                <Label htmlFor="edit-status">Status (Optional)</Label>
-                <Input
-                  id="edit-status"
-                  placeholder="e.g., New, Worn, Needs Wash"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                />
-              </div>
-            )}
 
             <div className="grid gap-2">
               <Label htmlFor="edit-notes">Notes (Optional)</Label>

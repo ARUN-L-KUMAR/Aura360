@@ -3,18 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TimeLogItem } from "./time-log-item"
-
-interface TimeLog {
-  id: string
-  user_id: string
-  activity: string
-  category: string | null
-  duration_minutes: number
-  date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { TimeLog } from "@/lib/types/time"
 
 interface TimeLogsListProps {
   initialLogs: TimeLog[]
@@ -31,7 +20,7 @@ export function TimeLogsList({ initialLogs }: TimeLogsListProps) {
     setLogs((prev) => prev.map((log) => (log.id === updatedLog.id ? updatedLog : log)))
   }
 
-  const totalMinutes = logs.reduce((sum, log) => sum + log.duration_minutes, 0)
+  const totalMinutes = logs.reduce((sum, log) => sum + log.duration, 0)
   const totalHours = Math.floor(totalMinutes / 60)
   const remainingMinutes = totalMinutes % 60
 

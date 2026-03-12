@@ -5,30 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, Palette, Shirt, Calendar, Zap } from "lucide-react"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface FashionSenseViewProps {
   wardrobeItems: FashionItem[]
@@ -208,7 +185,7 @@ export function FashionSenseView({ wardrobeItems }: FashionSenseViewProps) {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {wardrobeItems.filter(item => item.is_favorite).length}
+                {wardrobeItems.filter(item => item.isFavorite).length}
               </div>
               <div className="text-sm text-muted-foreground">Favorites</div>
             </div>

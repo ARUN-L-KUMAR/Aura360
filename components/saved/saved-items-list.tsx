@@ -9,15 +9,17 @@ import { Search } from "lucide-react"
 
 interface SavedItem {
   id: string
-  user_id: string
+  userId: string
+  workspaceId: string
   type: "article" | "video" | "product" | "recipe" | "other"
   title: string
   url: string | null
   description: string | null
+  imageUrl?: string | null
   tags: string[] | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
+  isFavorite: boolean
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 interface SavedItemsListProps {

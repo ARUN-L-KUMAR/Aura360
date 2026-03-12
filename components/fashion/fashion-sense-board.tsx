@@ -26,30 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Shirt, Sparkles, Palette, Trash2, RotateCcw } from "lucide-react"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface SortableBoardCardProps {
   item: FashionItem
@@ -84,10 +61,10 @@ function SortableBoardCard({ item, onRemove }: SortableBoardCardProps) {
     >
       <CardContent className="p-3">
         <div className="aspect-square w-full overflow-hidden bg-muted relative rounded">
-          {item.image_url ? (
+          {item.imageUrl ? (
             <img
-              src={item.image_url}
-              alt={item.item_name}
+              src={item.imageUrl}
+              alt={item.name}
               className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -104,7 +81,7 @@ function SortableBoardCard({ item, onRemove }: SortableBoardCardProps) {
         </div>
 
         <div className="mt-2">
-          <h4 className="font-medium text-xs line-clamp-1">{item.item_name}</h4>
+          <h4 className="font-medium text-xs line-clamp-1">{item.name}</h4>
           <div className="flex items-center gap-1 mt-1">
             <Badge variant="secondary" className="text-xs px-1 py-0">
               {item.category}
@@ -272,10 +249,10 @@ export function FashionSenseBoard({
               <Card key={item.id} className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
                 <CardContent className="p-2">
                   <div className="aspect-square w-full overflow-hidden bg-muted relative rounded">
-                    {item.image_url ? (
+                    {item.imageUrl ? (
                       <img
-                        src={item.image_url}
-                        alt={item.item_name}
+                        src={item.imageUrl}
+                        alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
@@ -289,7 +266,7 @@ export function FashionSenseBoard({
                       </div>
                     )}
                   </div>
-                  <p className="text-xs font-medium mt-1 line-clamp-1">{item.item_name}</p>
+                  <p className="text-xs font-medium mt-1 line-clamp-1">{item.name}</p>
                 </CardContent>
               </Card>
             ))}
@@ -306,10 +283,10 @@ export function FashionSenseBoard({
               <Card key={item.id} className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
                 <CardContent className="p-2">
                   <div className="aspect-square w-full overflow-hidden bg-muted relative rounded">
-                    {item.image_url ? (
+                    {item.imageUrl ? (
                       <img
-                        src={item.image_url}
-                        alt={item.item_name}
+                        src={item.imageUrl}
+                        alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
@@ -323,7 +300,7 @@ export function FashionSenseBoard({
                       </div>
                     )}
                   </div>
-                  <p className="text-xs font-medium mt-1 line-clamp-1">{item.item_name}</p>
+                  <p className="text-xs font-medium mt-1 line-clamp-1">{item.name}</p>
                 </CardContent>
               </Card>
             ))}

@@ -5,22 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FashionCard } from "./fashion-card"
 import { Search } from "lucide-react"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface WardrobeGridProps {
   initialItems: FashionItem[]
@@ -35,7 +20,7 @@ export function WardrobeGrid({ initialItems }: WardrobeGridProps) {
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
-      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.color?.toLowerCase().includes(searchQuery.toLowerCase())
 

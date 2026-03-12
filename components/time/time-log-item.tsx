@@ -70,7 +70,7 @@ export function TimeLogItem({ log, onDelete, onUpdate }: TimeLogItemProps) {
             </div>
             <p className="text-sm text-muted-foreground">
               {hours > 0 && `${hours}h `}
-              {minutes}m{log.notes && ` • ${log.notes}`}
+              {minutes}m{log.description && ` • ${log.description}`}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {new Date(log.date).toLocaleDateString("en-US", {

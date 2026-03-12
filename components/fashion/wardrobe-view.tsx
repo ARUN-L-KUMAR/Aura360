@@ -6,30 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { FashionCard } from "./fashion-card"
 import { Search, Filter } from "lucide-react"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface WardrobeViewProps {
   items: FashionItem[]
@@ -44,12 +21,13 @@ export function WardrobeView({ items }: WardrobeViewProps) {
 
   const categories = Array.from(new Set(items.map((item) => item.category)))
   const colors = Array.from(new Set(items.map((item) => item.color).filter(Boolean))) as string[]
-  const statuses = Array.from(new Set(items.map((item) => item.status).filter(Boolean))) as string[]
-  const occasions = Array.from(new Set(items.flatMap((item) => item.occasion || [])))
+  const tags = Array.from(new Set(items.flatMap((item) => item.tags || [])))
+  const statuses = ["wardrobe", "wishlist", "sold", "donated"] as const
+  const occasions = tags // Occasions are derived from tags
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
-      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.color?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -57,7 +35,7 @@ export function WardrobeView({ items }: WardrobeViewProps) {
     const matchesCategory = filterCategory === "all" || item.category === filterCategory
     const matchesColor = filterColor === "all" || item.color === filterColor
     const matchesStatus = filterStatus === "all" || item.status === filterStatus
-    const matchesOccasion = filterOccasion === "all" || (item.occasion && item.occasion.includes(filterOccasion))
+    const matchesOccasion = filterOccasion === "all" || (item.tags && item.tags.includes(filterOccasion))
 
     return matchesSearch && matchesCategory && matchesColor && matchesStatus && matchesOccasion
   })

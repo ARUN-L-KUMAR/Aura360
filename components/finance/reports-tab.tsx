@@ -34,24 +34,7 @@ import {
 } from "recharts"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  date: string
-  needs_review: boolean
-  created_at: string
-  updated_at: string
-}
-
-interface BalanceData {
-  cash_balance: number
-  account_balance: number
-}
+import type { Transaction, BalanceData } from "@/lib/types/finance"
 
 interface ReportsTabProps {
   transactions: Transaction[]
@@ -116,8 +99,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
   const walletBreakdown = useMemo(() => {
     if (!balanceData) return []
     return [
-      { name: "Bank / UPI", value: balanceData.account_balance, color: "#3b82f6" },
-      { name: "Cash", value: balanceData.cash_balance, color: "#22c55e" },
+      { name: "Bank / UPI", value: balanceData.accountBalance, color: "#3b82f6" },
+      { name: "Cash", value: balanceData.cashBalance, color: "#22c55e" },
     ]
   }, [balanceData])
 
@@ -477,7 +460,7 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                     "font-bold text-blue-600 dark:text-blue-400",
                     isMobile ? "text-base" : "text-xl"
                   )}>
-                    ₹{balanceData.account_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{balanceData.accountBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className={cn(
@@ -492,7 +475,7 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                     "font-bold text-green-600 dark:text-green-400",
                     isMobile ? "text-base" : "text-xl"
                   )}>
-                    ₹{balanceData.cash_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    ₹{balanceData.cashBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

@@ -24,19 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  payment_method: string | null
-  date: string
-  created_at: string
-  updated_at: string
-}
+import type { Transaction } from "@/lib/types/finance"
 
 interface MobileTransactionCardProps {
   transaction: Transaction
@@ -142,10 +130,10 @@ export function MobileTransactionCard({ transaction, onEdit, onDelete }: MobileT
                     year: "numeric",
                   })}
                 </span>
-                {transaction.payment_method && (
+                {transaction.paymentMethod && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                    {paymentMethodIcons[transaction.payment_method]}
-                    {formatPaymentMethod(transaction.payment_method)}
+                    {paymentMethodIcons[transaction.paymentMethod]}
+                    {formatPaymentMethod(transaction.paymentMethod)}
                   </span>
                 )}
               </div>

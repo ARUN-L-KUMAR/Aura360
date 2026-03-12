@@ -6,30 +6,7 @@ import { WardrobeView } from "./wardrobe-view"
 import { WishlistView } from "./wishlist-view"
 import { FashionSenseView } from "./fashion-sense-view"
 import { Shirt, ShoppingCart, Sparkles } from "lucide-react"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface FashionTabsProps {
   initialItems: FashionItem[]
@@ -38,8 +15,8 @@ interface FashionTabsProps {
 export function FashionTabs({ initialItems }: FashionTabsProps) {
   const [activeTab, setActiveTab] = useState("wardrobe")
 
-  const wardrobeItems = initialItems.filter(item => item.type === "buyed")
-  const wishlistItems = initialItems.filter(item => item.type === "need_to_buy")
+  const wardrobeItems = initialItems.filter(item => item.status === "wardrobe")
+  const wishlistItems = initialItems.filter(item => item.status === "wishlist")
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

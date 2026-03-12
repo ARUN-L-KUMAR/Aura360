@@ -1,86 +1,91 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { DragDropWardrobe } from "./drag-drop-wardrobe"
 import { DragDropWishlist } from "./drag-drop-wishlist"
 import { FashionSenseBoard } from "./fashion-sense-board"
 import { AddFashionButton } from "./add-fashion-button"
 import { Separator } from "@/components/ui/separator"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface DragDropDashboardProps {
   initialItems: FashionItem[]
 }
 
+function applySavedOrder(items: FashionItem[], storageKey: string) {
+  const savedOrder = localStorage.getItem(storageKey)
+
+  if (!savedOrder) {
+    return items
+  }
+
+  try {
+    const order = JSON.parse(savedOrder) as string[]
+    const orderedItems = order
+      .map((id) => items.find((item) => item.id === id))
+      .filter((item): item is FashionItem => Boolean(item))
+    const remainingItems = items.filter((item) => !order.includes(item.id))
+
+    return [...orderedItems, ...remainingItems]
+  } catch (error) {
+    console.error(`Error loading saved order for ${storageKey}:`, error)
+    return items
+  }
+}
+
 export function DragDropDashboard({ initialItems }: DragDropDashboardProps) {
   const [wardrobeItems, setWardrobeItems] = useState<FashionItem[]>(
-    initialItems.filter(item => item.type === "buyed")
+    initialItems.filter(item => item.status === "wardrobe")
   )
   const [wishlistItems, setWishlistItems] = useState<FashionItem[]>(
-    initialItems.filter(item => item.type === "need_to_buy")
+    initialItems.filter(item => item.status === "wishlist")
   )
+  const hasRestoredOrder = useRef(false)
+  const skipNextWardrobePersist = useRef(false)
+  const skipNextWishlistPersist = useRef(false)
 
-  // Load saved order from localStorage on mount
+  // Restore saved order whenever the source items change.
   useEffect(() => {
-    const savedWardrobeOrder = localStorage.getItem('fashion-wardrobe-order')
-    const savedWishlistOrder = localStorage.getItem('fashion-wishlist-order')
+    const nextWardrobeItems = applySavedOrder(
+      initialItems.filter((item) => item.status === "wardrobe"),
+      "fashion-wardrobe-order"
+    )
+    const nextWishlistItems = applySavedOrder(
+      initialItems.filter((item) => item.status === "wishlist"),
+      "fashion-wishlist-order"
+    )
 
-    if (savedWardrobeOrder) {
-      try {
-        const order = JSON.parse(savedWardrobeOrder)
-        const orderedItems = order
-          .map((id: string) => wardrobeItems.find(item => item.id === id))
-          .filter(Boolean)
-        const remainingItems = wardrobeItems.filter(item => !order.includes(item.id))
-        setWardrobeItems([...orderedItems, ...remainingItems])
-      } catch (error) {
-        console.error('Error loading wardrobe order:', error)
-      }
+    skipNextWardrobePersist.current = true
+    skipNextWishlistPersist.current = true
+    setWardrobeItems(nextWardrobeItems)
+    setWishlistItems(nextWishlistItems)
+    hasRestoredOrder.current = true
+  }, [initialItems])
+
+  // Save order only after the saved order has been restored.
+  useEffect(() => {
+    if (!hasRestoredOrder.current) {
+      return
     }
 
-    if (savedWishlistOrder) {
-      try {
-        const order = JSON.parse(savedWishlistOrder)
-        const orderedItems = order
-          .map((id: string) => wishlistItems.find(item => item.id === id))
-          .filter(Boolean)
-        const remainingItems = wishlistItems.filter(item => !order.includes(item.id))
-        setWishlistItems([...orderedItems, ...remainingItems])
-      } catch (error) {
-        console.error('Error loading wishlist order:', error)
-      }
+    if (skipNextWardrobePersist.current) {
+      skipNextWardrobePersist.current = false
+      return
     }
-  }, [])
 
-  // Save order to localStorage whenever items change
-  useEffect(() => {
     localStorage.setItem('fashion-wardrobe-order', JSON.stringify(wardrobeItems.map(item => item.id)))
   }, [wardrobeItems])
 
   useEffect(() => {
+    if (!hasRestoredOrder.current) {
+      return
+    }
+
+    if (skipNextWishlistPersist.current) {
+      skipNextWishlistPersist.current = false
+      return
+    }
+
     localStorage.setItem('fashion-wishlist-order', JSON.stringify(wishlistItems.map(item => item.id)))
   }, [wishlistItems])
 
@@ -93,15 +98,15 @@ export function DragDropDashboard({ initialItems }: DragDropDashboardProps) {
   }
 
   const handleItemMovedToWardrobe = (item: FashionItem) => {
-    // Update the item type and add to wardrobe
-    const updatedItem = { ...item, type: "buyed" as const, purchase_date: new Date().toISOString().split('T')[0], status: "New" }
+    // Update the item status and add to wardrobe
+    const updatedItem = { ...item, status: "wardrobe" as const, purchaseDate: new Date().toISOString().split('T')[0] }
     setWardrobeItems(prev => [...prev, updatedItem])
     setWishlistItems(prev => prev.filter(i => i.id !== item.id))
   }
 
   const handleItemMovedToWishlist = (item: FashionItem) => {
-    // Update the item type and add to wishlist
-    const updatedItem = { ...item, type: "need_to_buy" as const }
+    // Update the item status and add to wishlist
+    const updatedItem = { ...item, status: "wishlist" as const }
     setWishlistItems(prev => [...prev, updatedItem])
     setWardrobeItems(prev => prev.filter(i => i.id !== item.id))
   }
@@ -165,7 +170,7 @@ export function DragDropDashboard({ initialItems }: DragDropDashboardProps) {
           </div>
           <div>
             <div className="text-2xl font-bold text-pink-600">
-              {wardrobeItems.filter(item => item.is_favorite).length}
+              {wardrobeItems.filter(item => item.isFavorite).length}
             </div>
             <div className="text-sm text-muted-foreground">Favorites</div>
           </div>

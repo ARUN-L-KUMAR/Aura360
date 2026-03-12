@@ -3,21 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Flame, Beef, Wheat, Droplet } from "lucide-react"
 import { useMemo } from "react"
-
-interface Meal {
-  id: string
-  user_id: string
-  meal_type: "breakfast" | "lunch" | "dinner" | "snack"
-  food_name: string
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { Meal } from "@/lib/types/food"
 
 interface FoodStatsProps {
   meals: Meal[]

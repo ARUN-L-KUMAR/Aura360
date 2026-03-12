@@ -1,0 +1,13 @@
+--- Debugging Fashion Items ---
+
+Users in DB:
+{"id":"c12c2545-5df2-41b0-ac82-2420651bbae9","email":"laxamans1980@gmail.com"}
+{"id":"6f336076-77c8-4f21-8b41-9cfc9f61755a","email":"arunkumar582004@gmail.com"}
+
+Workspaces in DB:
+{"id":"33f294a2-3a77-4b89-9abb-49f413715637","name":"ARUN KUMAR L's Workspace","owner_id":"6f336076-77c8-4f21-8b41-9cfc9f61755a"}
+{"id":"4ddc8847-fa02-4005-8ab0-985464974427","name":"Lakshmi Narayanan's Workspace","owner_id":"c12c2545-5df2-41b0-ac82-2420651bbae9"}
+
+Fashion Items in DB:
+{"id":"e5d7c20c-d566-4f19-add1-9c70ff3b3281","workspace_id":"33f294a2-3a77-4b89-9abb-49f413715637","user_id":"6f336076-77c8-4f21-8b41-9cfc9f61755a","name":"Shoe Cleaner "}
+{"id":"9762fced-6378-4d91-9a7c-3ebe8cda946c","workspace_id":"33f294a2-3a77-4b89-9abb-49f413715637","user_id":"6f336076-77c8-4f21-8b41-9cfc9f61755a","name":"Classic Digital Vintage Wrist Watch"}

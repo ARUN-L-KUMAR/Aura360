@@ -4,18 +4,7 @@ import { useState } from "react"
 import { NoteCard } from "./note-card"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
-
-interface Note {
-  id: string
-  user_id: string
-  title: string
-  content: string | null
-  category: string | null
-  tags: string[] | null
-  is_pinned: boolean
-  created_at: string
-  updated_at: string
-}
+import type { Note } from "@/lib/types/notes"
 
 interface NotesGridProps {
   initialNotes: Note[]

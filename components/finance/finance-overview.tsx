@@ -5,33 +5,7 @@ import { TrendingUp, TrendingDown, Wallet, PiggyBank, AlertCircle, CheckCircle2 
 import { useMemo, useState, useEffect } from "react"
 import { EditBalanceDialog } from "./edit-balance-dialog"
 import { toast } from "sonner"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  date: string
-  needs_review: boolean
-  created_at: string
-  updated_at: string
-}
-
-interface FinanceOverviewProps {
-  transactions: Transaction[]
-}
-
-interface BalanceData {
-  id: string | null
-  cash_balance: number
-  account_balance: number
-  real_balance: number
-  expected_balance: number
-  difference: number
-  updated_at: string | null
-}
+import type { Transaction, BalanceData } from "@/lib/types/finance"
 
 export function FinanceOverview({ transactions }: FinanceOverviewProps) {
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null)
@@ -70,23 +44,27 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
         
         setBalanceData({
           id: null,
-          cash_balance: parseFloat(cashBalance),
-          account_balance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance),
-          real_balance: realBalance,
-          expected_balance: 0,
+          workspaceId: "",
+          userId: "",
+          cashBalance: parseFloat(cashBalance),
+          accountBalance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance),
+          realBalance: realBalance,
+          expectedBalance: 0,
           difference: 0,
-          updated_at: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         })
       } else {
         // Initialize with default zero balances
         setBalanceData({
           id: null,
-          cash_balance: 0,
-          account_balance: 0,
-          real_balance: 0,
-          expected_balance: 0,
+          workspaceId: "",
+          userId: "",
+          cashBalance: 0,
+          accountBalance: 0,
+          realBalance: 0,
+          expectedBalance: 0,
           difference: 0,
-          updated_at: null,
+          updatedAt: null,
         })
       }
     } catch (error) {
@@ -248,8 +226,8 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
               </p>
             </div>
             <EditBalanceDialog
-              initialCashBalance={balanceData.cash_balance}
-              initialAccountBalance={balanceData.account_balance}
+              initialCashBalance={balanceData.cashBalance}
+              initialAccountBalance={balanceData.accountBalance}
               onBalanceUpdated={fetchBalanceData}
             />
           </CardHeader>
@@ -317,7 +295,7 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
                     GPay Account Balance
                   </span>
                   <span className="font-semibold">
-                    ₹{balanceData.account_balance.toLocaleString("en-IN", {
+                    ₹{balanceData.accountBalance.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -329,7 +307,7 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
                     Cash in Hand
                   </span>
                   <span className="font-semibold">
-                    ₹{balanceData.cash_balance.toLocaleString("en-IN", {
+                    ₹{balanceData.cashBalance.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}

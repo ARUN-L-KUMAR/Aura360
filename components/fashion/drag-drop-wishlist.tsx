@@ -25,30 +25,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Shirt, ExternalLink, ShoppingCart, Star, GripVertical, Plus } from "lucide-react"
 import { toast } from "sonner"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface SortableWishlistCardProps {
   item: FashionItem
@@ -94,7 +71,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
   }
 
   const handleMarkAsBought = async () => {
-    if (!confirm(`Mark "${item.item_name}" as bought and move to wardrobe?`)) return
+    if (!confirm(`Mark "${item.name}" as bought and move to wardrobe?`)) return
 
     try {
       const response = await fetch(`/api/fashion?id=${item.id}`, {
@@ -123,9 +100,8 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
     <Card
       ref={setNodeRef}
       style={style}
-      className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing border-2 border-dashed border-gray-300 hover:border-indigo-300 ${
-        isDragging ? 'shadow-2xl scale-105' : ''
-      }`}
+      className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing border-2 border-dashed border-gray-300 hover:border-indigo-300 ${isDragging ? 'shadow-2xl scale-105' : ''
+        }`}
     >
       {/* Drag Handle */}
       <div
@@ -138,10 +114,10 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
 
       <CardContent className="p-4 space-y-3">
         <div className="aspect-square w-full overflow-hidden bg-muted relative rounded-lg">
-          {item.image_url ? (
+          {item.imageUrl ? (
             <img
-              src={item.image_url}
-              alt={item.item_name}
+              src={item.imageUrl}
+              alt={item.name}
               className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -159,8 +135,8 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
 
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm line-clamp-1">{item.item_name}</h3>
-            {item.is_favorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
+            <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+            {item.isFavorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
           </div>
           <div className="flex items-center gap-1 mt-1">
             <Badge variant="secondary" className="text-xs">
@@ -173,12 +149,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
             )}
           </div>
           {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
-          {item.expected_budget && <p className="text-xs font-medium text-foreground">Budget: ₹{Number(item.expected_budget).toFixed(0)}</p>}
-          {item.buy_deadline && (
-            <p className="text-xs text-muted-foreground">
-              Due: {new Date(item.buy_deadline).toLocaleDateString()}
-            </p>
-          )}
+          {item.price && <p className="text-xs font-medium text-foreground">Budget: ₹{Number(item.price).toFixed(0)}</p>}
         </div>
 
         <div className="flex items-center gap-1 pt-1">

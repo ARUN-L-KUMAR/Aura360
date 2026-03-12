@@ -3,22 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, Flame, Target, TrendingUp } from "lucide-react"
 import { useMemo } from "react"
-
-interface FitnessEntry {
-  id: string
-  user_id: string
-  type: "workout" | "measurement" | "goal"
-  workout_type: string | null
-  duration_minutes: number | null
-  calories_burned: number | null
-  measurement_type: string | null
-  measurement_value: number | null
-  measurement_unit: string | null
-  date: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
+import type { FitnessEntry } from "@/lib/types/fitness"
 
 interface FitnessStatsProps {
   fitnessData: FitnessEntry[]
@@ -28,8 +13,8 @@ export function FitnessStats({ fitnessData }: FitnessStatsProps) {
   const stats = useMemo(() => {
     const workouts = fitnessData.filter((entry) => entry.type === "workout")
     const totalWorkouts = workouts.length
-    const totalMinutes = workouts.reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0)
-    const totalCalories = workouts.reduce((sum, entry) => sum + (entry.calories_burned || 0), 0)
+    const totalMinutes = workouts.reduce((sum, entry) => sum + (entry.duration || 0), 0)
+    const totalCalories = workouts.reduce((sum, entry) => sum + (entry.caloriesBurned || 0), 0)
     const goals = fitnessData.filter((entry) => entry.type === "goal").length
 
     return { totalWorkouts, totalMinutes, totalCalories, goals }

@@ -5,19 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, TrendingUp, TrendingDown, PiggyBank } from "lucide-react"
 import { useState } from "react"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  payment_method: string | null
-  date: string
-  created_at: string
-  updated_at: string
-}
+import type { Transaction } from "@/lib/types/finance"
 
 interface TransactionItemProps {
   transaction: Transaction

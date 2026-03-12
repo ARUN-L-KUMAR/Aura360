@@ -7,39 +7,17 @@ import { EditBalanceDialog } from "./edit-balance-dialog"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  date: string
-  needs_review: boolean
-  created_at: string
-  updated_at: string
-}
-
-interface FinanceOverviewTabProps {
-  transactions: Transaction[]
-}
-
-interface BalanceData {
-  id: string | null
-  cash_balance: number
-  account_balance: number
-  real_balance: number
-  expected_balance: number
-  difference: number
-  updated_at: string | null
-}
+import type { Transaction, BalanceData } from "@/lib/types/finance"
 
 const EXPENSE_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
   "#22c55e", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6",
   "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899"
 ]
+
+interface FinanceOverviewTabProps {
+  transactions: Transaction[]
+}
 
 export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
   const isMobile = useIsMobile()
@@ -85,22 +63,26 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
         
         setBalanceData({
           id: null,
-          cash_balance: parseFloat(cashBalance),
-          account_balance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance), // Combined digital balances
-          real_balance: realBalance,
-          expected_balance: 0, // Will be calculated from transactions
+          workspaceId: "",
+          userId: "",
+          cashBalance: parseFloat(cashBalance),
+          accountBalance: parseFloat(accountBalance) + parseFloat(cardBalance) + parseFloat(bankBalance), // Combined digital balances
+          realBalance: realBalance,
+          expectedBalance: 0, // Will be calculated from transactions
           difference: 0, // Will be calculated
-          updated_at: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         })
       } else {
         setBalanceData({
           id: null,
-          cash_balance: 0,
-          account_balance: 0,
-          real_balance: 0,
-          expected_balance: 0,
+          workspaceId: "",
+          userId: "",
+          cashBalance: 0,
+          accountBalance: 0,
+          realBalance: 0,
+          expectedBalance: 0,
           difference: 0,
-          updated_at: null,
+          updatedAt: null,
         })
       }
     } catch (error) {
@@ -339,8 +321,8 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
               )}>Available Balance</CardTitle>
               {!isLoadingBalance && !balanceError && balanceData && (
                 <EditBalanceDialog
-                  initialCashBalance={balanceData.cash_balance}
-                  initialAccountBalance={balanceData.account_balance}
+                  initialCashBalance={balanceData.cashBalance}
+                  initialAccountBalance={balanceData.accountBalance}
                   onBalanceUpdated={fetchBalanceData}
                 />
               )}
@@ -436,7 +418,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                   Bank / UPI
                 </span>
                 <span className={cn("font-semibold", isMobile ? "text-sm" : "")}>
-                  ₹{balanceData.account_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  ₹{balanceData.accountBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className={cn(
@@ -451,7 +433,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                   Cash in Hand
                 </span>
                 <span className={cn("font-semibold", isMobile ? "text-sm" : "")}>
-                  ₹{balanceData.cash_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  ₹{balanceData.cashBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

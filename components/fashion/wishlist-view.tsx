@@ -8,30 +8,7 @@ import { FashionCard } from "./fashion-card"
 import { Search, Plus, ShoppingCart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-
-interface FashionItem {
-  id: string
-  user_id: string
-  item_name: string
-  category: string
-  brand: string | null
-  color: string | null
-  size: string | null
-  purchase_date: string | null
-  price: number | null
-  image_url: string | null
-  buying_link: string | null
-  notes: string | null
-  type: "buyed" | "need_to_buy"
-  status: string | null
-  occasion: string[] | null
-  season: string[] | null
-  expected_budget: number | null
-  buy_deadline: string | null
-  is_favorite: boolean
-  created_at: string
-  updated_at: string
-}
+import type { FashionItem } from "@/lib/types/fashion"
 
 interface WishlistViewProps {
   items: FashionItem[]
@@ -43,7 +20,7 @@ export function WishlistView({ items }: WishlistViewProps) {
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
-      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase())
 
@@ -51,16 +28,15 @@ export function WishlistView({ items }: WishlistViewProps) {
   })
 
   const handleMarkAsBought = async (item: FashionItem) => {
-    if (!confirm(`Mark "${item.item_name}" as bought and move to wardrobe?`)) return
+    if (!confirm(`Mark "${item.name}" as bought and move to wardrobe?`)) return
 
     try {
       const response = await fetch(`/api/fashion?id=${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "buyed",
+          status: "wardrobe",
           purchaseDate: new Date().toISOString().split('T')[0],
-          status: "New"
         }),
       })
 
@@ -71,7 +47,7 @@ export function WishlistView({ items }: WishlistViewProps) {
       toast.success("Item marked as bought")
       router.refresh()
     } catch (error) {
-      console.error("[v0] Error updating fashion item:", error)
+      console.error("Error updating fashion item:", error)
       toast.error("Failed to mark as bought")
     }
   }
@@ -127,16 +103,6 @@ export function WishlistView({ items }: WishlistViewProps) {
                   Bought
                 </Button>
               </div>
-              {item.expected_budget && (
-                <Badge variant="secondary" className="absolute bottom-2 left-2">
-                  Budget: ₹{item.expected_budget}
-                </Badge>
-              )}
-              {item.buy_deadline && (
-                <Badge variant="outline" className="absolute bottom-2 right-2">
-                  Due: {new Date(item.buy_deadline).toLocaleDateString()}
-                </Badge>
-              )}
             </div>
           ))}
         </div>

@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 import { TrendingUp, TrendingDown, PiggyBank, IndianRupee, Calendar, Tag, FileText, Wallet, CreditCard, Banknote, Smartphone, Building2 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
+import type { Transaction } from "@/lib/types/finance"
 
 // Payment method options
 const paymentMethods = [
@@ -31,19 +32,6 @@ const paymentMethods = [
   { value: "wallet", label: "Wallet", icon: Wallet },
   { value: "other", label: "Other", icon: Wallet },
 ]
-
-interface Transaction {
-  id: string
-  user_id: string
-  type: "income" | "expense" | "investment"
-  amount: number
-  category: string
-  description: string | null
-  payment_method: string | null
-  date: string
-  created_at: string
-  updated_at: string
-}
 
 interface AddTransactionDialogProps {
   open: boolean
