@@ -10,7 +10,7 @@ export function AddFashionButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="bg-indigo-600 hover:bg-indigo-700">
+      <Button onClick={() => setOpen(true)} className="font-bold uppercase tracking-widest text-[10px]">
         <Plus className="h-4 w-4 mr-2" />
         Add Item
       </Button>

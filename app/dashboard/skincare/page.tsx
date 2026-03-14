@@ -27,21 +27,21 @@ export default async function SkincarePage() {
     .orderBy(desc(skincareTable.createdAt))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6 md:p-10 pb-24 md:pb-10">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Skincare"
           description="Track your skincare routine and products"
           iconName="sparkles"
-          iconBgColor="bg-rose-100 dark:bg-rose-900/50"
-          iconColor="text-rose-600 dark:text-rose-400"
+          iconBgColor="bg-secondary"
+          iconColor="text-slate-600 dark:text-slate-400"
         >
           <AddProductButton />
         </ModuleHeader>
 
         <div className="space-y-6">
-          <SkincareRoutine products={products || []} />
-          <ProductsList initialProducts={products || []} />
+          <SkincareRoutine products={products as any || []} />
+          <ProductsList initialProducts={products as any || []} />
         </div>
       </div>
     </div>

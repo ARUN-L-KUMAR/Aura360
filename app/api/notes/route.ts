@@ -19,6 +19,7 @@ const createNoteSchema = z.object({
   isArchived: z.boolean().optional(),
   color: z.string().optional(),
   attachments: z.array(z.string()).optional(),
+  metadata: z.record(z.any()).optional(),
 })
 
 const updateNoteSchema = createNoteSchema.partial()

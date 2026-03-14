@@ -10,7 +10,7 @@ export function AddMealButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="bg-orange-600 hover:bg-orange-700">
+      <Button onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4 mr-2" />
         Add Meal
       </Button>

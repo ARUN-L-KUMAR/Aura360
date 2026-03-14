@@ -106,37 +106,36 @@ function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardPr
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                <Shirt className="w-12 h-12 text-indigo-400 dark:text-indigo-600" />
+              <div className="w-full h-full bg-secondary flex items-center justify-center border-b rounded-t-lg">
+                <Shirt className="w-12 h-12 text-muted-foreground/40" />
               </div>
             )}
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
-              {item.isFavorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
+              <h3 className="font-bold text-sm line-clamp-1 tracking-tight">{item.name}</h3>
+              {item.isFavorite && <Star className="w-3 h-3 text-foreground fill-current flex-shrink-0" />}
             </div>
             <div className="flex items-center gap-1 mt-1">
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border">
                 {item.category}
               </Badge>
               {item.color && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">
                   {item.color}
                 </Badge>
               )}
             </div>
-            {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
-            {condition && <p className="text-xs text-muted-foreground mt-1">Condition: {condition}</p>}
-            {item.price && <p className="text-xs font-medium text-foreground">₹{Number(item.price).toFixed(0)}</p>}
+            {item.brand && <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-2">{item.brand}</p>}
+            {item.price && <p className="text-sm font-bold text-foreground mt-1">₹{Number(item.price).toFixed(0)}</p>}
           </div>
 
           {buyingLink && (
-            <Button asChild variant="ghost" size="sm" className="h-7 w-full justify-start px-0 text-xs text-indigo-600 hover:text-indigo-700">
+            <Button asChild variant="outline" size="sm" className="h-7 w-full justify-center text-[10px] font-bold uppercase tracking-widest">
               <a href={buyingLink} target="_blank" rel="noreferrer" onPointerDown={(e) => e.stopPropagation()}>
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Open Buying Link
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Buy
               </a>
             </Button>
           )}
@@ -145,7 +144,7 @@ function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardPr
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 bg-transparent text-xs h-7"
+              className="flex-1 bg-transparent text-[10px] font-bold uppercase tracking-widest h-7"
               onClick={() => setShowEditDialog(true)}
             >
               <Edit className="h-3 w-3 mr-1" />
@@ -154,7 +153,7 @@ function SortableFashionCard({ item, onDelete, onUpdate }: SortableFashionCardPr
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-xs h-7 px-2"
+              className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-[10px] h-7 px-2"
               onClick={handleDelete}
             >
               <Trash2 className="h-3 w-3" />
@@ -208,9 +207,14 @@ export function DragDropWardrobe({ items, onItemsChange }: DragDropWardrobeProps
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          🧥 My Wardrobe
-        </h2>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center border border-primary/20">
+            <Shirt className="w-4 h-4 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            My Wardrobe
+          </h2>
+        </div>
         <span className="text-sm text-muted-foreground">
           {items.length} items • Drag to reorder
         </span>

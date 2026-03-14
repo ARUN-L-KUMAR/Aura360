@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, TrendingUp, TrendingDown, PiggyBank } from "lucide-react"
+import { Trash2, Edit, TrendingUp, TrendingDown, PiggyBank, Wallet } from "lucide-react"
 import { useState } from "react"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import type { Transaction } from "@/lib/types/finance"
@@ -45,21 +45,27 @@ export function TransactionItem({ transaction, onDelete, onUpdate }: Transaction
   const typeConfig = {
     income: {
       icon: TrendingUp,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-50 dark:bg-green-950/50",
-      badge: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     expense: {
       icon: TrendingDown,
-      color: "text-red-600 dark:text-red-400",
-      bgColor: "bg-red-50 dark:bg-red-950/50",
-      badge: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     investment: {
       icon: PiggyBank,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-950/50",
-      badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
+    },
+    transfer: {
+      icon: Wallet,
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
   }
 
@@ -91,7 +97,7 @@ export function TransactionItem({ transaction, onDelete, onUpdate }: Transaction
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <p className={`text-lg font-bold ${config.color}`}>
+          <p className="text-lg font-bold">
             {transaction.type === "income" ? "+" : "-"}₹
             {Number(transaction.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>

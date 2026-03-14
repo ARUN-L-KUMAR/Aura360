@@ -47,7 +47,7 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
 
   return (
     <>
-      <Card className="group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden">
+      <Card className="group relative backdrop-blur-sm bg-card/80 border-border/50 transition-all overflow-hidden">
         <CardHeader className="p-0">
           {item.imageUrl ? (
             <div className="aspect-square w-full overflow-hidden bg-muted relative">
@@ -64,63 +64,41 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
               />
             </div>
           ) : (
-            <div className="aspect-square w-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
-              <Shirt className="w-16 h-16 text-indigo-400 dark:text-indigo-600" />
+            <div className="aspect-square w-full bg-secondary flex items-center justify-center border-b">
+              <Shirt className="w-16 h-16 text-muted-foreground/40" />
             </div>
           )}
         </CardHeader>
         <CardContent className="p-4 space-y-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg line-clamp-1">{item.name}</h3>
-              {item.isFavorite && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
+              <h3 className="font-bold text-lg line-clamp-1 tracking-tight">{item.name}</h3>
+              {item.isFavorite && <Star className="w-4 h-4 text-foreground fill-current" />}
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary" className="text-xs capitalize">
+              <Badge className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border bg-secondary text-foreground">
                 {item.category}
               </Badge>
               {item.color && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5">
                   {item.color}
                 </Badge>
               )}
-              {item.subcategory && (
-                <Badge variant="outline" className="text-xs capitalize">
-                  {item.subcategory}
-                </Badge>
-              )}
             </div>
-            {item.tags && item.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {item.tags.slice(0, 2).map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs capitalize">
-                    {tag}
-                  </Badge>
-                ))}
-                {item.tags.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{item.tags.length - 2}
-                  </Badge>
-                )}
-              </div>
-            )}
           </div>
 
-          <div className="text-sm text-muted-foreground space-y-1">
+          <div className="text-sm text-muted-foreground space-y-1 font-medium">
             {item.brand && <p>Brand: {item.brand}</p>}
             {item.size && <p>Size: {item.size}</p>}
             {condition && <p>Condition: {condition}</p>}
-            {item.price && <p className="font-medium text-foreground">₹{Number(item.price).toFixed(2)}</p>}
-            {item.wearCount !== null && item.wearCount !== undefined && (
-              <p>Worn: {item.wearCount} {item.wearCount === 1 ? 'time' : 'times'}</p>
-            )}
+            {item.price && <p className="font-bold text-lg text-foreground mt-2">₹{Number(item.price).toFixed(2)}</p>}
           </div>
 
           {buyingLink && (
-            <Button asChild variant="ghost" size="sm" className="h-8 w-full justify-start px-0 text-xs text-indigo-600 hover:text-indigo-700">
+            <Button asChild variant="outline" size="sm" className="h-8 w-full justify-center text-xs font-bold uppercase tracking-widest">
               <a href={buyingLink} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Open Buying Link
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Buy Item
               </a>
             </Button>
           )}

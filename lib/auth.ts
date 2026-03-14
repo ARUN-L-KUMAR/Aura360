@@ -74,9 +74,11 @@ export const authConfig: NextAuthConfig = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // Initial sign in
+      // Initial sign in - populate token from user object
       if (user && user.id) {
         token.id = user.id
+        token.name = user.name
+        token.picture = user.image
 
         // Get user's primary workspace
         const [workspace] = await db
@@ -90,17 +92,23 @@ export const authConfig: NextAuthConfig = {
         }
       }
 
-      // Update session
-      if (trigger === "update" && session?.workspaceId) {
-        token.workspaceId = session.workspaceId
+      // Update session logic
+      if (trigger === "update" && session) {
+        if (session.workspaceId) token.workspaceId = session.workspaceId
+        if (session.name) token.name = session.name
+        if (session.image) token.picture = session.image
+        // Also support direct 'picture' if passed
+        if (session.picture) token.picture = session.picture
       }
 
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token) {
         session.user.id = token.id as string
         session.user.workspaceId = token.workspaceId as string
+        session.user.name = token.name as string
+        session.user.image = token.picture as string
       }
       return session
     },

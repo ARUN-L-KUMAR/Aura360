@@ -51,6 +51,7 @@ export const users = pgTable(
     name: text("name"),
     password: text("password"), // bcrypt hashed
     image: text("image"),
+    coverImage: text("cover_image"),
     phoneNumber: text("phone_number"),
     bio: text("bio"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

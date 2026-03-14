@@ -27,14 +27,14 @@ export default async function FoodPage() {
     .orderBy(desc(foodTable.date))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6 md:p-10 pb-24 md:pb-10">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Food"
           description="Track your meals and nutrition"
           iconName="utensils-crossed"
-          iconBgColor="bg-orange-100 dark:bg-orange-900/50"
-          iconColor="text-orange-600 dark:text-orange-400"
+          iconBgColor="bg-secondary"
+          iconColor="text-slate-600 dark:text-slate-400"
         >
           <AddMealButton />
         </ModuleHeader>

@@ -27,14 +27,14 @@ export default async function FitnessPage() {
     .orderBy(desc(fitnessTable.date))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6 md:p-10 pb-24 md:pb-10">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Fitness"
           description="Track your workouts and progress"
           iconName="dumbbell"
-          iconBgColor="bg-purple-100 dark:bg-purple-900/50"
-          iconColor="text-purple-600 dark:text-purple-400"
+          iconBgColor="bg-secondary"
+          iconColor="text-slate-600 dark:text-slate-400"
         >
           <AddFitnessButton />
         </ModuleHeader>

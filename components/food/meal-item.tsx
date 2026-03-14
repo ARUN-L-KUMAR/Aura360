@@ -59,27 +59,27 @@ export function MealItem({ meal, onDelete, onUpdate }: MealItemProps) {
   const mealConfig = {
     breakfast: {
       icon: Coffee,
-      color: "text-yellow-600 dark:text-yellow-400",
-      bgColor: "bg-yellow-50 dark:bg-yellow-950/50",
-      badge: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     lunch: {
       icon: Sun,
-      color: "text-orange-600 dark:text-orange-400",
-      bgColor: "bg-orange-50 dark:bg-orange-950/50",
-      badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     dinner: {
       icon: Moon,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-950/50",
-      badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     snack: {
       icon: Cookie,
-      color: "text-pink-600 dark:text-pink-400",
-      bgColor: "bg-pink-50 dark:bg-pink-950/50",
-      badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
   }
 
@@ -95,8 +95,8 @@ export function MealItem({ meal, onDelete, onUpdate }: MealItemProps) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <p className="font-medium truncate">{meal.food_name}</p>
-              <Badge className={`${config.badge} border-0 capitalize`}>{meal.meal_type}</Badge>
+              <p className="font-medium truncate">{meal.foodName}</p>
+              <Badge className={`${config.badge} border-0 capitalize`}>{meal.mealType}</Badge>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               {meal.calories && <span>{meal.calories} cal</span>}

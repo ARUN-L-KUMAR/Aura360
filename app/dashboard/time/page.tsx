@@ -26,14 +26,14 @@ export default async function TimeLogsPage() {
     .orderBy(desc(timeLogs.date))
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6 md:p-10 pb-24 md:pb-10">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Time Logs"
           description="Track how you spend your time"
           iconName="clock"
-          iconBgColor="bg-cyan-100 dark:bg-cyan-900/50"
-          iconColor="text-cyan-600 dark:text-cyan-400"
+          iconBgColor="bg-secondary"
+          iconColor="text-slate-600 dark:text-slate-400"
         >
           <AddTimeLogButton />
         </ModuleHeader>

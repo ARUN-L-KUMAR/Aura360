@@ -16,7 +16,8 @@ const updateProfileSchema = z.object({
   email: z.string().email().optional(),
   phoneNumber: z.string().optional(),
   bio: z.string().optional(),
-  avatarUrl: z.string().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  coverImage: z.string().nullable().optional(),
 })
 
 /**
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
         phoneNumber: users.phoneNumber,
         bio: users.bio,
         avatarUrl: users.image,
+        coverImage: users.coverImage,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
@@ -81,6 +83,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (data.fullName !== undefined) updateData.name = data.fullName
     if (data.avatarUrl !== undefined) updateData.image = data.avatarUrl
+    if (data.coverImage !== undefined) updateData.coverImage = data.coverImage
     if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber
     if (data.bio !== undefined) updateData.bio = data.bio
     if (data.email !== undefined) updateData.email = data.email
@@ -96,6 +99,7 @@ export async function PATCH(request: NextRequest) {
         phoneNumber: users.phoneNumber,
         bio: users.bio,
         avatarUrl: users.image,
+        coverImage: users.coverImage,
         updatedAt: users.updatedAt,
       })
     

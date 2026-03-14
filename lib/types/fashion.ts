@@ -10,6 +10,7 @@ export interface FashionMetadata {
   expectedBudget?: number
   buyDeadline?: string
   condition?: string
+  priority?: number
   [key: string]: any
 }
 

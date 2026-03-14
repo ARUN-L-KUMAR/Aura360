@@ -103,7 +103,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
     <Card
       ref={setNodeRef}
       style={style}
-      className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing border-2 border-dashed border-gray-300 hover:border-indigo-300 ${isDragging ? 'shadow-2xl scale-105' : ''
+      className={`group relative backdrop-blur-sm bg-card/80 hover:shadow-lg transition-all overflow-hidden cursor-grab active:cursor-grabbing border hover:border-primary/50 ${isDragging ? 'shadow-2xl scale-105' : ''
         }`}
     >
       {/* Drag Handle */}
@@ -116,7 +116,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
       </div>
 
       <CardContent className="p-4 space-y-3">
-        <div className="aspect-square w-full overflow-hidden bg-muted relative rounded-lg">
+        <div className="aspect-square w-full overflow-hidden bg-secondary relative rounded-lg border-b">
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
@@ -130,36 +130,30 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-orange-100 to-pink-100 dark:from-orange-900/30 dark:to-pink-900/30 flex items-center justify-center">
-              <ShoppingCart className="w-12 h-12 text-orange-400 dark:text-orange-600" />
+            <div className="w-full h-full flex items-center justify-center">
+              <ShoppingCart className="w-12 h-12 text-muted-foreground/40" />
             </div>
           )}
         </div>
 
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
-            {item.isFavorite && <Star className="w-3 h-3 text-yellow-500 fill-current flex-shrink-0" />}
+            <h3 className="font-bold text-sm line-clamp-1 tracking-tight">{item.name}</h3>
+            {item.isFavorite && <Star className="w-3 h-3 text-foreground fill-current flex-shrink-0" />}
           </div>
           <div className="flex items-center gap-1 mt-1">
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border">
               {item.category}
             </Badge>
-            {item.color && (
-              <Badge variant="outline" className="text-xs">
-                {item.color}
-              </Badge>
-            )}
           </div>
-          {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
-            {(expectedBudget ?? item.price) && <p className="text-xs font-medium text-foreground">Budget: ₹{Number(expectedBudget ?? item.price).toFixed(0)}</p>}
+          {(expectedBudget ?? item.price) && <p className="text-sm font-bold text-foreground mt-2">Budget: ₹{Number(expectedBudget ?? item.price).toFixed(0)}</p>}
         </div>
 
           {buyingLink && (
-            <Button asChild variant="ghost" size="sm" className="h-7 w-full justify-start px-0 text-xs text-indigo-600 hover:text-indigo-700">
+            <Button asChild variant="outline" size="sm" className="h-7 w-full justify-center text-[10px] font-bold uppercase tracking-widest">
               <a href={buyingLink} target="_blank" rel="noreferrer" onPointerDown={(e) => e.stopPropagation()}>
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Open Buying Link
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Buy
               </a>
             </Button>
           )}
@@ -167,7 +161,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
         <div className="flex items-center gap-1 pt-1">
           <Button
             size="sm"
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs h-7"
+            className="flex-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest h-7"
             onClick={handleMarkAsBought}
           >
             <Plus className="w-3 h-3 mr-1" />
@@ -176,7 +170,7 @@ function SortableWishlistCard({ item, onDelete, onUpdate, onMarkAsBought }: Sort
           <Button
             variant="outline"
             size="sm"
-            className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-xs h-7 px-2"
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent text-[10px] h-7 px-2"
             onClick={handleDelete}
           >
             <Trash2 className="h-3 w-3" />
@@ -236,9 +230,14 @@ export function DragDropWishlist({ items, onItemsChange, onItemMovedToWardrobe }
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
-          🛍️ Wishlist
-        </h2>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center border border-primary/20">
+            <ShoppingCart className="w-4 h-4 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            Wishlist
+          </h2>
+        </div>
         <span className="text-sm text-muted-foreground">
           {items.length} items • Drag to reorder
         </span>

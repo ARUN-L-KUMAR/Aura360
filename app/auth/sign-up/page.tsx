@@ -61,109 +61,162 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950 p-6">
-      <div className="w-full max-w-sm">
-        <Card className="backdrop-blur-sm bg-card/80">
-          <CardHeader>
-            <CardTitle className="text-2xl">Create an account</CardTitle>
-            <CardDescription>Start your LifeSync journey today</CardDescription>
+    <div className="flex min-h-screen items-center justify-center relative overflow-hidden bg-background">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full -z-10">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] animate-pulse delay-700" />
+      </div>
+
+      <div className="w-full max-w-md px-6 animate-in fade-in zoom-in duration-500">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary shadow-2xl shadow-primary/20 mb-6 -rotate-3 hover:-rotate-6 transition-transform">
+            <svg className="w-8 h-8 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">
+            Join the Aura360 Collective
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Start your journey to lifestyle mastery.
+          </p>
+        </div>
+
+        <Card className="backdrop-blur-2xl bg-background/60 border-border/50 shadow-2xl overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
+          <CardHeader className="relative space-y-1 pb-8">
+            <CardTitle className="text-xl font-bold">Create Account</CardTitle>
+            <CardDescription className="text-sm font-medium">
+              Join thousands of users optimizing their lives
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {/* Google Sign Up Button */}
+          
+          <CardContent className="relative space-y-6">
             <Button
               type="button"
               variant="outline"
-              className="w-full mb-4"
+              className="w-full h-12 bg-background/50 hover:bg-background border-border/60 hover:border-primary/50 transition-all font-bold text-xs uppercase tracking-widest gap-3 shadow-sm"
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
             >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
-              Continue with Google
+              Google Account
             </Button>
 
-            {/* Divider */}
-            <div className="relative mb-4">
+            <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-border/50" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
+              <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/50">
+                <span className="bg-background px-4 py-1 rounded-full border border-border/50 backdrop-blur-md">
+                  Direct Registration
+                </span>
               </div>
             </div>
 
-            <form onSubmit={handleSignUp}>
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                    Display Name
+                  </Label>
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Your name"
+                    placeholder="E.g. John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                    Email Address
+                  </Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="name@example.com"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="repeat-password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                      Confirm
+                    </Label>
+                    <Input
+                      id="repeat-password"
+                      type="password"
+                      required
+                      value={repeatPassword}
+                      onChange={(e) => setRepeatPassword(e.target.value)}
+                      className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="repeat-password">Confirm Password</Label>
-                  <Input
-                    id="repeat-password"
-                    type="password"
-                    required
-                    value={repeatPassword}
-                    onChange={(e) => setRepeatPassword(e.target.value)}
-                  />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Sign Up"}
-                </Button>
               </div>
-              <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
-                <Link href="/auth/login" className="text-teal-600 hover:text-teal-700 underline underline-offset-4">
-                  Sign in
-                </Link>
+
+              {error && (
+                <div className="rounded-xl bg-destructive/10 p-4 border border-destructive/20 text-xs font-bold text-destructive flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                  {error}
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-xl shadow-primary/20 font-black uppercase tracking-[0.1em] text-xs" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    Onboarding...
+                  </div>
+                ) : (
+                  "Create Identity"
+                )}
+              </Button>
+
+              <div className="pt-4 flex flex-col gap-4 text-center">
+                <div className="h-px bg-border/40 w-1/4 mx-auto" />
+                <p className="text-xs text-muted-foreground font-medium">
+                  Already a member?{" "}
+                  <Link href="/auth/login" className="text-primary font-bold hover:underline underline-offset-4">
+                    Authorized Sign In
+                  </Link>
+                </p>
               </div>
             </form>
           </CardContent>
         </Card>
+        
+        <p className="mt-8 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30">
+          SECURE ENCRYPTED ACCESS • AURA360 v2.0
+        </p>
       </div>
     </div>
   )

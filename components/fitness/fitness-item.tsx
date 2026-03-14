@@ -60,21 +60,21 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
   const typeConfig = {
     workout: {
       icon: Activity,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-950/50",
-      badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     measurement: {
       icon: Ruler,
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-50 dark:bg-blue-950/50",
-      badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
     goal: {
       icon: Target,
-      color: "text-teal-600 dark:text-teal-400",
-      bgColor: "bg-teal-50 dark:bg-teal-950/50",
-      badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
+      badge: "bg-secondary text-foreground",
     },
   }
 
@@ -86,7 +86,7 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
       return `${entry.workoutType} - ${entry.durationMinutes} min${entry.caloriesBurned ? `, ${entry.caloriesBurned} cal` : ""}`
     }
     if (entry.type === "measurement") {
-      return `${entry.measurement_type}: ${entry.measurement_value} ${entry.measurement_unit}`
+      return `${entry.measurementType}: ${entry.measurementValue} ${entry.measurementUnit}`
     }
     return entry.notes || "Goal"
   }

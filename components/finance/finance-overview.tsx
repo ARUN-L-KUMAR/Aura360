@@ -7,6 +7,10 @@ import { EditBalanceDialog } from "./edit-balance-dialog"
 import { toast } from "sonner"
 import type { Transaction, BalanceData } from "@/lib/types/finance"
 
+interface FinanceOverviewProps {
+  transactions: Transaction[]
+}
+
 export function FinanceOverview({ transactions }: FinanceOverviewProps) {
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
@@ -77,16 +81,16 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
 
   const stats = useMemo(() => {
     const income = transactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+      .filter((t: Transaction) => t.type === "income")
+      .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0)
 
     const expenses = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+      .filter((t: Transaction) => t.type === "expense")
+      .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0)
 
     const investments = transactions
-      .filter((t) => t.type === "investment")
-      .reduce((sum, t) => sum + Number(t.amount), 0)
+      .filter((t: Transaction) => t.type === "investment")
+      .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0)
 
     // Y = Income - Expense (the net flow)
     const netFlow = income - expenses
@@ -97,22 +101,16 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
 
   const getDifferenceColor = (diff: number) => {
     if (diff === 0) {
-      return "text-green-600 dark:text-green-400"
+      return "text-slate-600 dark:text-slate-400"
     } else if (diff > 0) {
-      return "text-green-600 dark:text-green-400"
+      return "text-slate-900 dark:text-slate-100"
     } else {
-      return "text-red-600 dark:text-red-400"
+      return "text-slate-900 dark:text-slate-100"
     }
   }
 
   const getDifferenceBgColor = (diff: number) => {
-    if (diff === 0) {
-      return "bg-green-50 dark:bg-green-950/50"
-    } else if (diff > 0) {
-      return "bg-green-50 dark:bg-green-950/50"
-    } else {
-      return "bg-red-50 dark:bg-red-950/50"
-    }
+    return "bg-secondary/50"
   }
 
   const getDifferenceLabel = (diff: number) => {
@@ -130,29 +128,29 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
       title: "Total Income",
       value: stats.income,
       icon: TrendingUp,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-50 dark:bg-green-950/50",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
     },
     {
       title: "Total Expenses",
       value: stats.expenses,
       icon: TrendingDown,
-      color: "text-red-600 dark:text-red-400",
-      bgColor: "bg-red-50 dark:bg-red-950/50",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
     },
     {
       title: "Investments",
       value: stats.investments,
       icon: PiggyBank,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-950/50",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
     },
     {
       title: "Balance",
       value: stats.balance,
       icon: Wallet,
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-50 dark:bg-blue-950/50",
+      color: "text-slate-600 dark:text-slate-400",
+      bgColor: "bg-secondary/50",
     },
   ]
 
@@ -235,50 +233,50 @@ export function FinanceOverview({ transactions }: FinanceOverviewProps) {
             {/* Balance Comparison */}
             <div className="grid md:grid-cols-3 gap-4">
               {/* Net Flow (Y) */}
-              <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
                   Net Flow (Y)
                 </p>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-3xl font-bold">
                   ₹{stats.netFlow.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2 font-medium">
                   = Income - Expense
                 </p>
               </div>
 
               {/* Available Balance */}
-              <div className="bg-purple-50 dark:bg-purple-950/50 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
                   Available Balance
                 </p>
-                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  ₹{balanceData.real_balance.toLocaleString("en-IN", {
+                <p className="text-3xl font-bold">
+                  ₹{balanceData.realBalance.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  = GPay + Cash (Manual Entry)
+                <p className="text-xs text-muted-foreground mt-2 font-medium">
+                  = GPay + Cash
                 </p>
               </div>
 
               {/* Required Balance */}
-              <div className="bg-orange-50 dark:bg-orange-950/50 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
                   Required Balance
                 </p>
-                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                  ₹{(balanceData.real_balance - stats.netFlow).toLocaleString("en-IN", {
+                <p className="text-3xl font-bold">
+                  ₹{(balanceData.realBalance - stats.netFlow).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  = Available Balance - Net Flow
+                <p className="text-xs text-muted-foreground mt-2 font-medium">
+                  = Available - Net Flow
                 </p>
               </div>
             </div>

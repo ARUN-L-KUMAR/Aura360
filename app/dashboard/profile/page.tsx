@@ -3,12 +3,11 @@ import { db, users } from "@/lib/db"
 import { eq } from "drizzle-orm"
 import { redirect } from "next/navigation"
 import { ProfileForm } from "@/components/profile/profile-form"
-import { User, ArrowLeft, Sparkles } from "lucide-react"
-import Link from "next/link"
+import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function ProfilePage() {
   const session = await getAuthSession()
-  const user = session.user
+  const user = session?.user
 
   if (!user) {
     redirect("/auth/login")
@@ -19,55 +18,35 @@ export default async function ProfilePage() {
   // Transform to match ProfileForm expectations
   const profileData = profile ? {
     id: profile.id,
-    email: profile.email,
+    email: profile.email as string,
     fullName: profile.name,
     avatarUrl: profile.image,
-    createdAt: profile.createdAt?.toISOString(),
-    updatedAt: profile.updatedAt?.toISOString(),
+    coverImage: profile.coverImage,
+    createdAt: profile.createdAt?.toISOString() || "",
+    updatedAt: profile.updatedAt?.toISOString() || "",
   } : null
 
   const userData = {
     id: user.id,
-    email: user.email,
-    createdAt: profile?.createdAt,
-    updatedAt: profile?.updatedAt,
+    email: user.email || null,
+    createdAt: profile?.createdAt || undefined,
+    updatedAt: profile?.updatedAt || undefined,
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
-        {/* Navigation Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link 
-            href="/dashboard" 
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
-          
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent hidden sm:inline">
-              Aura360
-            </span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-5xl p-6 sm:p-10 pb-24 md:pb-10 space-y-10">
+        <ModuleHeader
+          title="Identity"
+          description="Manage your biological and digital presence"
+          iconName="user"
+          iconBgColor="bg-primary/10"
+          iconColor="text-primary"
+        />
 
-        {/* Page Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900/50 dark:to-blue-900/50 flex items-center justify-center">
-            <User className="w-6 h-6 text-teal-600 dark:text-teal-400" />
-          </div>
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">Profile</h1>
-            <p className="text-muted-foreground">Manage your personal information and account settings</p>
-          </div>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <ProfileForm user={userData} profile={profileData} />
         </div>
-
-        <ProfileForm user={userData} profile={profileData} />
       </div>
     </div>
   )

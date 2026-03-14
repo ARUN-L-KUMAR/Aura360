@@ -1,203 +1,153 @@
 import { getAuthSession } from "@/lib/auth-helpers"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Settings, ArrowLeft, Sparkles, User, Palette, Shield, Bell, Globe, Moon, Sun } from "lucide-react"
+import { Sparkles, User, Palette, Shield, Bell, Moon } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function SettingsPage() {
   const session = await getAuthSession()
-  const user = session.user
+  const user = session?.user
 
   if (!user) {
     redirect("/auth/login")
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-teal-950 dark:via-blue-950 dark:to-purple-950">
-      <div className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
-        {/* Navigation Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link 
-            href="/dashboard" 
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
-          
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent hidden sm:inline">
-              Aura360
-            </span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-5xl p-6 sm:p-10 pb-24 md:pb-10 space-y-10">
+        <ModuleHeader
+          title="Terminal Settings"
+          description="Configure your environment and personal parameters"
+          iconName="settings"
+          iconBgColor="bg-primary/10"
+          iconColor="text-primary"
+        />
 
-        {/* Page Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 flex items-center justify-center">
-            <Settings className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">Settings</h1>
-            <p className="text-muted-foreground">Manage your app preferences and account</p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* Quick Navigation */}
-          <Card className="backdrop-blur-sm bg-card/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5 text-teal-600" />
-                Quick Navigation
-              </CardTitle>
-              <CardDescription>Jump to different sections</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Link href="/dashboard/profile">
-                  <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3 bg-transparent hover:bg-muted/50">
-                    <User className="w-4 h-4 text-teal-600" />
-                    <div className="text-left">
-                      <div className="font-medium">Profile</div>
-                      <div className="text-xs text-muted-foreground">Update your personal info</div>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          {/* Left: Quick Actions & Personal */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="backdrop-blur-sm bg-card/50 border-border/50 shadow-sm overflow-hidden">
+              <div className="h-2 bg-primary/20" />
+              <CardHeader>
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Quick Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Link href="/dashboard/profile" className="block">
+                  <Button variant="ghost" className="w-full justify-start gap-3 font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all">
+                    <User className="w-4 h-4" />
+                    Modify Bio
                   </Button>
                 </Link>
-                <Link href="/dashboard">
-                  <Button variant="outline" className="w-full justify-start gap-2 h-auto py-3 bg-transparent hover:bg-muted/50">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
-                    <div className="text-left">
-                      <div className="font-medium">Dashboard</div>
-                      <div className="text-xs text-muted-foreground">Go to your dashboard</div>
-                    </div>
+                <Link href="/dashboard" className="block">
+                  <Button variant="ghost" className="w-full justify-start gap-3 font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all">
+                    <Sparkles className="w-4 h-4" />
+                    Control Center
                   </Button>
                 </Link>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Appearance */}
-          <Card className="backdrop-blur-sm bg-card/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="w-5 h-5 text-purple-600" />
-                Appearance
-              </CardTitle>
-              <CardDescription>Customize how Aura360 looks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <Sun className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm">/</span>
-                    <Moon className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Theme</p>
-                    <p className="text-xs text-muted-foreground">Switch between light and dark mode</p>
-                  </div>
-                </div>
-                <ThemeToggle />
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="backdrop-blur-sm bg-card/50 border-border/50 shadow-sm overflow-hidden">
+               <div className="h-2 bg-blue-500/20" />
+               <CardHeader>
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                     <Shield className="w-4 h-4 text-blue-500" />
+                     Data Security
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                  {[
+                     "Encrypted Cloud Storage",
+                     "Private Access Protocols",
+                     "Biometric Integration",
+                     "Data Portability"
+                  ].map((item) => (
+                     <div key={item} className="flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full bg-blue-500" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item}</span>
+                     </div>
+                  ))}
+               </CardContent>
+            </Card>
+          </div>
 
-          {/* Notifications */}
-          <Card className="backdrop-blur-sm bg-card/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-orange-600" />
-                Notifications
-              </CardTitle>
-              <CardDescription>Manage notification preferences</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium">Email Notifications</p>
-                    <p className="text-xs text-muted-foreground">Receive updates via email</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Managed via email settings
-                  </div>
+          {/* Right: Main Preference Panels */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Appearance Panel */}
+            <Card className="backdrop-blur-sm bg-card/50 border-border/50 shadow-sm transition-all hover:border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-purple-600" />
+                    Interface
+                  </CardTitle>
+                  <CardDescription className="text-xs font-semibold">Customize your visual telemetry</CardDescription>
                 </div>
-                
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium">Browser Notifications</p>
-                    <p className="text-xs text-muted-foreground">Get browser push notifications</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Enable in browser settings
-                  </div>
+                <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                   <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
                 </div>
-                
-                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">
-                    <strong>Note:</strong> Notification preferences are currently managed through your browser and email settings. 
-                    Advanced notification controls will be available in a future update.
-                  </p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 border border-border/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border shadow-sm">
+                       <Moon className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest">Dark Mode Activation</p>
+                      <p className="text-[10px] font-bold text-muted-foreground/60">Toggle between light and dark photons</p>
+                    </div>
+                  </div>
+                  <ThemeToggle />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* About Aura360 */}
-          <Card className="backdrop-blur-sm bg-card/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-teal-600" />
-                About Aura360
-              </CardTitle>
-              <CardDescription>Your personal life management platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Aura360 is a comprehensive lifestyle management application that helps you track and organize various
-                aspects of your life including notes, finances, fitness, food, fashion, skincare, saved items, and time tracking. 
-                All your data is securely stored and accessible only to you.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Data & Privacy */}
-          <Card className="backdrop-blur-sm bg-card/80">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-green-600" />
-                Data & Privacy
-              </CardTitle>
-              <CardDescription>Your data is secure and private</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                  <span>All data is encrypted and stored securely with Supabase</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                  <span>Only you have access to your personal information</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                  <span>Row-level security ensures complete data isolation</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                  <span>You can export or delete your data at any time</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
+            {/* Notifications Panel */}
+            <Card className="backdrop-blur-sm bg-card/50 border-border/50 shadow-sm transition-all hover:border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+                 <div className="space-y-1">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-orange-600" />
+                    Signals
+                  </CardTitle>
+                  <CardDescription className="text-xs font-semibold">Manage system alerts and broadcasts</CardDescription>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                   <div className="w-2 h-2 rounded-full bg-orange-600 animate-pulse" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                   <div className="p-4 rounded-xl bg-secondary/30 border border-border/50 flex flex-col justify-between h-24">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email Uplink</p>
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-bold py-1 px-2 bg-emerald-500/10 text-emerald-600 rounded">ACTIVE</span>
+                         <span className="text-[10px] font-bold text-muted-foreground/40">v2.1</span>
+                      </div>
+                   </div>
+                   <div className="p-4 rounded-xl bg-secondary/30 border border-border/50 flex flex-col justify-between h-24 opacity-60 grayscale cursor-not-allowed">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Push Frequency</p>
+                      <div className="flex items-center justify-between">
+                         <span className="text-[10px] font-bold py-1 px-2 bg-secondary text-muted-foreground rounded">STABLE</span>
+                         <span className="text-[10px] font-bold text-muted-foreground/40">BETA</span>
+                      </div>
+                   </div>
+                </div>
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                   <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-primary/70">
+                      System Note: Direct signal routing is currently optimized for primary email relays. Real-time push protocols are in development.
+                   </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

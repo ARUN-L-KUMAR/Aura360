@@ -34,57 +34,57 @@ const features = [
     icon: DollarSign,
     title: "Finance Tracker",
     description: "Track income, expenses & investments. Import from Excel/CSV. Smart categorization.",
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: Dumbbell,
     title: "Fitness Log",
     description: "Log workouts, track body measurements, monitor progress over time.",
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: UtensilsCrossed,
     title: "Food Diary",
     description: "Track meals, calories, and nutrition. Build healthy eating habits.",
-    color: "text-orange-600 dark:text-orange-400",
-    bgColor: "bg-orange-100 dark:bg-orange-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: Shirt,
     title: "Fashion Wardrobe",
     description: "Organize your closet, plan outfits, track fashion wishlist.",
-    color: "text-indigo-600 dark:text-indigo-400",
-    bgColor: "bg-indigo-100 dark:bg-indigo-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: Sparkles,
     title: "Skincare Routine",
     description: "Track skincare products, routines, and skin health progress.",
-    color: "text-rose-600 dark:text-rose-400",
-    bgColor: "bg-rose-100 dark:bg-rose-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: StickyNote,
     title: "Quick Notes",
     description: "Capture thoughts, ideas, and important information instantly.",
-    color: "text-teal-600 dark:text-teal-400",
-    bgColor: "bg-teal-100 dark:bg-teal-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: Clock,
     title: "Time Tracking",
     description: "Track how you spend your time. Boost productivity.",
-    color: "text-cyan-600 dark:text-cyan-400",
-    bgColor: "bg-cyan-100 dark:bg-cyan-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
   {
     icon: Bookmark,
     title: "Saved Items",
     description: "Save articles, videos, and links for later reference.",
-    color: "text-pink-600 dark:text-pink-400",
-    bgColor: "bg-pink-100 dark:bg-pink-900/50",
+    color: "text-slate-600 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-900/50",
   },
 ]
 
@@ -106,9 +106,12 @@ const benefits = [
   },
 ]
 
+import { useRouter, redirect } from "next/navigation"
+
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -121,6 +124,16 @@ export default function LandingPage() {
   // Check if user is logged in with NextAuth
   const { data: session, status } = useSession()
   const user = session?.user
+  
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/dashboard")
+    }
+  }, [status, router])
+
+  if (status === "authenticated") {
+    return null // Don't render anything while redirecting
+  }
   const isLoading = status === "loading"
 
   // Get user initials
@@ -137,7 +150,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-purple-50 dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
       <nav className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
@@ -149,20 +162,20 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold tracking-tight">
                 Aura360
               </span>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
-              <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                 Features
               </Link>
-              <Link href="#benefits" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="#benefits" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                 Benefits
               </Link>
               <ThemeToggle />
@@ -179,7 +192,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   <Link href="/dashboard/profile" className="flex items-center gap-2 group">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900 dark:to-blue-900 flex items-center justify-center ring-2 ring-transparent group-hover:ring-teal-500 transition-all overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center ring-1 ring-border group-hover:ring-primary transition-all overflow-hidden">
                       {user?.image ? (
                         <img 
                           src={user.image} 
@@ -187,7 +200,7 @@ export default function LandingPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-semibold text-teal-700 dark:text-teal-300">
+                        <span className="text-sm font-semibold text-muted-foreground">
                           {getInitials()}
                         </span>
                       )}
@@ -201,7 +214,7 @@ export default function LandingPage() {
                     <Button variant="ghost" size="sm">Sign In</Button>
                   </Link>
                   <Link href="/auth/sign-up">
-                    <Button size="sm" className="bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700">
+                    <Button size="sm" variant="default">
                       Get Started
                     </Button>
                   </Link>
@@ -229,14 +242,14 @@ export default function LandingPage() {
             <div className="px-4 py-4 space-y-3">
               <Link 
                 href="#features" 
-                className="block py-2 text-muted-foreground hover:text-foreground"
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
               </Link>
               <Link 
                 href="#benefits" 
-                className="block py-2 text-muted-foreground hover:text-foreground"
+                className="block py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Benefits
@@ -246,7 +259,7 @@ export default function LandingPage() {
                 // Logged in user mobile menu
                 <div className="space-y-3 pt-2 border-t">
                   <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full gap-2 bg-gradient-to-r from-teal-600 to-blue-600">
+                    <Button className="w-full gap-2">
                       <Activity className="w-4 h-4" />
                       Go to Dashboard
                     </Button>
@@ -272,12 +285,12 @@ export default function LandingPage() {
                 </div>
               ) : (
                 // Not logged in mobile menu
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 border-t">
                   <Link href="/auth/login" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" className="w-full">Sign In</Button>
                   </Link>
                   <Link href="/auth/sign-up" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-gradient-to-r from-teal-600 to-blue-600">Get Started</Button>
+                    <Button className="w-full">Get Started</Button>
                   </Link>
                 </div>
               )}
@@ -290,33 +303,31 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 text-sm font-medium mb-8">
-            <Sparkles className="w-4 h-4" />
-            Your Personal Life Management Hub
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs font-semibold mb-8 border border-border">
+            <Sparkles className="w-3 h-3" />
+            Personal Life Management Hub
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-            <span className="text-foreground">Manage Your Life</span>
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-8">
+            Manage Your Life
             <br />
-            <span className="bg-gradient-to-r from-teal-600 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-              All in One Place
-            </span>
+            <span className="text-muted-foreground">All in One Place</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed font-medium">
             Track your finances, fitness, food, fashion, skincare, and more. 
-            Aura360 brings everything together in one beautiful, unified dashboard.
+            Aura360 brings everything together in one unified dashboard.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
             {user ? (
               // Logged in CTA
               <>
                 <Link href="/dashboard">
-                  <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 gap-2">
+                  <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base gap-2">
                     Go to Dashboard
                     <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -332,14 +343,14 @@ export default function LandingPage() {
               // Not logged in CTA
               <>
                 <Link href="/auth/sign-up">
-                  <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base bg-gradient-to-r from-teal-600 to-blue-600 hover:from-teal-700 hover:to-blue-700 gap-2">
+                  <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base gap-2">
                     Start Free Today
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
                 <Link href="/auth/login">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base gap-2">
-                    Sign In to Dashboard
+                    Sign In
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -348,17 +359,17 @@ export default function LandingPage() {
           </div>
 
           {/* Trust Indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-600" />
+              <Check className="w-4 h-4" />
               <span>Free to use</span>
             </div>
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-600" />
-              <span>No credit card required</span>
+              <Check className="w-4 h-4" />
+              <span>No credit card</span>
             </div>
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-600" />
+              <Check className="w-4 h-4" />
               <span>Sync across devices</span>
             </div>
           </div>
@@ -366,32 +377,32 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-background/50">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 border-t bg-slate-50/50 dark:bg-slate-950/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Everything You Need</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">Everything You Need</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
               Eight powerful modules to help you track, manage, and improve every aspect of your life.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature) => {
               const Icon = feature.icon
               return (
                 <Card 
                   key={feature.title}
-                  className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 hover:border-teal-200 dark:hover:border-teal-800"
+                  className="group transition-all duration-300 border border-border/50 hover:border-primary/50 shadow-none hover:shadow-sm bg-background"
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-8">
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center mb-4",
+                      "w-10 h-10 rounded-lg flex items-center justify-center mb-6",
                       feature.bgColor
                     )}>
-                      <Icon className={cn("w-6 h-6", feature.color)} />
+                      <Icon className={cn("w-5 h-5", feature.color)} />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <h3 className="font-bold text-lg mb-3 tracking-tight">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed font-medium">
                       {feature.description}
                     </p>
                   </CardContent>
@@ -403,25 +414,25 @@ export default function LandingPage() {
       </section>
 
       {/* Benefits Section */}
-      <section id="benefits" className="py-20 px-4 sm:px-6 lg:px-8">
+      <section id="benefits" className="py-24 px-4 sm:px-6 lg:px-8 border-t">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Why Choose Aura360?</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">Why Choose Aura360?</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
               Built with simplicity and power in mind.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-12">
             {benefits.map((benefit) => {
               const Icon = benefit.icon
               return (
-                <div key={benefit.title} className="text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-100 to-blue-100 dark:from-teal-900/50 dark:to-blue-900/50 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+                <div key={benefit.title} className="text-center group">
+                  <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-6 border border-border group-hover:border-primary/50 transition-colors">
+                    <Icon className="w-6 h-6 text-foreground" />
                   </div>
-                  <h3 className="font-semibold text-xl mb-2">{benefit.title}</h3>
-                  <p className="text-muted-foreground">{benefit.description}</p>
+                  <h3 className="font-bold text-xl mb-3 tracking-tight">{benefit.title}</h3>
+                  <p className="text-muted-foreground font-medium">{benefit.description}</p>
                 </div>
               )
             })}
@@ -430,19 +441,19 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-teal-600 to-blue-600 dark:from-teal-800 dark:to-blue-800">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
             {user ? "Ready to Continue?" : "Ready to Transform Your Life?"}
           </h2>
-          <p className="text-lg text-teal-100 mb-8">
+          <p className="text-lg text-slate-400 mb-10 font-medium">
             {user 
               ? "Your dashboard is waiting. Continue managing your life with Aura360."
               : "Join thousands of users who are already managing their lives better with Aura360."
             }
           </p>
           <Link href={user ? "/dashboard" : "/auth/sign-up"}>
-            <Button size="lg" className="h-12 px-8 text-base bg-white text-teal-700 hover:bg-teal-50 gap-2">
+            <Button size="lg" variant="secondary" className="h-12 px-8 text-base gap-2 font-bold">
               {user ? "Go to Dashboard" : "Get Started for Free"}
               <ArrowRight className="w-4 h-4" />
             </Button>
@@ -451,27 +462,27 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t bg-background/50">
+      <footer className="py-16 px-4 sm:px-6 lg:px-8 border-t bg-background">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-blue-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+                <Sparkles className="w-3 h-3 text-primary-foreground" />
               </div>
-              <span className="font-bold text-lg">Aura360</span>
+              <span className="font-bold text-lg tracking-tight">Aura360</span>
             </div>
 
             {/* Links */}
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-10 text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
               <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
               <Link href="#benefits" className="hover:text-foreground transition-colors">Benefits</Link>
               <Link href="/auth/login" className="hover:text-foreground transition-colors">Sign In</Link>
             </div>
 
             {/* Copyright */}
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Aura360. All rights reserved.
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40">
+              © {new Date().getFullYear()} Aura360
             </p>
           </div>
         </div>

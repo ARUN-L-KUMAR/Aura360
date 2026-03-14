@@ -20,47 +20,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { Transaction, BalanceData as FinanceBalanceData } from "@/lib/types/finance"
 
-interface Transaction {
-  id: string
-  userId: string
-  workspaceId: string
-  type: "income" | "expense" | "investment" | "transfer"
-  amount: string
-  category: string
-  description: string
-  date: string
-  paymentMethod: string | null
-  notes: string | null
-  needsReview: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-interface BalanceData {
+// Internal interface for local state handling balance breakdown
+interface LocalBalanceBreakdown {
   cash: number
   card: number
   upi: number
   bank_transfer: number
 }
 
-// Helper to transform transaction format for components
-const transformTransactions = (transactions: Transaction[]) => {
+// Helper to transform transaction format for components if needed
+const transformTransactions = (transactions: Transaction[]): Transaction[] => {
   return transactions
     .filter(t => t.type !== "transfer") // Filter out transfer type as components don't support it
-    .map(t => ({
-      id: t.id,
-      user_id: t.userId,
-      type: t.type as "income" | "expense" | "investment",
-      amount: parseFloat(t.amount),
-      category: t.category,
-      description: t.description,
-      date: t.date,
-      payment_method: t.paymentMethod,
-      needs_review: t.needsReview,
-      created_at: t.createdAt,
-      updated_at: t.updatedAt,
-    }))
 }
 
 export default function FinancePage() {
@@ -68,7 +41,7 @@ export default function FinancePage() {
   const isMobile = useIsMobile()
   const { data: session, status } = useSession()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [balanceData, setBalanceData] = useState<BalanceData | null>(null)
+  const [balanceData, setBalanceData] = useState<LocalBalanceBreakdown | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeMainTab, setActiveMainTab] = useState("overview")
@@ -207,53 +180,53 @@ export default function FinancePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <div className="text-muted-foreground">Loading finances...</div>
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Loading finances...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-lavender-50 dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950 transition-colors duration-300">
+    <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b">
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex h-14 items-center justify-between gap-4">
+          <div className="flex h-16 items-center justify-between gap-4">
             {/* Left Section - Back & Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push("/dashboard")}
-                className="gap-1.5"
+                className="gap-2 font-bold text-xs uppercase tracking-widest"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back</span>
+                Back
               </Button>
               
-              <div className="hidden sm:block h-6 w-px bg-border" />
+              <div className="hidden sm:block h-6 w-px bg-border/50" />
               
-              <Link href="/" className="hidden sm:flex items-center gap-2 font-semibold text-foreground hover:text-primary transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">A</span>
+              <Link href="/dashboard" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground text-xs font-bold">A</span>
                 </div>
-                <span>Aura360</span>
+                <span className="font-bold tracking-tight hidden sm:inline text-lg">Aura360</span>
               </Link>
             </div>
 
             {/* Right Section - Navigation & Actions */}
             <div className="flex items-center gap-2">
               <div className="hidden md:flex items-center gap-1">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/">
+                <Button variant="ghost" size="sm" asChild className="font-bold text-xs uppercase tracking-widest">
+                  <Link href="/dashboard">
                     <Home className="h-4 w-4 mr-1.5" />
                     Home
                   </Link>
                 </Button>
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="font-bold text-xs uppercase tracking-widest">
                   <Link href="/dashboard">
                     <LayoutGrid className="h-4 w-4 mr-1.5" />
                     Dashboard
@@ -268,14 +241,14 @@ export default function FinancePage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowShareModal(true)}
-                      className="gap-2"
+                      className="gap-2 font-bold text-xs uppercase tracking-widest border-border/50 shadow-none hover:bg-secondary"
                     >
                       <Share2 className="h-4 w-4" />
-                      {!isMobile && "Add from GPay"}
+                      {!isMobile && "Import from GPay"}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Add expense from shared UPI transaction</p>
+                    <p className="text-[10px] font-bold">Import from shared transactions</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -288,118 +261,114 @@ export default function FinancePage() {
 
       <div className={cn(
         "mx-auto max-w-7xl",
-        isMobile ? "p-4 pb-24" : "p-6 md:p-10"
+        isMobile ? "p-6 pb-24" : "p-10"
       )}>
         {/* Header */}
-        <div className={cn(
-          "mb-6 flex items-center",
-          isMobile && "flex-col gap-4 items-start"
-        )}>
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center",
-              isMobile ? "w-10 h-10" : "w-12 h-12"
-            )}>
-              <DollarSign className={cn(
-                "text-blue-600 dark:text-blue-400",
-                isMobile ? "w-5 h-5" : "w-6 h-6"
-              )} />
+        <div className="mb-10 flex items-end justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center border">
+              <DollarSign className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </div>
             <div>
-              <h1 className={cn(
-                "font-bold tracking-tight text-foreground",
-                isMobile ? "text-2xl" : "text-4xl"
-              )}>Finance</h1>
-              <p className={cn(
-                "text-muted-foreground",
-                isMobile ? "text-xs" : "text-sm"
-              )}>Track your income and expenses</p>
+              <div className="px-2 py-0.5 rounded bg-secondary border text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-fit mb-1">
+                Treasury
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight">Finance</h1>
             </div>
           </div>
           <Button
             variant="outline"
-            size={isMobile ? "sm" : "default"}
+            size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 ml-auto"
+            className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border/50 shadow-none hover:bg-secondary"
           >
             <RefreshCw className={cn(
-              "h-4 w-4",
+              "h-3 w-3",
               isRefreshing && "animate-spin"
             )} />
-            {!isMobile && (isRefreshing ? "Refreshing..." : "Refresh")}
+            {isRefreshing ? "Syncing..." : "Sync Data"}
           </Button>
         </div>
 
-        {/* Main Tabs - Mobile Optimized */}
+        {/* Main Tabs */}
         <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
           {/* Desktop Tabs */}
           {!isMobile && (
-            <TabsList className="grid w-full grid-cols-3 mb-6 h-12">
-              <TabsTrigger value="overview" className="gap-2 text-sm">
-                <LayoutDashboard className="h-4 w-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="transactions" className="gap-2 text-sm">
-                <History className="h-4 w-4" />
-                Transaction History
-              </TabsTrigger>
-              <TabsTrigger value="reports" className="gap-2 text-sm">
-                <BarChart3 className="h-4 w-4" />
-                Reports
-              </TabsTrigger>
+            <TabsList className="flex items-center justify-start gap-1 bg-secondary rounded-lg p-1 border w-fit mb-8 h-auto">
+              {[
+                { val: "overview", label: "Overview", icon: LayoutDashboard },
+                { val: "transactions", label: "Ledger", icon: History },
+                { val: "reports", label: "Analytics", icon: BarChart3 }
+              ].map(tab => (
+                <TabsTrigger 
+                  key={tab.val}
+                  value={tab.val} 
+                  className="gap-2 px-4 py-2 rounded-md text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold uppercase tracking-widest text-[10px] text-muted-foreground"
+                >
+                  <tab.icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           )}
 
           {/* Mobile Bottom Navigation Tabs */}
           {isMobile && (
-            <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t shadow-lg safe-area-bottom">
-              <TabsList className="grid w-full grid-cols-3 h-16 bg-transparent rounded-none">
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t safe-area-bottom">
+              <TabsList className="grid grid-cols-3 h-16 bg-transparent">
                 <TabsTrigger 
                   value="overview" 
-                  className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-950/50 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
                   <LayoutDashboard className="h-5 w-5" />
-                  <span className="text-xs">Overview</span>
+                  Overview
                 </TabsTrigger>
                 <TabsTrigger 
                   value="transactions" 
-                  className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-950/50 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
                   <History className="h-5 w-5" />
-                  <span className="text-xs">History</span>
+                  History
                 </TabsTrigger>
                 <TabsTrigger 
                   value="reports" 
-                  className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-950/50 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
                   <BarChart3 className="h-5 w-5" />
-                  <span className="text-xs">Reports</span>
+                  Reports
                 </TabsTrigger>
               </TabsList>
             </div>
           )}
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-0">
-            <FinanceOverviewTab transactions={transformTransactions(transactions)} />
-          </TabsContent>
+          {/* Tab Contents */}
+          <div className="mt-0">
+            <TabsContent value="overview">
+              <FinanceOverviewTab transactions={transformTransactions(transactions)} />
+            </TabsContent>
 
-          {/* Transaction History Tab */}
-          <TabsContent value="transactions" className="mt-0">
-            <TransactionHistoryTab initialTransactions={transformTransactions(transactions)} />
-          </TabsContent>
+            <TabsContent value="transactions">
+              <TransactionHistoryTab initialTransactions={transformTransactions(transactions)} />
+            </TabsContent>
 
-          {/* Reports Tab */}
-          <TabsContent value="reports" className="mt-0">
-            <ReportsTab 
-              transactions={transformTransactions(transactions)} 
-              balanceData={balanceData ? {
-                cash_balance: balanceData.cash,
-                account_balance: balanceData.upi + balanceData.card + balanceData.bank_transfer
-              } : null}
-            />
-          </TabsContent>
+            <TabsContent value="reports">
+              <ReportsTab 
+                transactions={transformTransactions(transactions)} 
+                balanceData={balanceData ? {
+                  id: null,
+                  workspaceId: "",
+                  userId: "",
+                  cashBalance: balanceData.cash,
+                  accountBalance: balanceData.upi + balanceData.card + balanceData.bank_transfer,
+                  realBalance: balanceData.cash + balanceData.upi + balanceData.card + balanceData.bank_transfer,
+                  expectedBalance: balanceData.cash + balanceData.upi + balanceData.card + balanceData.bank_transfer,
+                  difference: 0,
+                  updatedAt: new Date().toISOString()
+                } : null}
+              />
+            </TabsContent>
+          </div>
         </Tabs>
       </div>
 
@@ -408,12 +377,12 @@ export default function FinancePage() {
         <Button
           onClick={scrollToTop}
           className={cn(
-            "fixed z-50 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white",
-            isMobile ? "bottom-20 right-4 h-10 w-10" : "bottom-6 right-6 h-12 w-12"
+            "fixed z-50 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground",
+            isMobile ? "bottom-20 right-6 h-12 w-12" : "bottom-10 right-10 h-14 w-14"
           )}
           size="icon"
         >
-          <ArrowUp className={cn(isMobile ? "h-4 w-4" : "h-5 w-5")} />
+          <ArrowUp className="h-6 w-6" />
         </Button>
       )}
 

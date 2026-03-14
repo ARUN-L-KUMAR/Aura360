@@ -62,28 +62,46 @@ export function MobileTransactionCard({ transaction, onEdit, onDelete }: MobileT
       case "income":
         return {
           icon: <TrendingUp className="h-4 w-4" />,
-          bgColor: "bg-green-100 dark:bg-green-900/30",
-          iconColor: "text-green-600 dark:text-green-400",
-          amountColor: "text-green-600 dark:text-green-400",
-          borderColor: "border-l-green-500",
+          bgColor: "bg-secondary",
+          iconColor: "text-slate-600 dark:text-slate-400",
+          amountColor: "text-foreground",
+          borderColor: "border-l-slate-400 dark:border-l-slate-600",
           prefix: "+",
         }
       case "expense":
         return {
           icon: <TrendingDown className="h-4 w-4" />,
-          bgColor: "bg-red-100 dark:bg-red-900/30",
-          iconColor: "text-red-600 dark:text-red-400",
-          amountColor: "text-red-600 dark:text-red-400",
-          borderColor: "border-l-red-500",
+          bgColor: "bg-secondary",
+          iconColor: "text-slate-600 dark:text-slate-400",
+          amountColor: "text-foreground",
+          borderColor: "border-l-slate-400 dark:border-l-slate-600",
           prefix: "-",
         }
       case "investment":
         return {
           icon: <PiggyBank className="h-4 w-4" />,
-          bgColor: "bg-purple-100 dark:bg-purple-900/30",
-          iconColor: "text-purple-600 dark:text-purple-400",
-          amountColor: "text-purple-600 dark:text-purple-400",
-          borderColor: "border-l-purple-500",
+          bgColor: "bg-secondary",
+          iconColor: "text-slate-600 dark:text-slate-400",
+          amountColor: "text-foreground",
+          borderColor: "border-l-slate-400 dark:border-l-slate-600",
+          prefix: "",
+        }
+      case "transfer":
+        return {
+          icon: <Wallet className="h-4 w-4" />,
+          bgColor: "bg-secondary",
+          iconColor: "text-slate-600 dark:text-slate-400",
+          amountColor: "text-foreground",
+          borderColor: "border-l-slate-400 dark:border-l-slate-600",
+          prefix: "",
+        }
+      default:
+        return {
+          icon: <Wallet className="h-4 w-4" />,
+          bgColor: "bg-secondary",
+          iconColor: "text-slate-600 dark:text-slate-400",
+          amountColor: "text-foreground",
+          borderColor: "border-l-slate-400 dark:border-l-slate-600",
           prefix: "",
         }
     }
