@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession } from "next-auth/react"
+import { Logo } from "@/components/ui/logo"
 
 interface NavbarProps {}
 
@@ -45,14 +46,12 @@ export function Navbar({}: NavbarProps) {
         "mx-auto max-w-5xl h-16 rounded-2xl border transition-all duration-300 flex items-center justify-between px-4 sm:px-6 shadow-2xl",
         isScrolled 
           ? "bg-background/80 backdrop-blur-xl border-border shadow-primary/5" 
-          : "bg-background/50 backdrop-blur-md border-border/50"
+          : "bg-background/50 backdrop-blur-md border-border"
       )}>
         {/* Left: Logo & Breadcrumbs */}
         <div className="flex items-center gap-4 text-slate-100">
-          <Link href={session ? "/dashboard" : "/"} className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 rotate-0 group-hover:rotate-12 transition-transform duration-300">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
+          <Link href={session ? "/dashboard" : "/"} className="flex items-center gap-3 group">
+            <Logo />
             <span className="font-bold text-lg tracking-tight hidden lg:block bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               Aura360
             </span>
@@ -110,7 +109,7 @@ export function Navbar({}: NavbarProps) {
           <ThemeToggle />
 
           <Link href="/dashboard/profile">
-            <div className="w-9 h-9 rounded-xl bg-secondary border border-border/50 p-0.5 group overflow-hidden transition-all hover:border-primary/50 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-secondary border border-border p-0.5 group overflow-hidden transition-all hover:border-primary/50 shadow-sm">
               <div className="w-full h-full rounded-[10px] bg-background flex items-center justify-center overflow-hidden">
                 {user?.image ? (
                   <img src={user.image} alt="Profile" className="w-full h-full object-cover" />

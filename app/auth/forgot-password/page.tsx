@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 /**
  * DEPRECATED: This page used Supabase Auth for password reset.

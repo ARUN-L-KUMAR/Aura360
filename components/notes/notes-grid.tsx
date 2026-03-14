@@ -19,7 +19,7 @@ export function NotesGrid({ notes, viewMode, onUpdate, onDelete }: NotesGridProp
 
   if (notes.length === 0) {
     return (
-      <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed border-border/50">
+      <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed border-border">
         <div className="space-y-4 max-w-xs mx-auto">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Search className="w-8 h-8 text-muted-foreground/30" />

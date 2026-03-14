@@ -47,7 +47,7 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
 
   return (
     <>
-      <Card className="group relative backdrop-blur-sm bg-card/80 border-border/50 transition-all overflow-hidden">
+      <Card className="group relative backdrop-blur-sm bg-card/80 border-border transition-all overflow-hidden">
         <CardHeader className="p-0">
           {item.imageUrl ? (
             <div className="aspect-square w-full overflow-hidden bg-muted relative">

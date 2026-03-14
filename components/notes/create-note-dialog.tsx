@@ -205,7 +205,7 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
               </div>
 
               {/* Metadata Section */}
-              <div className="p-4 rounded-xl bg-secondary/20 border border-border/50 space-y-4">
+              <div className="p-4 rounded-xl bg-secondary/20 border border-border space-y-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Categorization</span>
                   <div className="h-px bg-border/40 flex-1" />
@@ -221,7 +221,7 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
                       placeholder="e.g., Ideas, Personal"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="h-9 text-xs bg-background/50 border-border/50 focus-visible:ring-primary/20"
+                      className="h-9 text-xs bg-background/50 border-border focus-visible:ring-primary/20"
                     />
                   </div>
                   <div className="space-y-2">
@@ -233,7 +233,7 @@ export function CreateNoteDialog({ open, onOpenChange }: CreateNoteDialogProps) 
                       placeholder="tag1, tag2..."
                       value={tags}
                       onChange={(e) => setTags(e.target.value)}
-                      className="h-9 text-xs bg-background/50 border-border/50 focus-visible:ring-primary/20"
+                      className="h-9 text-xs bg-background/50 border-border focus-visible:ring-primary/20"
                     />
                   </div>
                 </div>

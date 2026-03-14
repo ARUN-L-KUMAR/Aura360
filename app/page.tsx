@@ -28,6 +28,8 @@ import {
   LogOut
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/logo"
+import { BrandingShowcase } from "@/components/branding-showcase"
 
 const features = [
   {
@@ -161,10 +163,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
-              </div>
+            <Link href="/" className="flex items-center gap-3">
+              <Logo />
               <span className="text-xl font-bold tracking-tight">
                 Aura360
               </span>
@@ -321,6 +321,7 @@ export default function LandingPage() {
             Aura360 brings everything together in one unified dashboard.
           </p>
 
+
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
             {user ? (
@@ -392,7 +393,7 @@ export default function LandingPage() {
               return (
                 <Card 
                   key={feature.title}
-                  className="group transition-all duration-300 border border-border/50 hover:border-primary/50 shadow-none hover:shadow-sm bg-background"
+                  className="group transition-all duration-300 border border-border hover:border-primary/50 shadow-none hover:shadow-sm bg-background"
                 >
                   <CardContent className="p-8">
                     <div className={cn(
@@ -466,10 +467,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-12">
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-primary-foreground" />
-              </div>
+            <div className="flex items-center gap-3">
+              <Logo />
               <span className="font-bold text-lg tracking-tight">Aura360</span>
             </div>
 

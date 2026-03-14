@@ -10,6 +10,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
+import { Logo } from "@/components/ui/logo"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -61,43 +62,39 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center relative overflow-hidden bg-background">
+    <div className="flex h-screen items-center justify-center relative overflow-hidden bg-background">
       {/* Dynamic Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] animate-pulse delay-700" />
       </div>
 
-      <div className="w-full max-w-md px-6 animate-in fade-in zoom-in duration-500">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary shadow-2xl shadow-primary/20 mb-6 -rotate-3 hover:-rotate-6 transition-transform">
-            <svg className="w-8 h-8 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">
+      <div className="w-full max-w-lg px-6 animate-in fade-in zoom-in duration-500 scale-[0.9] md:scale-100">
+        <div className="text-center mb-3 flex flex-col items-center">
+          <Logo size="xl" showBox={false} showGlow={false} className="mb-2" />
+          <h1 className="text-3xl font-black tracking-tighter text-foreground mb-1 whitespace-nowrap">
             Join the Aura360 Collective
           </h1>
-          <p className="text-muted-foreground font-medium">
+          <p className="text-muted-foreground font-medium text-xs">
             Start your journey to lifestyle mastery.
           </p>
         </div>
 
-        <Card className="backdrop-blur-2xl bg-background/60 border-border/50 shadow-2xl overflow-hidden relative group">
+        <Card className="backdrop-blur-2xl bg-background/60 border-border shadow-2xl overflow-hidden relative group">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
-          <CardHeader className="relative space-y-1 pb-8">
+          <CardHeader className="relative space-y-0 pb-2">
             <CardTitle className="text-xl font-bold">Create Account</CardTitle>
             <CardDescription className="text-sm font-medium">
               Join thousands of users optimizing their lives
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="relative space-y-6">
+          <CardContent className="relative space-y-3">
             <Button
               type="button"
               variant="outline"
-              className="w-full h-12 bg-background/50 hover:bg-background border-border/60 hover:border-primary/50 transition-all font-bold text-xs uppercase tracking-widest gap-3 shadow-sm"
+              className="w-full h-10 bg-background/50 hover:bg-background border-border/60 hover:border-primary/50 transition-all font-bold text-xs uppercase tracking-widest gap-3 shadow-sm"
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -111,17 +108,17 @@ export default function SignUpPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border/50" />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground/50">
-                <span className="bg-background px-4 py-1 rounded-full border border-border/50 backdrop-blur-md">
+                <span className="bg-background px-4 py-1 rounded-full border border-border backdrop-blur-md">
                   Direct Registration
                 </span>
               </div>
             </div>
 
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-4">
+            <form onSubmit={handleSignUp} className="space-y-3">
+              <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
                     Display Name
@@ -132,7 +129,7 @@ export default function SignUpPage() {
                     placeholder="E.g. John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                    className="h-10 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -146,7 +143,7 @@ export default function SignUpPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                    className="h-10 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -160,7 +157,7 @@ export default function SignUpPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                      className="h-10 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                     />
                   </div>
                   <div className="space-y-2">
@@ -173,7 +170,7 @@ export default function SignUpPage() {
                       required
                       value={repeatPassword}
                       onChange={(e) => setRepeatPassword(e.target.value)}
-                      className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
+                      className="h-10 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary/30 transition-all font-medium"
                     />
                   </div>
                 </div>
@@ -188,7 +185,7 @@ export default function SignUpPage() {
 
               <Button 
                 type="submit" 
-                className="w-full h-12 bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-xl shadow-primary/20 font-black uppercase tracking-[0.1em] text-xs" 
+                className="w-full h-10 bg-primary text-primary-foreground hover:opacity-90 transition-all shadow-xl shadow-primary/20 font-black uppercase tracking-[0.1em] text-xs" 
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -201,7 +198,7 @@ export default function SignUpPage() {
                 )}
               </Button>
 
-              <div className="pt-4 flex flex-col gap-4 text-center">
+              <div className="pt-2 flex flex-col gap-2 text-center">
                 <div className="h-px bg-border/40 w-1/4 mx-auto" />
                 <p className="text-xs text-muted-foreground font-medium">
                   Already a member?{" "}
@@ -214,7 +211,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
         
-        <p className="mt-8 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30">
+        <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/30">
           SECURE ENCRYPTED ACCESS • AURA360 v2.0
         </p>
       </div>

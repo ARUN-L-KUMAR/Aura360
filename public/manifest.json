@@ -1,6 +1,6 @@
 {
-  "name": "LifeSync - Personal Life Management",
-  "short_name": "LifeSync",
+  "name": "Aura360 - Personal Life Management",
+  "short_name": "Aura360",
   "description": "Your personal life management dashboard - track finances, fitness, and more",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { Logo } from "@/components/ui/logo"
 import {
   Tooltip,
   TooltipContent,
@@ -209,10 +210,8 @@ export default function FinancePage() {
               
               <div className="hidden sm:block h-6 w-px bg-border/50" />
               
-              <Link href="/dashboard" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground text-xs font-bold">A</span>
-                </div>
+              <Link href="/dashboard" className="flex items-center gap-3 group">
+                <Logo />
                 <span className="font-bold tracking-tight hidden sm:inline text-lg">Aura360</span>
               </Link>
             </div>
@@ -241,7 +240,7 @@ export default function FinancePage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowShareModal(true)}
-                      className="gap-2 font-bold text-xs uppercase tracking-widest border-border/50 shadow-none hover:bg-secondary"
+                      className="gap-2 font-bold text-xs uppercase tracking-widest border-border shadow-none hover:bg-secondary"
                     >
                       <Share2 className="h-4 w-4" />
                       {!isMobile && "Import from GPay"}
@@ -281,7 +280,7 @@ export default function FinancePage() {
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border/50 shadow-none hover:bg-secondary"
+            className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary"
           >
             <RefreshCw className={cn(
               "h-3 w-3",

@@ -41,21 +41,21 @@ export function DragDropDashboard({ initialItems, onDelete, onUpdate }: DragDrop
 
       {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <div className="p-4 bg-card rounded-lg border border-border/50 shadow-sm">
+        <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
           <div className="text-2xl font-bold text-foreground">{wardrobeItems.length}</div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Wardrobe</div>
         </div>
-        <div className="p-4 bg-card rounded-lg border border-border/50 shadow-sm">
+        <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
           <div className="text-2xl font-bold text-foreground">{wishlistItems.length}</div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Wishlist</div>
         </div>
-        <div className="p-4 bg-card rounded-lg border border-border/50 shadow-sm">
+        <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
           <div className="text-2xl font-bold text-foreground">
             {Array.from(new Set(wardrobeItems.map(item => item.category))).length}
           </div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Categories</div>
         </div>
-        <div className="p-4 bg-card rounded-lg border border-border/50 shadow-sm">
+        <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
           <div className="text-2xl font-bold text-foreground">
             {wardrobeItems.filter(item => item.isFavorite).length}
           </div>
@@ -114,4 +114,4 @@ export function DragDropDashboard({ initialItems, onDelete, onUpdate }: DragDrop
       </div>
     </div>
   )
-}
+}

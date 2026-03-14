@@ -415,7 +415,7 @@ export function FashionSenseBoard({
                         <div 
                           key={color as string} 
                           title={color as string}
-                          className="w-3.5 h-3.5 rounded-full border border-border/50 shadow-sm"
+                          className="w-3.5 h-3.5 rounded-full border border-border shadow-sm"
                           style={{ backgroundColor: (color as string).toLowerCase() }}
                         />
                       ))}

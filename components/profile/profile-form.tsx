@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation"
 import { Camera, Upload, X, User as UserIcon, Loader2, Mail, Calendar, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 
 interface User {
   id: string
@@ -243,14 +243,13 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   }
 
   const handleSignOut = async () => {
-    await fetch("/api/auth/signout", { method: "POST" })
-    router.push("/")
+    await signOut({ callbackUrl: "/" })
   }
 
   return (
     <div className="space-y-8">
       {/* Profile Header Card */}
-      <Card className="backdrop-blur-xl bg-card/40 border-border/50 overflow-hidden shadow-2xl relative group">
+      <Card className="backdrop-blur-xl bg-card/40 border-border overflow-hidden shadow-2xl relative group">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         
         {/* Header Background */}
@@ -374,7 +373,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
               {fullName || "Anonymous User"}
             </h2>
             <div className="flex items-center gap-4">
-               <p className="text-sm font-bold text-muted-foreground flex items-center gap-2 bg-secondary/50 py-1 px-3 rounded-full border border-border/50">
+               <p className="text-sm font-bold text-muted-foreground flex items-center gap-2 bg-secondary/50 py-1 px-3 rounded-full border border-border">
                  <Mail className="w-4 h-4 text-primary" />
                  {user.email}
                </p>
@@ -388,7 +387,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Personal Information Case */}
-        <Card className="backdrop-blur-xl bg-card/40 border-border/50 shadow-xl overflow-hidden">
+        <Card className="backdrop-blur-xl bg-card/40 border-border shadow-xl overflow-hidden">
           <CardHeader className="pb-8">
             <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -409,7 +408,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                     placeholder="Enter your full name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 transition-all font-bold"
+                    className="h-12 bg-secondary/30 border-border focus-visible:ring-primary/20 transition-all font-bold"
                   />
                 </div>
 
@@ -439,7 +438,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                       setAvatarUrl(e.target.value)
                       setAvatarPreview(e.target.value)
                     }}
-                    className="h-12 bg-secondary/30 border-border/50 focus-visible:ring-primary/20 transition-all font-bold"
+                    className="h-12 bg-secondary/30 border-border focus-visible:ring-primary/20 transition-all font-bold"
                   />
                 </div>
               </div>
@@ -464,7 +463,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
         {/* System & Access Case */}
         <div className="space-y-8">
-           <Card className="backdrop-blur-xl bg-card/40 border-border/50 shadow-xl overflow-hidden">
+           <Card className="backdrop-blur-xl bg-card/40 border-border shadow-xl overflow-hidden">
              <CardHeader className="pb-8">
                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground">
                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -474,7 +473,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                </CardTitle>
              </CardHeader>
              <CardContent className="space-y-4">
-                <div className="p-4 rounded-xl bg-secondary/30 border border-border/50 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-secondary/30 border border-border flex items-center justify-between">
                    <div className="space-y-1">
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Initialized On</p>
                       <p className="text-sm font-bold">
@@ -490,7 +489,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
                    </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-secondary/30 border border-border/50 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-secondary/30 border border-border flex items-center justify-between">
                    <div className="space-y-1">
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Last Synchronization</p>
                       <p className="text-sm font-bold">

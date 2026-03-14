@@ -95,7 +95,7 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
     <>
       <Card 
         onClick={() => setShowEditDialog(true)}
-        className={`group relative backdrop-blur-sm cursor-pointer hover:border-primary/50 transition-all border-border/50 shadow-none overflow-hidden ${
+        className={`group relative cursor-pointer hover:border-primary/50 overflow-hidden ${
           isList ? 'flex flex-row items-center p-3 gap-4' : 'flex flex-col'
         }`}
       >

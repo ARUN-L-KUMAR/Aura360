@@ -300,7 +300,7 @@ export default async function DashboardPage() {
             { label: "Fitness", val: fitnessCount, icon: Dumbbell, color: "text-slate-600 dark:text-slate-400" },
             { label: "Food", val: foodCount, icon: UtensilsCrossed, color: "text-slate-600 dark:text-slate-400" }
           ].map((stat, i) => (
-            <Card key={i} className="border border-border/50 shadow-none bg-background">
+            <Card key={i} className="">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center border">
@@ -327,19 +327,19 @@ export default async function DashboardPage() {
               </Button>
             </Link>
             <Link href="/dashboard/finance">
-              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border/50 shadow-none hover:bg-secondary">
+              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border shadow-none hover:bg-secondary">
                 <DollarSign className="w-5 h-5" />
                 Add Transaction
               </Button>
             </Link>
             <Link href="/dashboard/fitness">
-              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border/50 shadow-none hover:bg-secondary">
+              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border shadow-none hover:bg-secondary">
                 <Dumbbell className="w-5 h-5" />
                 Log Workout
               </Button>
             </Link>
             <Link href="/dashboard/food">
-              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border/50 shadow-none hover:bg-secondary">
+              <Button size="lg" variant="outline" className="h-12 px-6 gap-2 font-bold border-border shadow-none hover:bg-secondary">
                 <UtensilsCrossed className="w-5 h-5" />
                 Add Meal
               </Button>
@@ -363,7 +363,7 @@ export default async function DashboardPage() {
                 const isActive = module.count > 0
                 return (
                   <Link key={module.title} href={module.href} className="group">
-                    <Card className="h-full border border-border/50 shadow-none bg-background transition-all group-hover:border-primary/50 group-hover:shadow-sm">
+                    <Card className="h-full transition-all group-hover:border-primary/50 group-hover:shadow-sm">
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-6">
                           <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center border transition-colors group-hover:bg-primary/5">
@@ -389,7 +389,7 @@ export default async function DashboardPage() {
 
           {/* Recent Activity Sidebar */}
           <div className="lg:col-span-1 space-y-8">
-            <Card className="border border-border/50 shadow-none bg-background">
+            <Card className="">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between">
                   Activity
@@ -435,7 +435,7 @@ export default async function DashboardPage() {
                   <div className="p-8 text-center">
                     <p className="text-xs font-bold text-muted-foreground mb-4">No recent activity</p>
                     <Link href="/dashboard/finance">
-                      <Button size="sm" variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border/50">
+                      <Button size="sm" variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-border">
                         Add entry
                       </Button>
                     </Link>
@@ -445,7 +445,7 @@ export default async function DashboardPage() {
             </Card>
 
             {/* Quick Links */}
-            <Card className="border border-border/50 shadow-none bg-background">
+            <Card className="">
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Shortcuts</CardTitle>
               </CardHeader>

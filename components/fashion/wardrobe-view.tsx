@@ -120,7 +120,7 @@ export function WardrobeView({ items, onDeleteItem, onUpdateItem, onReorder }: W
             />
           </div>
           {!isFiltered && (
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary/30 px-3 py-2 rounded-lg border border-border/50">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary/30 px-3 py-2 rounded-lg border border-border">
               <Info className="w-3.5 h-3.5 text-primary" />
               <span>Drag to Reorder</span>
             </div>
@@ -180,7 +180,7 @@ export function WardrobeView({ items, onDeleteItem, onUpdateItem, onReorder }: W
       </div>
 
       {filteredItems.length === 0 ? (
-        <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed border-border/50">
+        <div className="text-center py-20 bg-secondary/10 rounded-xl border-2 border-dashed border-border">
           <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-[0.2em]">
             {isFiltered
               ? "No matches found"
@@ -213,4 +213,4 @@ export function WardrobeView({ items, onDeleteItem, onUpdateItem, onReorder }: W
       )}
     </div>
   )
-}
+}
