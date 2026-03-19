@@ -566,6 +566,48 @@ export const savedItems = pgTable(
 )
 
 // ============================================
+// LINK INGESTION CORE
+// ============================================
+
+export const ingestedLinks = pgTable(
+  "ingested_links",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    normalizedUrl: text("normalized_url").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    source: text("source").notNull(), // youtube, instagram, amazon, generic
+    type: text("type").notNull(), // video, product, article, other
+    suggestedModule: text("suggested_module").notNull(), // fashion, notes, saved, food, fitness
+    confidence: decimal("confidence", { precision: 4, scale: 3 }),
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
+    lastFetchedAt: timestamp("last_fetched_at", { mode: "date" }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdIdx: index("ingested_links_workspace_id_idx").on(table.workspaceId),
+    userIdIdx: index("ingested_links_user_id_idx").on(table.userId),
+    sourceIdx: index("ingested_links_source_idx").on(table.source),
+    typeIdx: index("ingested_links_type_idx").on(table.type),
+    normalizedUrlIdx: index("ingested_links_normalized_url_idx").on(table.normalizedUrl),
+    workspaceUserUrlIdx: uniqueIndex("ingested_links_workspace_user_url_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.normalizedUrl
+    ),
+  })
+)
+
+// ============================================
 // SKINCARE MODULE
 // ============================================
 
@@ -711,6 +753,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   notes: many(notes),
   timeLogs: many(timeLogs),
   savedItems: many(savedItems),
+  ingestedLinks: many(ingestedLinks),
   skincare: many(skincare),
   notifications: many(notifications),
   auditLogs: many(auditLogs),
@@ -731,6 +774,7 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
   notes: many(notes),
   timeLogs: many(timeLogs),
   savedItems: many(savedItems),
+  ingestedLinks: many(ingestedLinks),
   skincare: many(skincare),
   notifications: many(notifications),
   auditLogs: many(auditLogs),
@@ -790,6 +834,17 @@ export const walletBalancesRelations = relations(walletBalances, ({ one }) => ({
   }),
   user: one(users, {
     fields: [walletBalances.userId],
+    references: [users.id],
+  }),
+}))
+
+export const ingestedLinksRelations = relations(ingestedLinks, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [ingestedLinks.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(users, {
+    fields: [ingestedLinks.userId],
     references: [users.id],
   }),
 }))
