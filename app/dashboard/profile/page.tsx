@@ -28,7 +28,7 @@ export default async function ProfilePage() {
 
   const userData = {
     id: user.id,
-    email: user.email,
+    email: user.email ?? null,
     createdAt: profile?.createdAt,
     updatedAt: profile?.updatedAt,
   }

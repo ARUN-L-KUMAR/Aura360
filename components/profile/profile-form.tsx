@@ -324,7 +324,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={user.email} disabled className="bg-muted" />
+              <Input id="email" type="email" value={user.email || ""} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
