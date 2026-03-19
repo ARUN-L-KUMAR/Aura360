@@ -1,5 +1,240 @@
 # Aura360 (LifeSync)
 
+Unified personal management app built with Next.js App Router, TypeScript, and Neon Postgres.
+
+Aura360 brings multiple life modules into one workspace-scoped dashboard: Notes, Finance, Fitness, Food, Fashion, Skincare, Saved Items, Time Logs, and Profile.
+
+## Current Status
+
+Last updated: 2026-03-19
+
+Implemented now:
+- NextAuth v5 authentication (Credentials + Google OAuth)
+- Protected dashboard and module pages
+- CRUD APIs for core modules
+- Multi-tenant data model using workspace and user scoping
+- Cloudinary upload flows for images
+- Finance transaction and import workflows
+
+Partially implemented / intentionally limited:
+- Password reset pages are present but currently disabled in UI
+- Settings page is mostly informational (limited persistence)
+- `/api/scrape-product` currently returns mock/test data path
+- Role-based workspace authorization is scaffolded, not fully enforced
+
+## Tech Stack
+
+- Next.js 16.1.1 (App Router)
+- React 19
+- TypeScript 5
+- Tailwind CSS 4
+- Radix UI + shadcn/ui patterns
+- NextAuth 5 (beta)
+- Drizzle ORM
+- Neon Serverless Postgres
+- Zod
+- Cloudinary
+- Sonner
+
+## Modules
+
+- Notes: create, edit, pin, organize notes
+- Finance: transactions, balances, share parsing, import flows
+- Fitness: workout and measurement tracking
+- Food: meal and nutrition logging
+- Fashion: wardrobe, wishlist, drag/drop workflows, uploads
+- Skincare: products and routine tracking
+- Saved Items: save and categorize content links/resources
+- Time Logs: activity and productivity tracking
+- Profile: profile data, avatar/cover image flows
+
+## Routes Overview
+
+Public routes:
+- `/`
+- `/auth/login`
+- `/auth/sign-up`
+- `/auth/sign-up-success`
+- `/auth/forgot-password` (disabled UI)
+- `/auth/reset-password` (disabled UI)
+- `/auth/error`
+- `/share`
+
+Protected routes:
+- `/dashboard`
+- `/dashboard/finance`
+- `/dashboard/finance/import`
+- `/dashboard/fashion`
+- `/dashboard/fitness`
+- `/dashboard/food`
+- `/dashboard/notes`
+- `/dashboard/time`
+- `/dashboard/skincare`
+- `/dashboard/saved`
+- `/dashboard/profile`
+- `/dashboard/settings`
+
+## API Surface
+
+Auth and profile:
+- `/api/auth/[...nextauth]` (GET, POST)
+- `/api/auth/register` (POST)
+- `/api/auth/verify-email` (GET)
+- `/api/profile` (GET, PATCH, POST)
+- `/api/profile/avatar` (POST, DELETE)
+- `/api/profile/cover` (POST, DELETE)
+
+Core modules:
+- `/api/notes` (GET, POST, PATCH, DELETE)
+- `/api/fashion` (GET, POST, PATCH, DELETE)
+- `/api/fitness` (GET, POST, PATCH, DELETE)
+- `/api/food` (GET, POST, PATCH, DELETE)
+- `/api/time` (GET, POST, PATCH, DELETE)
+- `/api/skincare` (GET, POST, PATCH, DELETE)
+- `/api/saved` (GET, POST, PATCH, DELETE)
+
+Finance:
+- `/api/finance/transactions` (GET, POST)
+- `/api/finance/transactions/[id]` (PATCH, DELETE)
+- `/api/finance/transactions/bulk` (POST)
+- `/api/finance/balances` (GET, PUT)
+- `/api/finance/excel-import` (GET, POST)
+- `/api/finance/bulk-import` (POST)
+- `/api/finance/share-transaction` (GET, POST)
+
+Other:
+- `/api/fashion/upload` (POST)
+- `/api/fashion/upload-image` (POST)
+- `/api/scrape-product` (GET, currently mock flow)
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- Neon Postgres database
+
+### 1) Install dependencies
+
+```bash
+pnpm install
+```
+
+### 2) Configure environment variables
+
+Create `.env.local` in the project root:
+
+```env
+# Required
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+AUTH_SECRET=your-auth-secret
+
+# Optional (feature-dependent)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+
+SMTP_EMAIL=your-smtp-email
+SMTP_PASSWORD=your-smtp-password
+
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+VERCEL_URL=your-vercel-url
+
+# Planned / optional integration
+OPENAI_API_KEY=your-openai-key
+```
+
+### 3) Push database schema
+
+```bash
+pnpm db:push
+```
+
+Optional:
+
+```bash
+pnpm db:studio
+```
+
+### 4) Start development server
+
+```bash
+pnpm dev
+```
+
+Open http://localhost:3000
+
+## Scripts
+
+- `pnpm dev` - start dev server
+- `pnpm build` - build production app
+- `pnpm start` - run production server
+- `pnpm lint` - run lint checks
+- `pnpm db:generate` - generate Drizzle artifacts
+- `pnpm db:push` - push schema to database
+- `pnpm db:studio` - open Drizzle Studio
+
+## Project Structure
+
+```text
+lifesync-app/
+  app/
+    api/
+    auth/
+    dashboard/
+    share/
+  components/
+    fashion/
+    finance/
+    fitness/
+    food/
+    notes/
+    profile/
+    saved/
+    skincare/
+    time/
+    ui/
+  hooks/
+  lib/
+    db/
+    services/
+    types/
+    utils/
+  public/
+  scripts/
+```
+
+## Architecture Notes
+
+- Multi-tenant pattern: most domain data is scoped by `workspaceId` and `userId`
+- Auth middleware protects dashboard and non-public routes
+- Audit logging utility is used for many mutation paths
+- Finance includes both transaction APIs and wallet ledger/balance services
+
+## Known Gaps / Backlog Priorities
+
+- Enforce role-based authorization for workspace roles
+- Add API rate limiting for sensitive and high-traffic endpoints
+- Standardize finance writes around a single ledger source of truth
+- Re-implement or remove disabled password-reset UX
+- Replace mocked scrape-product path with production implementation
+- Add automated integration tests for auth, finance, and tenant isolation
+
+## Notes for Contributors
+
+- Prefer workspace-scoped and user-scoped queries in all routes/services
+- Keep route handlers aligned with existing API contracts
+- Validate request payloads with Zod where possible
+- Avoid introducing schema changes without corresponding migration scripts
+
+## License
+
+No license file is currently defined in this repository.# Aura360 (LifeSync)
+
 <div align="center">
 
 ![Aura360 Logo](https://img.shields.io/badge/Aura360-LifeSync-teal?style=for-the-badge)
