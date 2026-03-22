@@ -1,13 +1,12 @@
-import OpenAI from "openai"
 import * as cheerio from "cheerio"
 import { and, eq } from "drizzle-orm"
 import { isIP } from "node:net"
-import { z } from "zod"
 import { db, ingestedLinks, type WorkspaceContext } from "@/lib/db"
+import { enrichLink, type SuggestedModule } from "@/lib/services/gemini-link-enricher"
 
 export type IngestionPlatform = "instagram" | "youtube" | "ecommerce" | "generic"
 export type IngestionType = "video" | "product" | "article" | "other"
-export type SuggestedModule = "fashion" | "notes" | "saved" | "food" | "fitness"
+export type { SuggestedModule }
 
 type FetchMetadataResult = {
   title: string
@@ -17,6 +16,7 @@ type FetchMetadataResult = {
   canonicalUrl: string | null
   ogType: string | null
   detectedType: IngestionType
+  pageText: string | null   // visible text for Gemini
   extra: Record<string, unknown>
 }
 
@@ -43,10 +43,6 @@ export type IngestLinkResult = {
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
-const AI_CLASSIFICATION_SCHEMA = z.object({
-  category: z.enum(["fashion", "notes", "saved", "food", "fitness"]),
-  confidence: z.number().min(0).max(1),
-})
 
 export function detectPlatform(url: string): IngestionPlatform {
   const hostname = new URL(url).hostname.toLowerCase()
@@ -186,94 +182,6 @@ function inferType(platform: IngestionPlatform, metadata: FetchMetadataResult): 
   return "other"
 }
 
-function classifyByRules(input: {
-  platform: IngestionPlatform
-  type: IngestionType
-  title: string
-  description: string | null
-  url: string
-}): ClassificationResult {
-  const haystack = `${input.title} ${input.description ?? ""} ${input.url}`.toLowerCase()
-
-  if (/(dress|shirt|jacket|jeans|sneaker|sneakers|shoe|heels|bag|watch|fashion|outfit|wardrobe|streetwear|kurta)\b/.test(haystack)) {
-    return { category: "fashion", confidence: 0.9, reasoning: "fashion keyword match" }
-  }
-
-  if (/(recipe|cook|food|meal|restaurant|kitchen|biryani|diet plan|nutrition)\b/.test(haystack)) {
-    return { category: "food", confidence: 0.85, reasoning: "food keyword match" }
-  }
-
-  if (/(workout|gym|exercise|fitness|protein|cardio|strength|yoga|running|training)\b/.test(haystack)) {
-    return { category: "fitness", confidence: 0.85, reasoning: "fitness keyword match" }
-  }
-
-  if (input.type === "product" && input.platform === "ecommerce") {
-    return { category: "saved", confidence: 0.74, reasoning: "generic ecommerce item" }
-  }
-
-  if (input.type === "article") {
-    return { category: "notes", confidence: 0.72, reasoning: "article-like content" }
-  }
-
-  if (input.platform === "youtube") {
-    return { category: "notes", confidence: 0.67, reasoning: "video often useful for notes" }
-  }
-
-  return { category: "saved", confidence: 0.55, reasoning: "default bucket" }
-}
-
-async function classifyWithOpenAI(input: {
-  title: string
-  description: string | null
-  url: string
-  platform: IngestionPlatform
-  type: IngestionType
-}): Promise<ClassificationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
-  try {
-    const openai = new OpenAI({ apiKey })
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You classify links for a personal workspace app. Return strict JSON with fields: category (fashion|notes|saved|food|fitness), confidence (0..1).",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            title: input.title,
-            description: input.description,
-            url: input.url,
-            platform: input.platform,
-            type: input.type,
-          }),
-        },
-      ],
-    })
-
-    const content = response.choices[0]?.message?.content
-    if (!content) return null
-
-    const parsed = AI_CLASSIFICATION_SCHEMA.safeParse(JSON.parse(content))
-    if (!parsed.success) return null
-
-    return {
-      category: parsed.data.category,
-      confidence: parsed.data.confidence,
-      reasoning: "openai classification",
-    }
-  } catch (error) {
-    console.error("[Ingest] OpenAI classification failed:", error)
-    return null
-  }
-}
 
 async function fetchYouTubeOEmbed(url: string): Promise<Partial<FetchMetadataResult>> {
   try {
@@ -373,6 +281,16 @@ async function fetchOpenGraphMetadata(url: string): Promise<FetchMetadataResult>
   const price =
     getMeta('meta[property="product:price:amount"]', 'meta[name="price"]') ?? null
 
+  const pageText = $('body')
+    .clone()
+    .find('script, style, noscript, svg, img, nav, footer, header, aside')
+    .remove()
+    .end()
+    .text()
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 2000) || null
+
   return {
     title,
     description,
@@ -381,6 +299,7 @@ async function fetchOpenGraphMetadata(url: string): Promise<FetchMetadataResult>
     canonicalUrl,
     ogType,
     detectedType: normalizeTypeFromOgType(ogType),
+    pageText,
     extra: {
       price,
     },
@@ -402,6 +321,7 @@ async function extractMetadata(url: string, platform: IngestionPlatform): Promis
       canonicalUrl: null,
       ogType: null,
       detectedType: "other",
+      pageText: null,
       extra: {},
     }
   }
@@ -422,7 +342,6 @@ async function extractMetadata(url: string, platform: IngestionPlatform): Promis
 
   return metadata
 }
-
 function mapRecordToResult(record: typeof ingestedLinks.$inferSelect, cached: boolean): IngestLinkResult {
   return {
     id: record.id,
@@ -477,23 +396,14 @@ export async function ingestLink(input: {
   const metadata = await extractMetadata(normalizedUrl, platform)
   const type = inferType(platform, metadata)
 
-  const ruleClassification = classifyByRules({
-    platform,
-    type,
+  // ── Enrich with Gemini (classification + structured metadata) ──────
+  const enrichResult = await enrichLink({
+    url: normalizedUrl,
     title: metadata.title,
     description: metadata.description,
-    url: normalizedUrl,
+    siteName: metadata.siteName,
+    pageText: metadata.pageText ?? null,
   })
-
-  const aiClassification = await classifyWithOpenAI({
-    title: metadata.title,
-    description: metadata.description,
-    url: normalizedUrl,
-    platform,
-    type,
-  })
-
-  const classification = aiClassification ?? ruleClassification
 
   const now = new Date()
 
@@ -507,14 +417,16 @@ export async function ingestLink(input: {
     imageUrl: metadata.imageUrl,
     source: platform,
     type,
-    suggestedModule: classification.category,
-    confidence: classification.confidence.toFixed(3),
+    suggestedModule: enrichResult.module,
+    confidence: enrichResult.confidence.toFixed(3),
     metadata: {
       siteName: metadata.siteName,
       canonicalUrl: metadata.canonicalUrl,
       ogType: metadata.ogType,
       extraction: metadata.extra,
-      classificationReasoning: classification.reasoning,
+      enrichedBy: enrichResult.enrichedBy,
+      // The full structured enrichment — accessible in the UI
+      enrichment: enrichResult.enrichment,
     },
     lastFetchedAt: now,
     updatedAt: now,

@@ -27,6 +27,10 @@ import {
   CreditCard,
   Banknote,
   Building2,
+  Clock,
+  User,
+  Hash,
+  Sparkles,
 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -59,10 +63,15 @@ const categoryOptions = [
 interface ShareTransactionData {
   amount: number | null
   date: string
+  time?: string | null
   description: string
   category: string
   payment_method: string
+  receiver?: string | null
+  transaction_id?: string | null
+  type?: "expense" | "income"
   raw_text?: string
+  parsed_by?: "gemini" | "regex"
 }
 
 interface ShareTransactionModalProps {
@@ -93,7 +102,11 @@ export function ShareTransactionModal({
     if (initialData) {
       setAmount(initialData.amount?.toString() || "")
       setDate(initialData.date || new Date().toISOString().split("T")[0])
-      setDescription(initialData.description || "")
+      // Pre-fill description with receiver name + description if available
+      const desc = initialData.receiver
+        ? `${initialData.receiver}${initialData.description ? ` – ${initialData.description}` : ""}`
+        : (initialData.description || "")
+      setDescription(desc)
       setCategory(initialData.category || "Other")
       setPaymentMethod(initialData.payment_method || "upi")
     }
@@ -183,6 +196,12 @@ export function ShareTransactionModal({
               </DialogTitle>
               <DialogDescription className={cn(isMobile && "text-xs")}>
                 Confirm the details from your UPI/GPay payment
+                {initialData?.parsed_by === "gemini" && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-violet-600 font-medium">
+                    <Sparkles className="h-3 w-3" />
+                    AI detected
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
 
@@ -289,15 +308,44 @@ export function ShareTransactionModal({
                 />
               </div>
 
-              {/* Raw text preview (if available) */}
+              {/* Receiver & Time & Transaction ID — read-only info row */}
+              {(initialData?.receiver || initialData?.time || initialData?.transaction_id) && (
+                <div className={cn(
+                  "grid gap-2 rounded-lg border bg-muted/40 p-3",
+                  isMobile ? "text-[11px]" : "text-xs"
+                )}>
+                  {initialData.receiver && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-medium text-foreground">{initialData.receiver}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {initialData.time && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <span>{initialData.time}</span>
+                      </div>
+                    )}
+                    {initialData.transaction_id && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Hash className="h-3.5 w-3.5 shrink-0" />
+                        <span className="font-mono">{initialData.transaction_id}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Raw text preview */}
               {initialData?.raw_text && (
                 <div className="p-3 rounded-lg bg-muted/50 border">
                   <p className={cn("text-muted-foreground mb-1", isMobile ? "text-[10px]" : "text-xs")}>
                     Shared text:
                   </p>
                   <p className={cn("text-foreground", isMobile ? "text-xs" : "text-sm")}>
-                    {initialData.raw_text.length > 100 
-                      ? initialData.raw_text.substring(0, 100) + "..." 
+                    {initialData.raw_text.length > 120
+                      ? initialData.raw_text.substring(0, 120) + "..."
                       : initialData.raw_text
                     }
                   </p>
