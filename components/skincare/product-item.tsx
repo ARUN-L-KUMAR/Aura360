@@ -86,7 +86,7 @@ export function ProductItem({ product, onDelete, onUpdate }: ProductItemProps) {
           </div>
           {product.expiryDate && (
             <p className="text-xs text-muted-foreground mt-1">
-              Expires: {new Date(product.expiry_date).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
+              Expires: {new Date(product.expiryDate!).toLocaleDateString("en-US", { year: "numeric", month: "short" })}
             </p>
           )}
         </div>

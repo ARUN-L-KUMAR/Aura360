@@ -53,6 +53,8 @@ const MODULE_META: Record<string, { label: string; route: string; emoji: string 
   saved:    { label: "Saved",    route: "/dashboard/saved",    emoji: "🔖" },
   food:     { label: "Food",     route: "/dashboard/food",     emoji: "🍔" },
   fitness:  { label: "Fitness",  route: "/dashboard/fitness",  emoji: "💪" },
+  skincare: { label: "Skincare", route: "/dashboard/skincare", emoji: "✨" },
+  time:     { label: "Time",     route: "/dashboard/time",     emoji: "⏱️" },
 }
 
 // ─── Component ─────────────────────────────────────────────────────
@@ -136,10 +138,10 @@ function ShareContent() {
   }
 
   // ─── Save from Link flow ─────────────────────────────────────────
-  const handleSaveFromLink = async () => {
+  const handleSaveFromLink = async (manualDestination?: string) => {
     setSelectedModule("link")
     setIsLoading(true)
-    setLoadingLabel("Detecting link type…")
+    setLoadingLabel(manualDestination ? `Saving to ${manualDestination}...` : "Detecting link type...")
     setError(null)
 
     try {
@@ -147,7 +149,11 @@ function ShareContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         redirect: "manual",
-        body: JSON.stringify({ url: extractedUrl, destination: "auto", autoSave: true }),
+        body: JSON.stringify({ 
+          url: extractedUrl, 
+          destination: manualDestination || "auto", 
+          autoSave: true 
+        }),
       })
 
       if (response.type === "opaqueredirect" || response.status === 302 || response.status === 301) {
@@ -361,31 +367,55 @@ function ShareContent() {
             )}
 
             {showSaveLink && (
-              <button
-                onClick={handleSaveFromLink}
-                className={`
-                  group relative flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all
-                  hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30
-                  ${saveLinkIsSuggested
-                    ? "border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20"
-                    : "border-border"}
-                `}
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/50 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/50 transition-colors">
-                  <LinkIcon className="h-6 w-6 text-violet-600" />
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleSaveFromLink()}
+                  className={`
+                    w-full group relative flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all
+                    hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30
+                    ${saveLinkIsSuggested
+                      ? "border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20"
+                      : "border-border"}
+                  `}
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/50 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/50 transition-colors">
+                    <LinkIcon className="h-6 w-6 text-violet-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm">Auto-Save from Link</p>
+                    <p className="text-xs text-muted-foreground">
+                      AI detects and saves to the right module automatically
+                    </p>
+                  </div>
+                  {saveLinkIsSuggested && (
+                    <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wider text-violet-600 bg-violet-100 dark:bg-violet-900/50 rounded-full px-2 py-0.5">
+                      Suggested
+                    </span>
+                  )}
+                </button>
+
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
+                    <span className="bg-card px-2 text-muted-foreground">Or Manual Target</span>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm">Save from Link</p>
-                  <p className="text-xs text-muted-foreground">
-                    Auto-detects and saves to the right module
-                  </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(MODULE_META).map(([id, meta]) => (
+                    <button
+                      key={id}
+                      onClick={() => handleSaveFromLink(id)}
+                      className="flex items-center gap-2 p-3 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                    >
+                      <span className="text-lg group-hover:scale-110 transition-transform">{meta.emoji}</span>
+                      <span className="text-[11px] font-bold uppercase tracking-tight">{meta.label}</span>
+                    </button>
+                  ))}
                 </div>
-                {saveLinkIsSuggested && (
-                  <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wider text-violet-600 bg-violet-100 dark:bg-violet-900/50 rounded-full px-2 py-0.5">
-                    Suggested
-                  </span>
-                )}
-              </button>
+              </div>
             )}
           </div>
 

@@ -3,10 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Pin, Trash2, Edit, CheckSquare } from "lucide-react"
+import { Pin, Trash2, Edit, CheckSquare, MoveRight } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { EditNoteDialog } from "./edit-note-dialog"
+import { MoveToDialog } from "@/components/ui/move-to-dialog"
 
 import type { Note } from "@/lib/types/notes"
 
@@ -21,6 +22,7 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPinning, setIsPinning] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showMoveDialog, setShowMoveDialog] = useState(false)
   const [isTogglingItem, setIsTogglingItem] = useState<string | null>(null)
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -144,6 +146,17 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
                <Button
                 variant="ghost"
                 size="icon"
+                className="h-7 w-7 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground border shadow-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowMoveDialog(true)
+                }}
+              >
+                <MoveRight className="h-3.5 w-3.5" />
+              </Button>
+               <Button
+                variant="ghost"
+                size="icon"
                 className="h-7 w-7 rounded-full bg-background/50 hover:bg-destructive hover:text-destructive-foreground border shadow-sm"
                 onClick={handleDelete}
                 disabled={isDeleting}
@@ -198,6 +211,13 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
       </Card>
 
       <EditNoteDialog note={note} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
+      <MoveToDialog
+        itemId={note.id}
+        sourceModule="notes"
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        onSuccess={() => onDelete(note.id)}
+      />
     </>
   )
 }

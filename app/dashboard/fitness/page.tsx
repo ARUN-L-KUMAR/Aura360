@@ -41,7 +41,7 @@ export default async function FitnessPage() {
 
         <div className="space-y-6">
           <FitnessStats fitnessData={fitnessData || []} />
-          <FitnessLog initialData={fitnessData || []} />
+          <FitnessLog initialData={(fitnessData || []) as any} />
         </div>
       </div>
     </div>

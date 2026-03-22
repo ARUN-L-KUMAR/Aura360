@@ -4,7 +4,22 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MealItem } from "./meal-item"
-import type { Meal } from "@/lib/types/food"
+// Local interface aligned with MealItem's expected Meal shape
+interface Meal {
+  id: string
+  userId: string
+  workspaceId?: string
+  mealType: "breakfast" | "lunch" | "dinner" | "snack"
+  foodName: string
+  calories: number | null | undefined
+  protein: number | string | null | undefined
+  carbs: number | string | null | undefined
+  fats: number | string | null | undefined
+  date: string | Date
+  notes: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
+}
 
 interface MealsListProps {
   initialMeals: Meal[]
@@ -53,7 +68,7 @@ export function MealsList({ initialMeals }: MealsListProps) {
         ) : (
           <div className="space-y-2">
             {filteredMeals.map((meal) => (
-              <MealItem key={meal.id} meal={meal} onDelete={handleMealDeleted} onUpdate={handleMealUpdated} />
+              <MealItem key={meal.id} meal={meal as any} onDelete={handleMealDeleted} onUpdate={handleMealUpdated as any} />
             ))}
           </div>
         )}

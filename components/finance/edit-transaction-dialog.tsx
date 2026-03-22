@@ -48,20 +48,24 @@ interface EditTransactionDialogProps {
 
 export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdate }: EditTransactionDialogProps) {
   const isMobile = useIsMobile()
-  const [type, setType] = useState<"income" | "expense" | "investment">(transaction.type)
+  const [type, setType] = useState<"income" | "expense" | "investment" | "transfer">(transaction.type)
   const [amount, setAmount] = useState(transaction.amount.toString())
   const [category, setCategory] = useState(transaction.category)
   const [customCategory, setCustomCategory] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState(transaction.paymentMethod || "upi")
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi" | "bank_transfer" | "other">(transaction.paymentMethod || "upi")
   const [description, setDescription] = useState(transaction.description || "")
-  const [date, setDate] = useState(transaction.date)
+  const [date, setDate] = useState<string>(
+    transaction.date instanceof Date ? transaction.date.toISOString().split("T")[0] : transaction.date
+  )
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     setType(transaction.type)
     setAmount(transaction.amount.toString())
-    // Check if category is in the predefined list
-    const isCustom = !categoryOptions[transaction.type].includes(transaction.category)
+    // Check if category is in the predefined list (transfer type has no options, treat as custom)
+    const typeKey = transaction.type as keyof typeof categoryOptions
+    const options = categoryOptions[typeKey]
+    const isCustom = !options || !options.includes(transaction.category)
     if (isCustom) {
       setCategory("custom")
       setCustomCategory(transaction.category)
@@ -71,7 +75,8 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
     }
     setPaymentMethod(transaction.paymentMethod || "upi")
     setDescription(transaction.description || "")
-    setDate(transaction.date)
+    // Ensure date is always a string for the input element
+    setDate(transaction.date instanceof Date ? transaction.date.toISOString().split("T")[0] : transaction.date)
   }, [transaction])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,7 +220,7 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryOptions[type].map((cat) => (
+                  {(categoryOptions[type as keyof typeof categoryOptions] ?? categoryOptions.expense).map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
@@ -247,7 +252,7 @@ export function EditTransactionDialog({ transaction, open, onOpenChange, onUpdat
                     <button
                       key={method.value}
                       type="button"
-                      onClick={() => setPaymentMethod(method.value)}
+                      onClick={() => setPaymentMethod(method.value as "cash" | "card" | "upi" | "bank_transfer" | "other")}
                       className={cn(
                         "flex flex-col items-center justify-center gap-1 rounded-lg border transition-all",
                         isMobile ? "p-1.5 text-[10px]" : "p-2 text-xs",

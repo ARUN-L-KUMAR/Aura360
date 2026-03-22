@@ -5,21 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ProductItem } from "./product-item"
 
+// Aligned with ProductItem's local SkincareProduct interface (camelCase)
 interface SkincareProduct {
   id: string
-  user_id: string
-  product_name: string
+  userId: string
+  productName: string
   brand: string | null
   category: string
-  routine_time: "morning" | "evening" | "both" | null
+  routineTime: "morning" | "evening" | "both" | null
   frequency: string | null
-  purchase_date: string | null
-  expiry_date: string | null
+  purchaseDate: string | null
+  expiryDate: string | null
   price: number | null
   rating: number | null
   notes: string | null
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface ProductsListProps {
@@ -31,7 +32,7 @@ export function ProductsList({ initialProducts }: ProductsListProps) {
   const [filterRoutine, setFilterRoutine] = useState<string>("all")
 
   const filteredProducts = products.filter(
-    (product) => filterRoutine === "all" || product.routine_time === filterRoutine,
+    (product) => filterRoutine === "all" || product.routineTime === filterRoutine,
   )
 
   const handleProductDeleted = (productId: string) => {

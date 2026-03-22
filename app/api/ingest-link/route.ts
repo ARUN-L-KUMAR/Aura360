@@ -12,7 +12,7 @@ import {
 
 const ingestRequestSchema = z.object({
   url: z.string().url(),
-  destination: z.enum(["auto", "fashion", "notes", "saved", "food", "fitness"]).optional(),
+  destination: z.enum(["auto", "fashion", "notes", "saved", "food", "fitness", "skincare", "time"]).optional(),
   autoSave: z.boolean().optional().default(false),
   forceRefresh: z.boolean().optional().default(false),
 })
@@ -189,7 +189,9 @@ export async function POST(request: NextRequest) {
     let saveResult: Awaited<ReturnType<typeof persistToDestination>> | null = null
     if (data.autoSave) {
       const supportedDestination: SuggestedModule =
-        destination === "food" || destination === "fitness" ? "saved" : destination
+        destination === "food" || destination === "fitness" || destination === "skincare" || destination === "time"
+          ? "saved"
+          : destination
 
       saveResult = await persistToDestination({
         destination: supportedDestination,

@@ -67,33 +67,6 @@ export function ModuleHeader({
           </div>
         )}
       </div>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t safe-area-inset-bottom">
-        <div className="flex items-center justify-around h-16">
-          <Link 
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 px-4 py-2 text-muted-foreground"
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
-          </Link>
-          <Link 
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 px-4 py-2 text-muted-foreground"
-          >
-            <Activity className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Dash</span>
-          </Link>
-          <Link 
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 px-4 py-2 text-foreground"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Back</span>
-          </Link>
-        </div>
-      </nav>
     </>
   )
 }

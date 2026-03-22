@@ -10,17 +10,19 @@ import { EditFitnessDialog } from "./edit-fitness-dialog"
 interface FitnessEntry {
   id: string
   userId: string
+  workspaceId?: string
   type: "workout" | "measurement" | "goal"
   workoutType: string | null
   durationMinutes: number | null
   caloriesBurned: number | null
   measurementType: string | null
-  measurementValue: number | null
+  measurementValue: string | number | null
   measurementUnit: string | null
-  date: string
+  date: string | Date
   notes: string | null
-  createdAt: string
-  updatedAt: string
+  intensity?: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 interface FitnessItemProps {
@@ -131,7 +133,7 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
         </div>
       </div>
 
-      <EditFitnessDialog entry={entry} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
+      <EditFitnessDialog entry={entry as any} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate as any} />
     </>
   )
 }

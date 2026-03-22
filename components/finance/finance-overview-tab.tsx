@@ -154,8 +154,8 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
       .slice(-6) // Last 6 months
   }, [transactions])
 
-  const availableBalance = balanceData?.real_balance ?? 0
-  const difference = availableBalance - stats.requiredBalance
+  const availableBalance = balanceData?.realBalance ?? 0
+  // difference is computed on-the-fly in the JSX below
 
   const getDifferenceColor = (diff: number) => {
     if (diff === 0) return "text-green-600 dark:text-green-400"

@@ -736,6 +736,46 @@ export const auditLogs = pgTable(
 )
 
 // ============================================
+// AI INTERACTIONS (USAGE TRACKING)
+// ============================================
+
+export const aiInteractions = pgTable(
+  "ai_interactions",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Which AI service was called
+    service: varchar("service", { length: 64 }).notNull(), // link_enricher | transaction_parser | journal_assistant | insights_generator | smart_search
+    // Gemini model used
+    model: varchar("model", { length: 64 }),
+    // Token usage
+    promptTokens: integer("prompt_tokens").default(0).notNull(),
+    completionTokens: integer("completion_tokens").default(0).notNull(),
+    totalTokens: integer("total_tokens").default(0).notNull(),
+    // Latency in milliseconds
+    latencyMs: integer("latency_ms"),
+    // Whether the AI call succeeded (false = fell back to rules/regex)
+    success: boolean("success").notNull().default(true),
+    errorMessage: text("error_message"),
+    // Optional: link to the entity this interaction was for
+    entityType: varchar("entity_type", { length: 64 }),
+    entityId: uuid("entity_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdIdx: index("ai_interactions_workspace_id_idx").on(table.workspaceId),
+    userIdIdx: index("ai_interactions_user_id_idx").on(table.userId),
+    serviceIdx: index("ai_interactions_service_idx").on(table.service),
+    createdAtIdx: index("ai_interactions_created_at_idx").on(table.createdAt),
+  })
+)
+
+// ============================================
 // RELATIONS
 // ============================================
 

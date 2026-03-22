@@ -29,6 +29,10 @@ import type { Transaction, BalanceData } from "@/lib/types/finance"
 
 type TransactionType = "income" | "expense" | "investment"
 
+interface TransactionHistoryTabProps {
+  initialTransactions: Transaction[]
+}
+
 // Helper function to format payment method for display
 function formatPaymentMethod(method: string): string {
   const methodMap: Record<string, string> = {
@@ -92,7 +96,7 @@ function TransactionTable({
     }
   }
 
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const totalAmount = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
 
   if (filteredTransactions.length === 0) {
     return (
@@ -683,7 +687,7 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   Required Balance
                 </p>
                 <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                  ₹{(balanceData.real_balance - stats.netFlow).toLocaleString("en-IN", {
+                  ₹{(balanceData.realBalance - stats.netFlow).toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}

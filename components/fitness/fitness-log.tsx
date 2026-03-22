@@ -4,7 +4,24 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FitnessItem } from "./fitness-item"
-import type { FitnessEntry } from "@/lib/types/fitness"
+// Local interface aligned with FitnessItem's expected FitnessEntry shape
+interface FitnessEntry {
+  id: string
+  userId: string
+  workspaceId?: string
+  type: "workout" | "measurement" | "goal"
+  workoutType: string | null
+  durationMinutes: number | null
+  caloriesBurned: number | null
+  measurementType: string | null
+  measurementValue: string | number | null
+  measurementUnit: string | null
+  date: string | Date
+  notes: string | null
+  intensity?: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
+}
 
 interface FitnessLogProps {
   initialData: FitnessEntry[]
@@ -54,7 +71,7 @@ export function FitnessLog({ initialData }: FitnessLogProps) {
         ) : (
           <div className="space-y-2">
             {filteredData.map((entry) => (
-              <FitnessItem key={entry.id} entry={entry} onDelete={handleEntryDeleted} onUpdate={handleEntryUpdated} />
+              <FitnessItem key={entry.id} entry={entry as any} onDelete={handleEntryDeleted} onUpdate={handleEntryUpdated as any} />
             ))}
           </div>
         )}

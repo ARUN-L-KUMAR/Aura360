@@ -13,11 +13,12 @@ import { z } from "zod"
 const createSavedItemSchema = z.object({
   type: z.enum(["article", "video", "product", "recipe", "other"]),
   title: z.string(),
-  url: z.string().url().optional(),
-  description: z.string().optional(),
-  imageUrl: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  url: z.string().url().optional().nullable(),
+  description: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional().nullable(),
   isFavorite: z.boolean().optional(),
+  metadata: z.record(z.any()).optional().nullable(),
 })
 
 const updateSavedItemSchema = createSavedItemSchema.partial()

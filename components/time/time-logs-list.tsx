@@ -3,7 +3,24 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TimeLogItem } from "./time-log-item"
-import type { TimeLog } from "@/lib/types/time"
+// Local interface aligned with TimeLogItem's expected TimeLog shape
+interface TimeLog {
+  id: string
+  userId: string
+  workspaceId?: string
+  activity: string
+  category: string | null | undefined
+  duration: number
+  date: string | Date
+  description: string | null | undefined
+  startTime?: Date | string | null
+  endTime?: Date | string | null
+  tags?: string[] | null
+  productivityScore?: number | null
+  metadata?: Record<string, any> | null
+  createdAt: string | Date
+  updatedAt: string | Date
+}
 
 interface TimeLogsListProps {
   initialLogs: TimeLog[]
@@ -50,7 +67,7 @@ export function TimeLogsList({ initialLogs }: TimeLogsListProps) {
           ) : (
             <div className="space-y-2">
               {logs.map((log) => (
-                <TimeLogItem key={log.id} log={log} onDelete={handleLogDeleted} onUpdate={handleLogUpdated} />
+                <TimeLogItem key={log.id} log={log as any} onDelete={handleLogDeleted} onUpdate={handleLogUpdated as any} />
               ))}
             </div>
           )}

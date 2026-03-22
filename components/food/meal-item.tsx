@@ -10,16 +10,17 @@ import { EditMealDialog } from "./edit-meal-dialog"
 interface Meal {
   id: string
   userId: string
+  workspaceId?: string
   mealType: "breakfast" | "lunch" | "dinner" | "snack"
   foodName: string
-  calories: number | null
-  protein: number | null
-  carbs: number | null
-  fats: number | null
-  date: string
+  calories: number | null | undefined
+  protein: string | number | null
+  carbs: string | number | null
+  fats: string | number | null
+  date: string | Date
   notes: string | null
-  createdAt: string
-  updatedAt: string
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 interface MealItemProps {
@@ -129,7 +130,7 @@ export function MealItem({ meal, onDelete, onUpdate }: MealItemProps) {
         </div>
       </div>
 
-      <EditMealDialog meal={meal} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
+      <EditMealDialog meal={meal as any} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate as any} />
     </>
   )
 }

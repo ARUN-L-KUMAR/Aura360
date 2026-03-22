@@ -192,80 +192,14 @@ export default function FinancePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex h-16 items-center justify-between gap-4">
-            {/* Left Section - Back & Logo */}
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/dashboard")}
-                className="gap-2 font-bold text-xs uppercase tracking-widest"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              
-              <div className="hidden sm:block h-6 w-px bg-border/50" />
-              
-              <Link href="/dashboard" className="flex items-center gap-3 group">
-                <Logo />
-                <span className="font-bold tracking-tight hidden sm:inline text-lg">Aura360</span>
-              </Link>
-            </div>
-
-            {/* Right Section - Navigation & Actions */}
-            <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-1">
-                <Button variant="ghost" size="sm" asChild className="font-bold text-xs uppercase tracking-widest">
-                  <Link href="/dashboard">
-                    <Home className="h-4 w-4 mr-1.5" />
-                    Home
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="font-bold text-xs uppercase tracking-widest">
-                  <Link href="/dashboard">
-                    <LayoutGrid className="h-4 w-4 mr-1.5" />
-                    Dashboard
-                  </Link>
-                </Button>
-              </div>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowShareModal(true)}
-                      className="gap-2 font-bold text-xs uppercase tracking-widest border-border shadow-none hover:bg-secondary"
-                    >
-                      <Share2 className="h-4 w-4" />
-                      {!isMobile && "Import from GPay"}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-[10px] font-bold">Import from shared transactions</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className={cn(
         "mx-auto max-w-7xl",
         isMobile ? "p-6 pb-24" : "p-10"
       )}>
         {/* Header */}
-        <div className="mb-10 flex items-end justify-between">
+        <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center border">
+            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center border shadow-sm">
               <DollarSign className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </div>
             <div>
@@ -275,19 +209,41 @@ export default function FinancePage() {
               <h1 className="text-4xl font-bold tracking-tight">Finance</h1>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary"
-          >
-            <RefreshCw className={cn(
-              "h-3 w-3",
-              isRefreshing && "animate-spin"
-            )} />
-            {isRefreshing ? "Syncing..." : "Sync Data"}
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowShareModal(true)}
+                    className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary h-9 px-4"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Import from GPay
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-[10px] font-bold">Import from shared transactions</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary h-9 px-4"
+            >
+              <RefreshCw className={cn(
+                "h-3.5 w-3.5",
+                isRefreshing && "animate-spin"
+              )} />
+              {isRefreshing ? "Syncing..." : "Sync Data"}
+            </Button>
+          </div>
         </div>
 
         {/* Main Tabs */}
