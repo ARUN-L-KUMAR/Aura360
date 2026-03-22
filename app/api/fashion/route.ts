@@ -40,6 +40,9 @@ const createFashionSchema = z.object({
   tags: z.array(z.string()).optional(),
   isFavorite: z.boolean().optional(),
   notes: z.string().optional(),
+  occasion: z.array(z.string()).optional(),
+  season: z.array(z.string()).optional(),
+  condition: z.string().optional(),
   metadata: fashionMetadataSchema.optional(),
 })
 
@@ -88,7 +91,8 @@ export async function POST(request: NextRequest) {
         ...context,
         ...data,
         price: data.price?.toString(),
-      })
+        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+      } as any)
       .returning()
     
     // Audit log
@@ -148,9 +152,16 @@ export async function PATCH(request: NextRequest) {
       .set({
         ...data,
         price: data.price?.toString(),
+        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
         updatedAt: new Date(),
       })
-      .where(eq(fashionItems.id, id))
+      .where(
+        and(
+          eq(fashionItems.id, id),
+          eq(fashionItems.workspaceId, context.workspaceId),
+          eq(fashionItems.userId, context.userId)
+        )
+      )
       .returning()
     
     // Audit log

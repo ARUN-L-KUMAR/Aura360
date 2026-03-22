@@ -37,7 +37,7 @@ export function DashboardLayoutClient({ children }: { children: React.ReactNode 
         isSidebarCollapsed && "lg:ml-[72px]"
       )}>
         <Navbar />
-        <main className="flex-1 pb-24 lg:pb-12">
+        <main className="flex-1 pb-32 lg:pb-12">
           {children}
         </main>
       </div>

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { toast } from "sonner"
@@ -47,9 +48,9 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
   const [tags, setTags] = useState<string[]>(item.tags || [])
   const [tagInput, setTagInput] = useState("")
   const [isFavorite, setIsFavorite] = useState(item.isFavorite || false)
-  const [occasion, setOccasion] = useState<string[]>([])
-  const [season, setSeason] = useState<string[]>([])
-  const [condition, setCondition] = useState(item.metadata?.condition || "")
+  const [occasion, setOccasion] = useState<string[]>(item.occasion || [])
+  const [season, setSeason] = useState<string[]>(item.season || [])
+  const [condition, setCondition] = useState(item.condition || "good")
   const [expectedBudget, setExpectedBudget] = useState(item.metadata?.expectedBudget?.toString() || "")
   const [buyDeadline, setBuyDeadline] = useState(item.metadata?.buyDeadline || "")
   const [isLoading, setIsLoading] = useState(false)
@@ -71,9 +72,9 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
     setStatus(item.status || "wardrobe")
     setTags(item.tags || [])
     setIsFavorite(item.isFavorite || false)
-    setOccasion((item.metadata?.occasion as string[]) || [])
-    setSeason((item.metadata?.season as string[]) || [])
-    setCondition(item.metadata?.condition || "")
+    setOccasion(item.occasion || [])
+    setSeason(item.season || [])
+    setCondition(item.condition || "good")
     setExpectedBudget(item.metadata?.expectedBudget?.toString() || "")
     setBuyDeadline(item.metadata?.buyDeadline || "")
   }, [item])
@@ -83,7 +84,7 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
     setIsLoading(true)
 
     try {
-      const existingMetadata: FashionMetadata = item.metadata || {}
+      const existingMetadata: Record<string, any> = item.metadata || {}
 
       const response = await fetch(`/api/fashion?id=${item.id}`, {
         method: "PATCH",
@@ -100,16 +101,16 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
           imageUrl: imageUrl || undefined,
           notes: notes || undefined,
           status,
-          tags: tags.length > 0 ? tags : occasion.length > 0 ? occasion : undefined,
+          tags: tags.length > 0 ? tags : undefined,
           isFavorite,
+          occasion: occasion.length > 0 ? occasion : undefined,
+          season: season.length > 0 ? season : undefined,
+          condition: condition || "good",
           metadata: {
             ...existingMetadata,
             buyingLink: buyingLink || undefined,
-            occasion: occasion.length > 0 ? occasion : undefined,
-            season: season.length > 0 ? season : undefined,
             expectedBudget: expectedBudget ? Number.parseFloat(expectedBudget) : undefined,
             buyDeadline: buyDeadline || undefined,
-            condition: condition || undefined,
           },
         }),
       })
@@ -380,13 +381,19 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
 
             {status !== "wishlist" && (
               <div className="grid gap-2">
-                <Label htmlFor="edit-condition">Condition (Optional)</Label>
-                <Input
-                  id="edit-condition"
-                  placeholder="e.g., New, Worn, Needs Wash"
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                />
+                <Label htmlFor="edit-condition">Condition</Label>
+                <Select value={condition} onValueChange={setCondition}>
+                  <SelectTrigger id="edit-condition">
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New ✨</SelectItem>
+                    <SelectItem value="good">Good 👍</SelectItem>
+                    <SelectItem value="fair">Fair 🆗</SelectItem>
+                    <SelectItem value="needs_repair">Needs Repair 🛠️</SelectItem>
+                    <SelectItem value="needs_wash">Needs Wash 🧺</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

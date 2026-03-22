@@ -72,7 +72,7 @@ const modules = [
     color: "text-indigo-600 dark:text-indigo-400",
   },
   {
-    title: "Skincare",
+    title: "Self Care",
     icon: Sparkles,
     href: "/dashboard/skincare",
     color: "text-rose-600 dark:text-rose-400",
@@ -107,9 +107,9 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
 
   if (isMobile) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t safe-area-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
-          {modules.slice(0, 5).map((module) => {
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t pb-safe">
+        <div className="flex items-center justify-around h-16 px-1">
+          {modules.filter(m => ["Dashboard", "Notes", "Finance", "Fitness", "Self Care"].includes(m.title)).map((module) => {
             const isActive = pathname === module.href
             const Icon = module.icon
             return (
@@ -117,13 +117,18 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
                 key={module.title}
                 href={module.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 transition-all",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  "flex flex-col items-center justify-center flex-1 gap-1 transition-all py-1",
+                  isActive ? "text-primary scale-110" : "text-muted-foreground"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[60px]">
-                  {module.title.split(' ')[0]}
+                <div className={cn(
+                  "p-1 rounded-lg transition-colors",
+                  isActive && "bg-primary/10"
+                )}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-tight truncate max-w-[50px]">
+                  {module.title === "Self Care" ? "Care" : module.title.split(' ')[0]}
                 </span>
               </Link>
             )
@@ -131,12 +136,17 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
           <Link
             href="/dashboard/profile"
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 transition-all",
-              pathname === "/dashboard/profile" ? "text-primary" : "text-muted-foreground"
+              "flex flex-col items-center justify-center flex-1 gap-1 transition-all py-1",
+              pathname === "/dashboard/profile" ? "text-primary scale-110" : "text-muted-foreground"
             )}
           >
-            <User className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Me</span>
+            <div className={cn(
+              "p-1 rounded-lg transition-colors",
+              pathname === "/dashboard/profile" && "bg-primary/10"
+            )}>
+              <User className="w-5 h-5" />
+            </div>
+            <span className="text-[9px] font-bold uppercase tracking-tight">Me</span>
           </Link>
         </div>
       </nav>

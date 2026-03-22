@@ -35,7 +35,9 @@ export const paymentMethodEnum = pgEnum("payment_method", ["cash", "card", "upi"
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "cancelled", "expired", "pending"])
 export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed", "completed", "cancelled"])
 export const mealTypeEnum = pgEnum("meal_type", ["breakfast", "lunch", "dinner", "snack"])
-export const routineTimeEnum = pgEnum("routine_time", ["morning", "evening", "both"])
+export const routineTimeEnum = pgEnum("routine_time", ["morning", "evening", "both", "weekly", "optional"])
+export const skincareStatusEnum = pgEnum("skincare_status", ["owned", "need_to_buy", "finished"])
+export const skincareBodyPartEnum = pgEnum("skincare_body_part", ["face", "hair", "body", "oral", "general"])
 export const auditActionEnum = pgEnum("audit_action", ["create", "update", "delete", "login", "logout"])
 
 // ============================================
@@ -361,11 +363,14 @@ export const fashionItems = pgTable(
     purchaseDate: date("purchase_date"),
     imageUrl: text("image_url"),
     images: text("images").array(),
-    status: text("status").notNull().default("wardrobe"), // wardrobe, wishlist, sold, donated
-    wearCount: integer("wear_count").default(0),
-    lastWornDate: date("last_worn_date"),
-    tags: text("tags").array(),
     isFavorite: boolean("is_favorite").default(false),
+    status: text("status").notNull().default("wardrobe"), // wardrobe, wishlist, sold, donated
+    condition: text("condition").default("good"), // new, good, fair, needs_repair, needs_wash
+    occasion: text("occasion").array(), // formal, casual, work, party
+    season: text("season").array(), // summer, winter, spring, fall
+    lastWornDate: date("last_worn_date"),
+    wearCount: integer("wear_count").default(0),
+    tags: text("tags").array(),
     notes: text("notes"),
     metadata: jsonb("metadata").$type<Record<string, any>>(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -623,8 +628,11 @@ export const skincare = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     productName: text("product_name").notNull(),
     brand: text("brand"),
-    category: text("category").notNull(), // cleanser, moisturizer, serum, etc.
+    category: text("category").notNull(), // specific type like cleanser, moisturizer, etc.
+    bodyPart: skincareBodyPartEnum("body_part").default("face").notNull(), // face, hair, body, etc.
+    status: skincareStatusEnum("status").default("owned").notNull(), // owned, need_to_buy, finished
     routineTime: routineTimeEnum("routine_time"),
+    routineOrder: integer("routine_order").default(0),
     frequency: text("frequency"), // daily, weekly, etc.
     purchaseDate: date("purchase_date"),
     expiryDate: date("expiry_date"),

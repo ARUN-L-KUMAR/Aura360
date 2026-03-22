@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -66,6 +67,7 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
   const [expectedBudget, setExpectedBudget] = useState("")
   const [buyDeadline, setBuyDeadline] = useState("")
   const [isFavorite, setIsFavorite] = useState(false)
+  const [condition, setCondition] = useState("good")
   const [isLoading, setIsLoading] = useState(false)
   const [fetchLoading, setFetchLoading] = useState(false)
   const router = useRouter()
@@ -133,15 +135,14 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
           imageUrl: imageUrl || undefined,
           notes: notes || undefined,
           status: type === "buyed" ? "wardrobe" : "wishlist",
-          tags: occasion.length > 0 ? occasion : undefined,
           isFavorite,
+          occasion: occasion.length > 0 ? occasion : undefined,
+          season: season.length > 0 ? season : undefined,
+          condition: type === "buyed" ? condition : undefined,
           metadata: {
             buyingLink: buyingLink || undefined,
-            occasion: occasion.length > 0 ? occasion : undefined,
-            season: season.length > 0 ? season : undefined,
             expectedBudget: type === "need_to_buy" && expectedBudget ? Number.parseFloat(expectedBudget) : undefined,
             buyDeadline: type === "need_to_buy" ? buyDeadline || undefined : undefined,
-            condition: type === "buyed" ? status || undefined : undefined,
           },
         }),
       })
@@ -372,13 +373,19 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
 
             {type === "buyed" && (
               <div className="grid gap-2">
-                <Label htmlFor="status">Condition (Optional)</Label>
-                <Input
-                  id="status"
-                  placeholder="e.g., New, Worn, Needs Wash"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                />
+                <Label htmlFor="status">Condition</Label>
+                <Select value={condition} onValueChange={setCondition}>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New ✨</SelectItem>
+                    <SelectItem value="good">Good 👍</SelectItem>
+                    <SelectItem value="fair">Fair 🆗</SelectItem>
+                    <SelectItem value="needs_repair">Needs Repair 🛠️</SelectItem>
+                    <SelectItem value="needs_wash">Needs Wash 🧺</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

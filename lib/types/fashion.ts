@@ -30,12 +30,15 @@ export interface FashionItem {
   imageUrl: string | null
   images: string[] | null
   status: "wardrobe" | "wishlist" | "sold" | "donated"
+  condition: "new" | "good" | "fair" | "needs_repair" | "needs_wash" | null
+  occasion: string[] | null
+  season: string[] | null
   wearCount: number | null
   lastWornDate: string | null | Date
   tags: string[] | null
   isFavorite: boolean
   notes: string | null
-  metadata?: FashionMetadata | null
+  metadata?: Record<string, any> | null
   createdAt: Date | string
   updatedAt: Date | string
 }

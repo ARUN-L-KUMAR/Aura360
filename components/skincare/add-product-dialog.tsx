@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { BodyPart, SkincareStatus, RoutineTime } from "@/lib/types/skincare"
 
 interface AddProductDialogProps {
   open: boolean
@@ -28,7 +29,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
   const [productName, setProductName] = useState("")
   const [brand, setBrand] = useState("")
   const [category, setCategory] = useState("")
-  const [routineTime, setRoutineTime] = useState<"morning" | "evening" | "both" | "">("")
+  const [bodyPart, setBodyPart] = useState<BodyPart>("face")
+  const [status, setStatus] = useState<SkincareStatus>("owned")
+  const [routineTime, setRoutineTime] = useState<RoutineTime | "">("")
   const [frequency, setFrequency] = useState("")
   const [purchaseDate, setPurchaseDate] = useState("")
   const [expiryDate, setExpiryDate] = useState("")
@@ -50,6 +53,8 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
           productName,
           brand: brand || undefined,
           category,
+          bodyPart,
+          status,
           routineTime: routineTime || undefined,
           frequency: frequency || undefined,
           purchaseDate: purchaseDate || undefined,
@@ -61,7 +66,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
       })
 
       if (!response.ok) {
-        throw new Error("Failed to create skincare product")
+        throw new Error("Failed to create product")
       }
 
       toast.success("Product added successfully")
@@ -69,7 +74,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
       onOpenChange(false)
       router.refresh()
     } catch (error) {
-      console.error("Error creating skincare product:", error)
+      console.error("Error creating product:", error)
       toast.error("Failed to create product")
     }
 
@@ -80,6 +85,8 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
     setProductName("")
     setBrand("")
     setCategory("")
+    setBodyPart("face")
+    setStatus("owned")
     setRoutineTime("")
     setFrequency("")
     setPurchaseDate("")
@@ -91,13 +98,13 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add Skincare Product</DialogTitle>
-            <DialogDescription>Add a new product to your skincare routine</DialogDescription>
+            <DialogTitle>Add Product</DialogTitle>
+            <DialogDescription>Add a new item to your body care inventory</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="product-name">Product Name</Label>
               <Input
@@ -118,7 +125,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                 <Label htmlFor="category">Category</Label>
                 <Input
                   id="category"
-                  placeholder="e.g., Serum, Cleanser"
+                  placeholder="e.g., Serum, Cleanser, Shampoo"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   required
@@ -128,10 +135,41 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
+                <Label htmlFor="body-part">Body Part</Label>
+                <Select value={bodyPart} onValueChange={(value: BodyPart) => setBodyPart(value)}>
+                  <SelectTrigger id="body-part">
+                    <SelectValue placeholder="Select part" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="face">Face</SelectItem>
+                    <SelectItem value="hair">Hair</SelectItem>
+                    <SelectItem value="body">Body</SelectItem>
+                    <SelectItem value="oral">Oral</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={status} onValueChange={(value: SkincareStatus) => setStatus(value)}>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owned">Owned</SelectItem>
+                    <SelectItem value="need_to_buy">Need to Buy</SelectItem>
+                    <SelectItem value="finished">Finished</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label htmlFor="routine-time">Routine Time</Label>
                 <Select
                   value={routineTime}
-                  onValueChange={(value: "morning" | "evening" | "both") => setRoutineTime(value)}
+                  onValueChange={(value: RoutineTime) => setRoutineTime(value)}
                 >
                   <SelectTrigger id="routine-time">
                     <SelectValue placeholder="Select time" />
@@ -139,7 +177,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                   <SelectContent>
                     <SelectItem value="morning">Morning</SelectItem>
                     <SelectItem value="evening">Evening</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
+                    <SelectItem value="both">Both AM/PM</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="optional">Optional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -202,13 +242,13 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder="Add any additional notes..."
+                placeholder="Any special instructions or thoughts..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
+                className="resize-none"
               />
             </div>
           </div>
@@ -216,7 +256,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-rose-600 hover:bg-rose-700">
+            <Button type="submit" disabled={isLoading}>
               {isLoading ? "Adding..." : "Add Product"}
             </Button>
           </DialogFooter>

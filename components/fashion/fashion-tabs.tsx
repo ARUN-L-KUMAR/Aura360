@@ -5,7 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WardrobeView } from "./wardrobe-view"
 import { WishlistView } from "./wishlist-view"
 import { FashionSenseView } from "./fashion-sense-view"
-import { Shirt, ShoppingCart, Sparkles } from "lucide-react"
+import { SeasonalPlanner } from "./seasonal-planner"
+import { Shirt, ShoppingCart, Sparkles, Calendar } from "lucide-react"
 import type { FashionItem } from "@/lib/types/fashion"
 
 interface FashionTabsProps {
@@ -50,6 +51,10 @@ export function FashionTabs({ initialItems }: FashionTabsProps) {
           <Sparkles className="w-3.5 h-3.5" />
           Fashion Sense
         </TabsTrigger>
+        <TabsTrigger value="planner" className="gap-2 px-4 py-2 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold uppercase tracking-widest text-[10px] text-muted-foreground">
+          <Calendar className="w-3.5 h-3.5" />
+          Planner
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="wardrobe" className="mt-6">
@@ -71,6 +76,13 @@ export function FashionTabs({ initialItems }: FashionTabsProps) {
 
       <TabsContent value="fashion-sense" className="mt-6">
         <FashionSenseView wardrobeItems={wardrobeItems} />
+      </TabsContent>
+
+      <TabsContent value="planner" className="mt-6">
+        <SeasonalPlanner 
+          items={wardrobeItems} 
+          onUpdateItem={handleUpdateItem}
+        />
       </TabsContent>
     </Tabs>
   )

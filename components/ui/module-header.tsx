@@ -43,26 +43,26 @@ export function ModuleHeader({
     <>
 
       {/* Module Header */}
-      <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className={cn(
-            "w-12 h-12 rounded-lg flex items-center justify-center border",
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center border shadow-sm",
             iconBgColor
           )}>
-            <Icon className={cn("w-6 h-6", iconColor)} />
+            <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", iconColor)} />
           </div>
-          <div>
-            <div className="px-2 py-0.5 rounded bg-secondary border text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-fit mb-1">
+          <div className="flex-1">
+            <div className="px-1.5 sm:px-2 py-0.5 rounded bg-secondary border text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground w-fit mb-0.5 sm:mb-1">
               Module
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">{title}</h1>
-            <p className="text-sm font-medium text-muted-foreground">{description}</p>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground leading-none">{title}</h1>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1 line-clamp-1 sm:line-clamp-none">{description}</p>
           </div>
         </div>
         
         {/* Action buttons (Add button, etc.) */}
         {children && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {children}
           </div>
         )}

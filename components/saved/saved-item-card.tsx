@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, ExternalLink, Star, MoveRight, CheckSquare } from "lucide-react"
+import { Trash2, Edit, ExternalLink, Star, MoveHorizontal, CheckSquare, Globe } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { EditSavedItemDialog } from "./edit-saved-item-dialog"
@@ -166,7 +166,7 @@ export function SavedItemCard({ item, onDelete, onUpdate, viewMode = 'grid' }: S
                   setShowMoveDialog(true)
                 }}
               >
-                <MoveRight className="h-3.5 w-3.5" />
+                <MoveHorizontal className="h-3.5 w-3.5" />
               </Button>
                <Button
                 variant="ghost"
@@ -257,7 +257,14 @@ export function SavedItemCard({ item, onDelete, onUpdate, viewMode = 'grid' }: S
         sourceModule="saved"
         open={showMoveDialog}
         onOpenChange={setShowMoveDialog}
-        onSuccess={() => onDelete(item.id)}
+        onSuccess={(newItem, action) => {
+          if (action === "move") {
+            onDelete(item.id)
+          } else {
+            // Optional: You could add a toast or refresh logic for copy here
+            // But toast is already handled in the dialog
+          }
+        }}
       />
     </>
   )

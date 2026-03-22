@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Pin, Trash2, Edit, CheckSquare, MoveRight } from "lucide-react"
+import { Pin, Trash2, Edit, CheckSquare, MoveHorizontal } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { EditNoteDialog } from "./edit-note-dialog"
@@ -152,7 +152,7 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
                   setShowMoveDialog(true)
                 }}
               >
-                <MoveRight className="h-3.5 w-3.5" />
+                <MoveHorizontal className="h-3.5 w-3.5" />
               </Button>
                <Button
                 variant="ghost"
@@ -216,7 +216,13 @@ export function NoteCard({ note, onDelete, onUpdate, viewMode = 'grid' }: NoteCa
         sourceModule="notes"
         open={showMoveDialog}
         onOpenChange={setShowMoveDialog}
-        onSuccess={() => onDelete(note.id)}
+        onSuccess={(newItem, action) => {
+          if (action === "move") {
+            onDelete(note.id)
+          } else {
+            // Copy logic - keep original, toast handled in dialog
+          }
+        }}
       />
     </>
   )
