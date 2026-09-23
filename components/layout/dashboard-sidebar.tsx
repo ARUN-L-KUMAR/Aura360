@@ -19,7 +19,8 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Home
+  Home,
+  Bot
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,13 @@ const modules = [
     color: "text-rose-600 dark:text-rose-400",
   },
   {
+    title: "AI Assistant",
+    icon: Bot,
+    href: "/dashboard/chat",
+    color: "text-violet-600 dark:text-violet-400",
+    badge: "AI",
+  },
+  {
     title: "Time Logs",
     icon: Clock,
     href: "/dashboard/time",
@@ -128,7 +136,7 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
                   <Icon className="w-5 h-5" />
                 </div>
                 <span className="text-[9px] font-bold uppercase tracking-tight truncate max-w-[50px]">
-                  {module.title === "Self Care" ? "Care" : module.title.split(' ')[0]}
+                  {module.title === "Self Care" ? "Care" : module.title === "AI Assistant" ? "AI" : module.title.split(' ')[0]}
                 </span>
               </Link>
             )
@@ -222,6 +230,11 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
               )}>
                 {module.title}
               </span>
+              {"badge" in module && !isCollapsed && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                  {module.badge}
+                </span>
+              )}
               {isActive && (
                 <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full" />
               )}

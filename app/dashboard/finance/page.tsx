@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { FinanceOverviewTab } from "@/components/finance/finance-overview-tab"
 import { TransactionHistoryTab } from "@/components/finance/transaction-history-tab"
 import { ReportsTab } from "@/components/finance/reports-tab"
@@ -49,13 +49,28 @@ export default function FinancePage() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
 
-  // Handle scroll to show/hide Go to Top button
+  // Memoize filtered transactions to prevent downstream re-render cascades
+  const transformedTransactions = useMemo(
+    () => transactions.filter(t => t.type !== "transfer"),
+    [transactions]
+  )
+
+  // Handle scroll to show/hide Go to Top button with passive RAF throttling
   useEffect(() => {
+    let ticking = false
+
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400)
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const shouldShow = window.scrollY > 400
+          setShowScrollTop((prev) => (prev !== shouldShow ? shouldShow : prev))
+          ticking = false
+        })
+        ticking = true
+      }
     }
 
-    window.addEventListener("scroll", handleScroll)
+    window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
@@ -300,16 +315,16 @@ export default function FinancePage() {
           {/* Tab Contents */}
           <div className="mt-0">
             <TabsContent value="overview">
-              <FinanceOverviewTab transactions={transformTransactions(transactions)} />
+              <FinanceOverviewTab transactions={transformedTransactions} />
             </TabsContent>
 
             <TabsContent value="transactions">
-              <TransactionHistoryTab initialTransactions={transformTransactions(transactions)} />
+              <TransactionHistoryTab initialTransactions={transformedTransactions} />
             </TabsContent>
 
             <TabsContent value="reports">
               <ReportsTab 
-                transactions={transformTransactions(transactions)} 
+                transactions={transformedTransactions} 
                 balanceData={balanceData ? {
                   id: null,
                   workspaceId: "",

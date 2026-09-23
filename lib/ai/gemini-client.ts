@@ -61,18 +61,36 @@ function buildBody(
   }
 
   body.generationConfig = {
-    temperature: config.temperature ?? 0,
-    maxOutputTokens: config.maxOutputTokens ?? 1024,
+    temperature: config.temperature ?? 0.7,
+    maxOutputTokens: config.maxOutputTokens ?? 4096,
     ...(config.jsonMode ? { responseMimeType: "application/json" } : {}),
+    thinkingConfig: { thinkingBudget: 0 },
   }
 
   return body
 }
 
 function extractText(body: Record<string, unknown>): string {
-  const raw = (body as any)?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (typeof raw !== "string") throw new GeminiApiError("Empty or malformed Gemini response")
-  return raw
+  const candidate = (body as any)?.candidates?.[0]
+  if (!candidate) {
+    throw new GeminiApiError("No candidate received from Gemini")
+  }
+
+  const parts = candidate?.content?.parts
+  if (!Array.isArray(parts) || parts.length === 0) {
+    throw new GeminiApiError("Empty or malformed Gemini response")
+  }
+
+  const text = parts
+    .map((p: any) => p.text || "")
+    .filter(Boolean)
+    .join("")
+
+  if (!text) {
+    throw new GeminiApiError("Empty text in Gemini response")
+  }
+
+  return text
 }
 
 function extractUsage(
@@ -94,9 +112,18 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// ─── Core fetch with retry ────────────────────────────────────────────────────
+const FALLBACK_CANDIDATES: Record<string, AIModel[]> = {
+  "gemini-flash-latest": ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash"],
+  "gemini-3.5-flash": ["gemini-flash-latest", "gemini-2.5-flash"],
+  "gemini-flash-lite-latest": ["gemini-flash-latest", "gemini-2.5-flash-lite"],
+  "gemini-2.5-flash": ["gemini-flash-latest", "gemini-3.5-flash"],
+  "gemini-3.1-flash-lite-preview": ["gemini-flash-latest", "gemini-flash-lite-latest"],
+  "gemini-2.5-flash-lite": ["gemini-flash-lite-latest", "gemini-flash-latest"],
+  "gemini-3-flash-preview": ["gemini-flash-latest", "gemini-3.5-flash"],
+  "gemini-3.1-flash-lite": ["gemini-flash-latest", "gemini-flash-lite-latest"],
+}
 
-async function callGemini(
+async function callGeminiSingle(
   model: AIModel,
   input: {
     prompt?: string
@@ -130,11 +157,17 @@ async function callGemini(
 
       const latencyMs = Date.now() - startAt
 
-      if (res.status === 429) {
-        lastError = new GeminiRateLimitError()
-        // Exponential backoff before retrying
-        if (attempt < MAX_RETRIES) await sleep(500 * 2 ** attempt)
-        continue
+      // Handle rate limits (429) or high-demand capacity (503)
+      if (res.status === 429 || res.status === 503) {
+        lastError = new GeminiApiError(
+          res.status === 429 ? "Rate limit reached" : `Model ${model} is experiencing high demand (503)`,
+          res.status
+        )
+        if (attempt < MAX_RETRIES) {
+          await sleep(600 * 2 ** attempt)
+          continue
+        }
+        break
       }
 
       if (!res.ok) {
@@ -149,16 +182,39 @@ async function callGemini(
       return { text, usage }
     } catch (err) {
       if (err instanceof GeminiApiError) {
-        // Non-retriable (anything except rate-limit)
-        if (!(err instanceof GeminiRateLimitError)) throw err
+        if (err.statusCode !== 429 && err.statusCode !== 503) throw err
         lastError = err
       } else if (err instanceof Error && err.name === "TimeoutError") {
         lastError = new GeminiTimeoutError()
-        if (attempt < MAX_RETRIES) await sleep(300 * attempt)
+        if (attempt < MAX_RETRIES) await sleep(400 * attempt)
       } else if (err instanceof Error) {
         lastError = new GeminiApiError(err.message)
-        if (attempt < MAX_RETRIES) await sleep(300 * attempt)
+        if (attempt < MAX_RETRIES) await sleep(400 * attempt)
       }
+    }
+  }
+
+  throw lastError
+}
+
+async function callGemini(
+  model: AIModel,
+  input: {
+    prompt?: string
+    messages?: ChatMessage[]
+    systemPrompt?: string
+  },
+  config: GenerationConfig
+): Promise<{ text: string; usage: AIUsageMetadata }> {
+  const modelsToTry = [model, ...(FALLBACK_CANDIDATES[model] || [])]
+  let lastError: Error = new GeminiApiError("No response from Gemini models")
+
+  for (const candidate of modelsToTry) {
+    try {
+      return await callGeminiSingle(candidate, input, config)
+    } catch (err: any) {
+      lastError = err
+      console.warn(`[GeminiClient] Model ${candidate} unavailable (${err.message}), checking fallback...`)
     }
   }
 

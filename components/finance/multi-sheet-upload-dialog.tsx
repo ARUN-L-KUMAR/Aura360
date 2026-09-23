@@ -424,7 +424,7 @@ export function MultiSheetUploadDialog() {
           type: t.type,
           amount: t.amount || 0,
           category: t.category || "Uncategorized",
-          date: t.date || new Date().toISOString().split('T')[0],
+          date: t.date || new Date().toLocaleDateString("en-CA"),
           description: t.description || "No description",
           paymentMethod: t.payment_method || "other",
         }))

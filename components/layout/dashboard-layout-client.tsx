@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { DashboardSidebar } from "./dashboard-sidebar"
 import { Navbar } from "./navbar"
+import { FloatingAiWidget } from "@/components/ai/floating-ai-widget"
 
 export function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -40,6 +41,7 @@ export function DashboardLayoutClient({ children }: { children: React.ReactNode 
         <main className="flex-1 pb-32 lg:pb-12">
           {children}
         </main>
+        <FloatingAiWidget />
       </div>
     </div>
   )

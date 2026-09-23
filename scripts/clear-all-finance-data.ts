@@ -3,12 +3,21 @@
  * Deletes all transactions, wallet ledger, and wallet balances
  */
 
-import { neon } from "@neondatabase/serverless"
+import { neon, neonConfig } from "@neondatabase/serverless"
 import * as dotenv from "dotenv"
+import { resolve } from "path"
 
-dotenv.config({ path: ".env.local" })
+dotenv.config({ path: resolve(process.cwd(), ".env.local") })
 
-const sql = neon(process.env.DATABASE_URL!)
+if (!process.env.DATABASE_URL) {
+  console.error("❌ Error: DATABASE_URL is not set in .env.local")
+  process.exit(1)
+}
+
+// Ensure proper endpoint URL routing for custom neon pooler domains
+neonConfig.fetchEndpoint = (host) => `https://${host}/sql`
+
+const sql = neon(process.env.DATABASE_URL)
 
 async function clearAllData() {
   console.log("🗑️  Clearing all finance data...")

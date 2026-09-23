@@ -10,13 +10,84 @@
 export type AIProvider = "gemini"
 
 export type AIModel =
+  | "gemini-flash-latest"
+  | "gemini-3.5-flash"
+  | "gemini-flash-lite-latest"
   | "gemini-2.5-flash"
-  | "gemini-2.0-flash"
-  | "gemini-1.5-flash"
-  | "gemini-1.5-pro"
+  | "gemini-3.1-flash-lite-preview"
+  | "gemini-2.5-flash-lite"
+  | "gemini-3-flash-preview"
+  | "gemini-3.1-flash-lite"
 
-export const DEFAULT_MODEL: AIModel = "gemini-2.5-flash"
-export const FAST_MODEL: AIModel = "gemini-2.0-flash"
+export const DEFAULT_MODEL: AIModel = "gemini-flash-latest"
+export const FAST_MODEL: AIModel = "gemini-flash-latest"
+
+export interface ModelOption {
+  id: AIModel
+  name: string
+  latency: string
+  badge?: string
+  description: string
+}
+
+export const CHAT_MODELS: ModelOption[] = [
+  {
+    id: "gemini-flash-latest",
+    name: "Gemini Flash Latest",
+    latency: "820ms",
+    badge: "Fastest",
+    description: "Ultra-fast response time, ideal for real-time conversation",
+  },
+  {
+    id: "gemini-3.5-flash",
+    name: "Gemini 3.5 Flash",
+    latency: "956ms",
+    badge: "Smart & Fast",
+    description: "Next-gen reasoning speed & accuracy",
+  },
+  {
+    id: "gemini-flash-lite-latest",
+    name: "Gemini Flash-Lite Latest",
+    latency: "1038ms",
+    badge: "Lightweight",
+    description: "High-efficiency lightweight model",
+  },
+  {
+    id: "gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
+    latency: "1181ms",
+    badge: "Stable",
+    description: "Proven multi-turn assistant performance",
+  },
+  {
+    id: "gemini-3.1-flash-lite-preview",
+    name: "Gemini 3.1 Flash Lite Preview",
+    latency: "1542ms",
+    badge: "Preview",
+    description: "Cutting-edge preview with fast response times",
+  },
+  {
+    id: "gemini-2.5-flash-lite",
+    name: "Gemini 2.5 Flash-Lite",
+    latency: "1902ms",
+    badge: "Lite",
+    description: "Compact & balanced for light prompts",
+  },
+  {
+    id: "gemini-3-flash-preview",
+    name: "Gemini 3 Flash Preview",
+    latency: "2621ms",
+    badge: "Preview",
+    description: "Advanced intelligence & deep contextual reasoning",
+  },
+  {
+    id: "gemini-3.1-flash-lite",
+    name: "Gemini 3.1 Flash Lite",
+    latency: "6705ms",
+    badge: "Lite",
+    description: "Full capability lightweight flash instance",
+  },
+]
 
 // ─── Generation Config ────────────────────────────────────────────────────────
 

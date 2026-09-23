@@ -209,8 +209,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
           {monthlyData.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-4">Income vs Expense</h3>
-              <div className={cn(isMobile ? "h-48" : "h-64")}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-48" : "h-64")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <BarChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 12 }} />
@@ -224,8 +224,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                       contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", fontSize: isMobile ? 12 : 14 }}
                     />
                     <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
-                    <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                    <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -236,8 +236,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
           {monthlyData.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-4">Net Savings Trend</h3>
-              <div className={cn(isMobile ? "h-40" : "h-48")}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-40" : "h-48")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <LineChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 12 }} />
@@ -257,6 +257,7 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                       stroke="#3b82f6"
                       strokeWidth={2}
                       dot={{ fill: "#3b82f6", strokeWidth: 2, r: isMobile ? 3 : 4 }}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -342,8 +343,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
               isMobile ? "grid-cols-1" : "md:grid-cols-2"
             )}>
               {/* Pie Chart */}
-              <div className={cn(isMobile ? "h-48" : "h-64")}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-48" : "h-64")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <PieChart>
                     <Pie
                       data={categoryBreakdown}
@@ -353,6 +354,7 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                       outerRadius={isMobile ? 65 : 90}
                       paddingAngle={2}
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {categoryBreakdown.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
@@ -422,8 +424,8 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
               isMobile ? "grid-cols-1" : "md:grid-cols-2"
             )}>
               {/* Pie Chart */}
-              <div className={cn(isMobile ? "h-36" : "h-48")}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-36" : "h-48")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <PieChart>
                     <Pie
                       data={walletBreakdown}
@@ -433,6 +435,7 @@ export function ReportsTab({ transactions, balanceData }: ReportsTabProps) {
                       outerRadius={isMobile ? 55 : 70}
                       paddingAngle={4}
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {walletBreakdown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

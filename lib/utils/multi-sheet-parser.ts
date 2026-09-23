@@ -69,7 +69,7 @@ export function parseMultiSheetExcel(file: File, selectedSheetNames?: string[]):
     reader.onload = (e) => {
       try {
         const data = e.target?.result
-        const workbook = XLSX.read(data, { type: 'binary', cellDates: true })
+        const workbook = XLSX.read(data, { type: 'binary', cellDates: false })
 
         const allTransactions: ParsedTransaction[] = []
         const errors: string[] = []
@@ -433,7 +433,7 @@ function parseAmount(value: any): number {
 }
 
 /**
- * Parse date from various formats
+ * Parse date from various formats without timezone shifts
  */
 function parseDate(value: any): string {
   if (!value || value === '—' || value === '-') {
@@ -445,7 +445,7 @@ function parseDate(value: any): string {
     return formatDateToISO(value)
   }
 
-  // If Excel serial number
+  // If Excel serial number (numeric)
   if (typeof value === 'number') {
     const date = XLSX.SSF.parse_date_code(value)
     return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
@@ -454,21 +454,28 @@ function parseDate(value: any): string {
   // If string date
   const dateStr = String(value).trim()
 
-  // Try DD/MM/YYYY format (your format)
-  const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (ddmmyyyyMatch) {
-    const [, day, month, year] = ddmmyyyyMatch
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  // If Excel serial number as string (e.g. "46284")
+  const numValue = Number(dateStr)
+  if (!isNaN(numValue) && numValue > 20000 && numValue < 80000) {
+    const date = XLSX.SSF.parse_date_code(numValue)
+    return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
   }
 
   // Try YYYY-MM-DD
-  const yyyymmddMatch = dateStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+  const yyyymmddMatch = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/)
   if (yyyymmddMatch) {
     const [, year, month, day] = yyyymmddMatch
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
   }
 
-  // Try parsing as JS Date
+  // Try DD/MM/YYYY format
+  const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/)
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  }
+
+  // Try parsing as JS Date (e.g. "19 Sept 2026")
   const parsed = new Date(dateStr)
   if (!isNaN(parsed.getTime())) {
     return formatDateToISO(parsed)
@@ -478,9 +485,11 @@ function parseDate(value: any): string {
 }
 
 function formatDateToISO(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+  // Add 12 hours buffer so that any UTC midnight or local offset (e.g., 18:29:50Z) safely stays on the intended calendar day
+  const adjusted = new Date(date.getTime() + 12 * 3600 * 1000)
+  const year = adjusted.getFullYear()
+  const month = String(adjusted.getMonth() + 1).padStart(2, '0')
+  const day = String(adjusted.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 

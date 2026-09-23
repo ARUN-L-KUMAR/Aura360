@@ -25,10 +25,10 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
   const [balanceError, setBalanceError] = useState<string | null>(null)
 
-  // Fetch balance data on mount and when transactions change
+  // Fetch balance data on mount and when transactions count changes
   useEffect(() => {
     fetchBalanceData()
-  }, [transactions])
+  }, [transactions.length])
 
   const fetchBalanceData = async () => {
     try {
@@ -443,12 +443,12 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
 
       {/* Mini Charts Section */}
       <div className={cn(
-        "grid gap-3",
+        "grid gap-3 min-w-0",
         isMobile ? "grid-cols-1" : "md:grid-cols-2 gap-4"
       )}>
         {/* Category Spending Pie Chart */}
         {categoryData.length > 0 && (
-          <Card className="backdrop-blur-sm bg-card/80">
+          <Card className="backdrop-blur-sm bg-card/80 min-w-0 overflow-hidden">
             <CardHeader className={isMobile ? "pb-2" : "pb-2"}>
               <CardTitle className={cn(
                 "font-medium text-muted-foreground",
@@ -458,8 +458,8 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={isMobile ? "h-40" : "h-48"}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-40" : "h-48")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <PieChart>
                     <Pie
                       data={categoryData}
@@ -469,6 +469,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                       outerRadius={isMobile ? 55 : 70}
                       paddingAngle={2}
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {categoryData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
@@ -505,7 +506,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
 
         {/* Monthly Savings Trend */}
         {monthlySavings.length > 0 && (
-          <Card className="backdrop-blur-sm bg-card/80">
+          <Card className="backdrop-blur-sm bg-card/80 min-w-0 overflow-hidden">
             <CardHeader className={isMobile ? "pb-2" : "pb-2"}>
               <CardTitle className={cn(
                 "font-medium text-muted-foreground",
@@ -515,8 +516,8 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={isMobile ? "h-40" : "h-48"}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className={cn("w-full min-w-0 overflow-hidden", isMobile ? "h-40" : "h-48")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                   <BarChart data={monthlySavings}>
                     <XAxis dataKey="month" tick={{ fontSize: isMobile ? 10 : 12 }} />
                     <YAxis 
@@ -533,6 +534,7 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                       dataKey="savings"
                       fill="#3b82f6"
                       radius={[4, 4, 0, 0]}
+                      isAnimationActive={false}
                     />
                   </BarChart>
                 </ResponsiveContainer>

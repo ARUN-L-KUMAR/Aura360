@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Download, Plus, Filter, X, Wallet, AlertCircle, CheckCircle2, Table, FileSpreadsheet, CreditCard, Banknote, Smartphone, Building2, ChevronDown, SlidersHorizontal } from "lucide-react"
+import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Download, Plus, Filter, X, Wallet, AlertCircle, CheckCircle2, Table, FileSpreadsheet, CreditCard, Banknote, Smartphone, Building2, ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import { AddTransactionDialog } from "./add-transaction-dialog"
@@ -47,43 +47,97 @@ function formatPaymentMethod(method: string): string {
   return methodMap[method] || method
 }
 
+// Helper to compute pagination page number buttons
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  if (current <= 3) {
+    return [1, 2, 3, 4, "ellipsis", total]
+  }
+  if (current >= total - 2) {
+    return [1, "ellipsis", total - 3, total - 2, total - 1, total]
+  }
+  return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", total]
+}
+
 function TransactionTable({
   type,
-  transactions,
   onDelete,
   onEdit,
   searchQuery,
   monthFilter,
   categoryFilter,
   isMobile,
+  refreshKey,
+  onCountsUpdated,
 }: {
   type: TransactionType
-  transactions: Transaction[]
   onDelete: (id: string) => void
   onEdit: (transaction: Transaction) => void
   searchQuery: string
   monthFilter: string
   categoryFilter: string
   isMobile: boolean
+  refreshKey: number
+  onCountsUpdated?: (counts: { income: number; expense: number; investment: number }) => void
 }) {
-  const filteredTransactions = transactions
-    .filter((t) => t.type === type)
-    .filter((t) => {
-      const desc = (t.description || "").toLowerCase()
-      const matchesSearch =
-        searchQuery === "" ||
-        t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        desc.includes(searchQuery.toLowerCase())
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalAmount, setTotalAmount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
 
-      const transactionDate = new Date(t.date)
-      const matchesMonth =
-        monthFilter === "all" ||
-        `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, "0")}` === monthFilter
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, monthFilter, categoryFilter, type])
 
-      const matchesCategory = categoryFilter === "all" || t.category === categoryFilter
+  // Server-side fetch on page, limit, filter, or refreshKey change
+  useEffect(() => {
+    let isCancelled = false
 
-      return matchesSearch && matchesMonth && matchesCategory
-    })
+    async function loadPage() {
+      setIsLoading(true)
+      try {
+        const params = new URLSearchParams({
+          type,
+          page: String(page),
+          limit: String(pageSize),
+        })
+        if (searchQuery) params.set("search", searchQuery)
+        if (monthFilter !== "all") params.set("month", monthFilter)
+        if (categoryFilter !== "all") params.set("category", categoryFilter)
+
+        const res = await fetch(`/api/finance/transactions?${params.toString()}`)
+        const json = await res.json()
+
+        if (!isCancelled && json.success) {
+          setTransactions(json.data || [])
+          setTotal(json.pagination?.total ?? 0)
+          setTotalPages(json.pagination?.totalPages ?? 1)
+          setTotalAmount(json.totalAmount ?? 0)
+          if (json.counts && onCountsUpdated) {
+            onCountsUpdated(json.counts)
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching transactions page:", err)
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadPage()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [type, page, pageSize, searchQuery, monthFilter, categoryFilter, refreshKey])
 
   const getAmountColor = () => {
     switch (type) {
@@ -96,9 +150,10 @@ function TransactionTable({
     }
   }
 
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
+  const startItem = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const endItem = Math.min(page * pageSize, total)
 
-  if (filteredTransactions.length === 0) {
+  if (!isLoading && total === 0) {
     return (
       <div className="text-center py-12 border rounded-lg bg-muted/20">
         <p className="text-muted-foreground text-sm">
@@ -110,15 +165,95 @@ function TransactionTable({
     )
   }
 
+  // Pagination bar JSX (shared across mobile & desktop)
+  const paginationControls = totalPages > 1 && (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-1 border-t mt-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>Rows per page:</span>
+        <Select
+          value={String(pageSize)}
+          onValueChange={(val) => {
+            setPageSize(Number(val))
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="h-8 w-[72px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="hidden sm:inline">• Page {page} of {totalPages}</span>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1 || isLoading}
+          className="h-8 gap-1 text-xs px-2.5"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Previous</span>
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {getPageNumbers(page, totalPages).map((p, idx) => {
+            if (p === "ellipsis") {
+              return (
+                <span key={`ell_${idx}`} className="px-1 text-muted-foreground text-xs">
+                  ...
+                </span>
+              )
+            }
+            const pageNum = Number(p)
+            const isActive = pageNum === page
+            return (
+              <Button
+                key={pageNum}
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPage(pageNum)}
+                disabled={isLoading}
+                className={cn("h-8 w-8 p-0 text-xs", isActive ? "font-bold shadow-xs" : "")}
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages || isLoading}
+          className="h-8 gap-1 text-xs px-2.5"
+        >
+          <span className="hidden sm:inline">Next</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  )
+
   // Mobile Card View
   if (isMobile) {
     return (
       <div className="space-y-3">
         {/* Summary */}
         <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 text-xs">
-          <span className="text-muted-foreground">
-            {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">
+              Showing {startItem}-{endItem} of {total}
+            </span>
+            {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          </div>
           <span>
             <span className="text-muted-foreground">Total: </span>
             <span className={cn("font-semibold", getAmountColor())}>
@@ -129,7 +264,7 @@ function TransactionTable({
 
         {/* Transaction Cards */}
         <div className="space-y-2">
-          {filteredTransactions.map((transaction) => (
+          {transactions.map((transaction) => (
             <MobileTransactionCard
               key={transaction.id}
               transaction={transaction}
@@ -138,6 +273,8 @@ function TransactionTable({
             />
           ))}
         </div>
+
+        {paginationControls}
       </div>
     )
   }
@@ -146,10 +283,13 @@ function TransactionTable({
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="flex items-center justify-between px-4 py-2 rounded-lg bg-muted/50">
-        <span className="text-sm text-muted-foreground">
-          Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""}
-        </span>
+      <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-muted/50">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            Showing {startItem} to {endItem} of {total} transaction{total !== 1 ? "s" : ""}
+          </span>
+          {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
         <span className="text-sm">
           <span className="text-muted-foreground">Total: </span>
           <span className={cn("font-semibold", getAmountColor())}>
@@ -172,7 +312,7 @@ function TransactionTable({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filteredTransactions.map((transaction) => (
+              {transactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-sm text-muted-foreground">
@@ -194,7 +334,7 @@ function TransactionTable({
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className={cn("font-semibold", getAmountColor())}>
-                        {type === "expense" ? "-" : "+"}₹{transaction.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {type === "expense" ? "-" : "+"}₹{Number(transaction.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                       {transaction.paymentMethod && (
                         <span className="text-xs text-muted-foreground">
@@ -229,6 +369,8 @@ function TransactionTable({
           </table>
         </div>
       </div>
+
+      {paginationControls}
     </div>
   )
 }
@@ -242,6 +384,12 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   const [isBulkMode, setIsBulkMode] = useState(false)
   const [activeTab, setActiveTab] = useState<TransactionType>("expense")
   const [showFilters, setShowFilters] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [tabCounts, setTabCounts] = useState<{ income: number; expense: number; investment: number } | null>(null)
+
+  const handleCountsUpdated = (counts: { income: number; expense: number; investment: number }) => {
+    setTabCounts(counts)
+  }
   
   // Balance Overview state
   const [showBalanceOverview, setShowBalanceOverview] = useState(false)
@@ -341,6 +489,7 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   // Callback for bulk entry tables
   const handleBulkEntrySaved = () => {
     fetchTransactions(false) // Refresh without toast since entry tables show their own toast
+    setRefreshKey((k) => k + 1)
   }
 
   // Filters
@@ -382,6 +531,7 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
       }
 
       setTransactions((prev) => prev.filter((t) => t.id !== transactionId))
+      setRefreshKey((k) => k + 1)
       toast({
         title: "Success",
         description: "Transaction deleted successfully",
@@ -398,11 +548,13 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   const handleTransactionUpdated = (updatedTransaction: Transaction) => {
     setTransactions((prev) => prev.map((t) => (t.id === updatedTransaction.id ? updatedTransaction : t)))
     setEditingTransaction(null)
+    setRefreshKey((k) => k + 1)
   }
 
   const handleTransactionAdded = (newTransaction: Transaction) => {
     setTransactions((prev) => [newTransaction, ...prev])
     setShowAddDialog(false)
+    setRefreshKey((k) => k + 1)
   }
 
   const exportToCSV = () => {
@@ -448,9 +600,9 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
 
   const hasActiveFilters = searchQuery !== "" || monthFilter !== "all" || categoryFilter !== "all"
 
-  const incomeCount = transactions.filter((t) => t.type === "income").length
-  const expenseCount = transactions.filter((t) => t.type === "expense").length
-  const investmentCount = transactions.filter((t) => t.type === "investment").length
+  const incomeCount = tabCounts?.income ?? transactions.filter((t) => t.type === "income").length
+  const expenseCount = tabCounts?.expense ?? transactions.filter((t) => t.type === "expense").length
+  const investmentCount = tabCounts?.investment ?? transactions.filter((t) => t.type === "investment").length
 
   // Calculate stats for the summary cards
   const stats = useMemo(() => {
@@ -1021,39 +1173,42 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
               <TabsContent value="income" className="mt-0">
                 <TransactionTable
                   type="income"
-                  transactions={transactions}
                   onDelete={handleDelete}
                   onEdit={setEditingTransaction}
                   searchQuery={searchQuery}
                   monthFilter={monthFilter}
                   categoryFilter={categoryFilter}
                   isMobile={isMobile}
+                  refreshKey={refreshKey}
+                  onCountsUpdated={handleCountsUpdated}
                 />
               </TabsContent>
 
               <TabsContent value="expense" className="mt-0">
                 <TransactionTable
                   type="expense"
-                  transactions={transactions}
                   onDelete={handleDelete}
                   onEdit={setEditingTransaction}
                   searchQuery={searchQuery}
                   monthFilter={monthFilter}
                   categoryFilter={categoryFilter}
                   isMobile={isMobile}
+                  refreshKey={refreshKey}
+                  onCountsUpdated={handleCountsUpdated}
                 />
               </TabsContent>
 
               <TabsContent value="investment" className="mt-0">
                 <TransactionTable
                   type="investment"
-                  transactions={transactions}
                   onDelete={handleDelete}
                   onEdit={setEditingTransaction}
                   searchQuery={searchQuery}
                   monthFilter={monthFilter}
                   categoryFilter={categoryFilter}
                   isMobile={isMobile}
+                  refreshKey={refreshKey}
+                  onCountsUpdated={handleCountsUpdated}
                 />
               </TabsContent>
             </Tabs>

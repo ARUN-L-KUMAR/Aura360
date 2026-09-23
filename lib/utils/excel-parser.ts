@@ -262,16 +262,28 @@ function extractDate(
   
   // Try to parse various date formats
   try {
-    // Handle Excel serial date
-    if (!isNaN(Number(value))) {
-      const excelDate = XLSX.SSF.parse_date_code(Number(value))
+    const dateStr = String(value).trim()
+
+    // Handle Excel serial date (numeric or string number)
+    const num = Number(dateStr)
+    if (!isNaN(num) && num > 20000 && num < 80000) {
+      const excelDate = XLSX.SSF.parse_date_code(num)
       return `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`
     }
     
+    // Check YYYY-MM-DD format directly
+    const yyyymmdd = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/)
+    if (yyyymmdd) {
+      const [, year, month, day] = yyyymmdd
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+
     // Handle DD/MM/YYYY or MM/DD/YYYY
-    const parts = value.split(/[-/]/)
+    const parts = dateStr.split(/[-/.]/)
     if (parts.length === 3) {
-      let day, month, year
+      let day: string | undefined
+      let month: string | undefined
+      let year: string | undefined
       
       // Try DD/MM/YYYY
       if (parseInt(parts[0]) <= 31 && parseInt(parts[1]) <= 12) {
@@ -292,10 +304,14 @@ function extractDate(
       }
     }
     
-    // Try ISO format
-    const date = new Date(value)
+    // Parse as Date without toISOString() conversion
+    const date = new Date(dateStr)
     if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0]
+      const adjusted = new Date(date.getTime() + 12 * 3600 * 1000)
+      const year = adjusted.getFullYear()
+      const month = String(adjusted.getMonth() + 1).padStart(2, '0')
+      const day = String(adjusted.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
     }
   } catch (error) {
     console.error('Date parsing error:', error)

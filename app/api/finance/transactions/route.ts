@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { db, transactions } from "@/lib/db"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, sql, count, or, ilike } from "drizzle-orm"
 import { type PaymentMethod, type TransactionType } from "@/lib/services/wallet"
 import { auditCreate } from "@/lib/audit"
 
@@ -20,34 +20,103 @@ export async function GET(request: Request) {
     const context = await getWorkspaceContext()
     const { searchParams } = new URL(request.url)
     
-    const limit = Math.min(parseInt(searchParams.get("limit") || "10000"), 10000)
-    const offset = parseInt(searchParams.get("offset") || "0")
-    const type = searchParams.get("type") as TransactionType | null
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+    const offsetParam = searchParams.get("offset")
+    const typeParam = searchParams.get("type") as TransactionType | null
+    const search = searchParams.get("search")?.trim()
+    const category = searchParams.get("category")
+    const month = searchParams.get("month")
 
-    // Workspace-scoped query
-    let query = db
-      .select()
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.workspaceId, context.workspaceId),
-          eq(transactions.userId, context.userId),
-          type ? eq(transactions.type, type) : undefined
-        )
+    // Default limit: if limit is specified, use it; if page is given without limit, default to 10; otherwise 10000 for compatibility
+    const limit = limitParam 
+      ? Math.min(Math.max(1, parseInt(limitParam)), 10000) 
+      : (pageParam ? 10 : 10000)
+    const page = pageParam 
+      ? Math.max(1, parseInt(pageParam)) 
+      : (offsetParam ? Math.floor(parseInt(offsetParam) / limit) + 1 : 1)
+    const offset = offsetParam 
+      ? parseInt(offsetParam) 
+      : (page - 1) * limit
+
+    const conditions: any[] = [
+      eq(transactions.workspaceId, context.workspaceId),
+      eq(transactions.userId, context.userId),
+    ]
+
+    if (typeParam && (typeParam === "income" || typeParam === "expense" || typeParam === "investment" || typeParam === "transfer")) {
+      conditions.push(eq(transactions.type, typeParam))
+    }
+
+    if (category && category !== "all") {
+      conditions.push(eq(transactions.category, category))
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(transactions.description, `%${search}%`),
+          ilike(transactions.category, `%${search}%`)
+        )!
       )
-      .orderBy(desc(transactions.date))
-      .limit(limit)
-      .offset(offset)
+    }
 
-    const data = await query
+    if (month && month !== "all") {
+      conditions.push(sql`${transactions.date}::text LIKE ${month + '%'}`)
+    }
+
+    // Run queries: paginated records, matching stats (total & sum), and module counts
+    const [data, statsResult, countsResult] = await Promise.all([
+      db
+        .select()
+        .from(transactions)
+        .where(and(...conditions))
+        .orderBy(desc(transactions.date), desc(transactions.createdAt))
+        .limit(limit)
+        .offset(offset),
+
+      db
+        .select({
+          total: count(),
+          totalAmount: sql<string>`COALESCE(SUM(CAST(${transactions.amount} AS NUMERIC)), 0)::text`,
+        })
+        .from(transactions)
+        .where(and(...conditions)),
+
+      db
+        .select({
+          income: count(sql`CASE WHEN ${transactions.type} = 'income' THEN 1 END`),
+          expense: count(sql`CASE WHEN ${transactions.type} = 'expense' THEN 1 END`),
+          investment: count(sql`CASE WHEN ${transactions.type} = 'investment' THEN 1 END`),
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.workspaceId, context.workspaceId),
+            eq(transactions.userId, context.userId)
+          )
+        ),
+    ])
+
+    const total = Number(statsResult[0]?.total || 0)
+    const totalAmount = parseFloat(statsResult[0]?.totalAmount || "0")
+    const totalPages = Math.max(1, Math.ceil(total / limit))
 
     return NextResponse.json({
       success: true,
       data,
       pagination: {
+        page,
         limit,
         offset,
-        total: data.length,
+        total,
+        totalPages,
+      },
+      totalAmount,
+      counts: {
+        income: Number(countsResult[0]?.income || 0),
+        expense: Number(countsResult[0]?.expense || 0),
+        investment: Number(countsResult[0]?.investment || 0),
       },
     })
   } catch (error) {
