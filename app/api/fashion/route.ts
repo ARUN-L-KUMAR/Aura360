@@ -152,7 +152,7 @@ export async function PATCH(request: NextRequest) {
       .set({
         ...data,
         price: data.price?.toString(),
-        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
+        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate).toISOString().split("T")[0] : undefined,
         updatedAt: new Date(),
       })
       .where(

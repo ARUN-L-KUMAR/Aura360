@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { AddFashionButton } from "./add-fashion-button"
 import { FashionCard } from "./fashion-card"
+import { WearInsights } from "./wear-insights"
 import { Separator } from "@/components/ui/separator"
 import type { FashionItem } from "@/lib/types/fashion"
 
@@ -62,6 +63,10 @@ export function DragDropDashboard({ initialItems, onDelete, onUpdate }: DragDrop
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">Favorites</div>
         </div>
       </div>
+
+      <WearInsights wardrobeItems={wardrobeItems} onUpdateItem={onUpdate} />
+
+      <Separator className="bg-border/50" />
 
       {/* Recent Wardrobe */}
       <div className="space-y-4">

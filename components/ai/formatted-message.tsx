@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Check, Copy, Terminal, Lightbulb } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { GenerativeWidgetRouter, canRenderWidget } from "@/components/ai/generative-ui/generative-widget-router"
 
 interface FormattedMessageProps {
   content: string
@@ -130,8 +131,13 @@ export function FormattedMessage({ content, className, isUser }: FormattedMessag
               )
             }
 
-            const match = /language-(\w+)/.exec(codeClassName || "")
+            const match = /language-([^\s]+)/.exec(codeClassName || "")
             const lang = match ? match[1] : ""
+
+            // Check if this code block represents an interactive Generative UI widget
+            if (canRenderWidget(codeString, lang)) {
+              return <GenerativeWidgetRouter raw={codeString} lang={lang} />
+            }
 
             return (
               <div className="my-3 rounded-xl overflow-hidden border border-border/70 bg-zinc-950 dark:bg-zinc-900 text-zinc-100 shadow-sm">

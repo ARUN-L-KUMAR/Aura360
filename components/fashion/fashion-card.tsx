@@ -5,6 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit, Shirt, Star, ExternalLink } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
+import { costPerWear } from "@/lib/fashion/wear-stats"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { EditFashionDialog } from "./edit-fashion-dialog"
 import type { FashionItem } from "@/lib/types/fashion"
 
@@ -17,12 +29,11 @@ interface FashionCardProps {
 export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const buyingLink = item.metadata?.buyingLink
   const condition = item.metadata?.condition
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this item?")) return
-
     setIsDeleting(true)
 
     try {
@@ -36,10 +47,12 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
         throw new Error(result.error || "Failed to delete item")
       }
 
+      setShowDeleteDialog(false)
+      toast.success(`${item.name} deleted`)
       onDelete(item.id)
     } catch (error: any) {
-      console.error("[v0] Error deleting fashion item:", error)
-      alert(error.message || "Failed to delete item")
+      console.error("Error deleting fashion item:", error)
+      toast.error(error.message || "Failed to delete item")
     } finally {
       setIsDeleting(false)
     }
@@ -91,6 +104,12 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
             {item.brand && <p>Brand: {item.brand}</p>}
             {item.size && <p>Size: {item.size}</p>}
             {condition && <p>Condition: {condition}</p>}
+            {item.status === "wardrobe" && (
+              <p>
+                Worn {item.wearCount ?? 0}×
+                {costPerWear(item) !== null && ` · ₹${costPerWear(item)!.toFixed(0)}/wear`}
+              </p>
+            )}
             {item.price && <p className="font-bold text-lg text-foreground mt-2">₹{Number(item.price).toFixed(2)}</p>}
           </div>
 
@@ -117,7 +136,7 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
               variant="outline"
               size="sm"
               className="text-destructive hover:bg-destructive hover:text-destructive-foreground bg-transparent"
-              onClick={handleDelete}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={isDeleting}
             >
               <Trash2 className="h-3 w-3" />
@@ -125,6 +144,27 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {item.name}?</AlertDialogTitle>
+            <AlertDialogDescription>This can't be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault()
+                handleDelete()
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <EditFashionDialog item={item} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
     </>

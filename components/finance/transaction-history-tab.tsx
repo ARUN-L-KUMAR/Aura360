@@ -5,12 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Download, Plus, Filter, X, Wallet, AlertCircle, CheckCircle2, Table, FileSpreadsheet, CreditCard, Banknote, Smartphone, Building2, ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Search, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Download, Plus, Filter, X, Wallet, AlertCircle, CheckCircle2, Table, FileSpreadsheet, CreditCard, Banknote, Smartphone, Building2, ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, ArrowLeftRight, Split } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 import { EditTransactionDialog } from "./edit-transaction-dialog"
 import { AddTransactionDialog } from "./add-transaction-dialog"
 import { EditBalanceDialog } from "./edit-balance-dialog"
 import { MultiSheetUploadDialog } from "./multi-sheet-upload-dialog"
+import { SplitTransactionDialog } from "./split-transaction-dialog"
+import { TransferFundsDialog } from "./transfer-funds-dialog"
 import { IncomeEntryTable } from "./income-entry-table"
 import { ExpenseEntryTable } from "./expense-entry-table"
 import { InvestmentEntryTable } from "./investment-entry-table"
@@ -27,7 +30,7 @@ import {
 } from "@/components/ui/sheet"
 import type { Transaction, BalanceData } from "@/lib/types/finance"
 
-type TransactionType = "income" | "expense" | "investment"
+type TransactionType = "income" | "expense" | "investment" | "transfer"
 
 interface TransactionHistoryTabProps {
   initialTransactions: Transaction[]
@@ -71,6 +74,8 @@ function TransactionTable({
   isMobile,
   refreshKey,
   onCountsUpdated,
+  categories,
+  onDataChanged,
 }: {
   type: TransactionType
   onDelete: (id: string) => void
@@ -80,8 +85,11 @@ function TransactionTable({
   categoryFilter: string
   isMobile: boolean
   refreshKey: number
-  onCountsUpdated?: (counts: { income: number; expense: number; investment: number }) => void
+  onCountsUpdated?: (counts: { income: number; expense: number; investment: number; transfer?: number }) => void
+  categories?: string[]
+  onDataChanged?: () => void
 }) {
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -90,10 +98,22 @@ function TransactionTable({
   const [totalAmount, setTotalAmount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Selection & Batch Action States
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [splitTarget, setSplitTarget] = useState<Transaction | null>(null)
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false)
+
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setPage(1)
+    setSelectedIds(new Set())
   }, [searchQuery, monthFilter, categoryFilter, type])
+
+  // Clear selections when page or refresh changes
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [page, pageSize, refreshKey])
 
   // Server-side fetch on page, limit, filter, or refreshKey change
   useEffect(() => {
@@ -147,6 +167,100 @@ function TransactionTable({
         return "text-red-600 dark:text-red-400"
       case "investment":
         return "text-purple-600 dark:text-purple-400"
+      case "transfer":
+        return "text-blue-600 dark:text-blue-400"
+    }
+  }
+
+  const allSelected = transactions.length > 0 && selectedIds.size === transactions.length
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(transactions.map((t) => t.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} transactions?`)) return
+
+    setIsBatchDeleting(true)
+    try {
+      const res = await fetch("/api/finance/transactions/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete",
+          ids: Array.from(selectedIds),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to delete transactions")
+      }
+      toast({
+        title: "Batch Delete Successful",
+        description: `Deleted ${json.deletedCount} transactions`,
+      })
+      setSelectedIds(new Set())
+      onDataChanged?.()
+    } catch (err: any) {
+      toast({
+        title: "Batch Action Error",
+        description: err.message || "Failed to delete transactions",
+        variant: "destructive",
+      })
+    } finally {
+      setIsBatchDeleting(false)
+    }
+  }
+
+  const handleBatchCategory = async (targetCategory: string) => {
+    if (selectedIds.size === 0 || !targetCategory) return
+
+    setIsBatchUpdating(true)
+    try {
+      const res = await fetch("/api/finance/transactions/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateCategory",
+          ids: Array.from(selectedIds),
+          category: targetCategory,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to update categories")
+      }
+      toast({
+        title: "Category Updated",
+        description: `Updated category to "${targetCategory}" for ${json.updatedCount} transactions`,
+      })
+      setSelectedIds(new Set())
+      onDataChanged?.()
+    } catch (err: any) {
+      toast({
+        title: "Batch Action Error",
+        description: err.message || "Failed to update category",
+        variant: "destructive",
+      })
+    } finally {
+      setIsBatchUpdating(false)
     }
   }
 
@@ -282,7 +396,7 @@ function TransactionTable({
   // Desktop Table View
   return (
     <div className="space-y-4">
-      {/* Summary */}
+      {/* Summary & Batch Bar */}
       <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-muted/50">
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
@@ -298,12 +412,77 @@ function TransactionTable({
         </span>
       </div>
 
+      {/* Floating Batch Actions Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-secondary/90 backdrop-blur-md rounded-lg border border-border shadow-xs animate-in fade-in-50">
+          <div className="flex items-center gap-2">
+            <span className="bg-primary/10 text-primary font-bold px-2.5 py-0.5 rounded-full text-xs">
+              {selectedIds.size}
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select onValueChange={handleBatchCategory} disabled={isBatchUpdating}>
+              <SelectTrigger className="h-8 text-xs w-[170px] bg-background">
+                <SelectValue placeholder="Change Category..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(categories && categories.length > 0
+                  ? categories
+                  : [
+                      "Food & Dining",
+                      "Groceries",
+                      "Shopping",
+                      "Transportation",
+                      "Utilities & Bills",
+                      "Healthcare",
+                      "Entertainment",
+                      "Personal Care",
+                      "Education",
+                      "Other",
+                    ]
+                ).map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBatchDelete}
+              disabled={isBatchDeleting}
+              className="h-8 text-xs gap-1.5"
+            >
+              {isBatchDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Delete ({selectedIds.size})
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Deselect
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
+                <th className="w-10 px-4 py-3 text-center">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(val) => handleSelectAll(!!val)}
+                    aria-label="Select all"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Date</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Description</th>
@@ -313,7 +492,20 @@ function TransactionTable({
             </thead>
             <tbody className="divide-y">
               {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-muted/30 transition-colors">
+                <tr
+                  key={transaction.id}
+                  className={cn(
+                    "hover:bg-muted/30 transition-colors",
+                    selectedIds.has(transaction.id) && "bg-muted/40"
+                  )}
+                >
+                  <td className="w-10 px-4 py-3 text-center">
+                    <Checkbox
+                      checked={selectedIds.has(transaction.id)}
+                      onCheckedChange={() => handleToggleSelect(transaction.id)}
+                      aria-label={`Select transaction ${transaction.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-sm text-muted-foreground">
                       {new Date(transaction.date).toLocaleDateString("en-IN", {
@@ -334,7 +526,7 @@ function TransactionTable({
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className={cn("font-semibold", getAmountColor())}>
-                        {type === "expense" ? "-" : "+"}₹{Number(transaction.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {type === "expense" ? "-" : type === "income" ? "+" : type === "transfer" ? "⇄ " : ""}₹{Number(transaction.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                       {transaction.paymentMethod && (
                         <span className="text-xs text-muted-foreground">
@@ -345,6 +537,17 @@ function TransactionTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      {type !== "transfer" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Split Transaction"
+                          onClick={() => setSplitTarget(transaction)}
+                          className="h-8 w-8 p-0 hover:text-primary hover:bg-primary/10"
+                        >
+                          <Split className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -371,6 +574,20 @@ function TransactionTable({
       </div>
 
       {paginationControls}
+
+      {splitTarget && (
+        <SplitTransactionDialog
+          open={!!splitTarget}
+          onOpenChange={(open) => !open && setSplitTarget(null)}
+          transaction={splitTarget}
+          categories={categories || []}
+          onSaved={() => {
+            setSplitTarget(null)
+            setSelectedIds(new Set())
+            onDataChanged?.()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -385,9 +602,10 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   const [activeTab, setActiveTab] = useState<TransactionType>("expense")
   const [showFilters, setShowFilters] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [tabCounts, setTabCounts] = useState<{ income: number; expense: number; investment: number } | null>(null)
+  const [showTransferDialog, setShowTransferDialog] = useState(false)
+  const [tabCounts, setTabCounts] = useState<{ income: number; expense: number; investment: number; transfer?: number } | null>(null)
 
-  const handleCountsUpdated = (counts: { income: number; expense: number; investment: number }) => {
+  const handleCountsUpdated = (counts: { income: number; expense: number; investment: number; transfer?: number }) => {
     setTabCounts(counts)
   }
   
@@ -603,6 +821,7 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
   const incomeCount = tabCounts?.income ?? transactions.filter((t) => t.type === "income").length
   const expenseCount = tabCounts?.expense ?? transactions.filter((t) => t.type === "expense").length
   const investmentCount = tabCounts?.investment ?? transactions.filter((t) => t.type === "investment").length
+  const transferCount = tabCounts?.transfer ?? transactions.filter((t) => t.type === "transfer").length
 
   // Calculate stats for the summary cards
   const stats = useMemo(() => {
@@ -914,6 +1133,15 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   <Table className="h-4 w-4" />
                   {isBulkMode ? "Hide Bulk Entry" : "Bulk Entry"}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTransferDialog(true)}
+                  className="gap-2"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                  Transfer Funds
+                </Button>
                 <MultiSheetUploadDialog />
                 <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-2">
                   <Download className="h-4 w-4" />
@@ -936,6 +1164,15 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                 >
                   <Plus className="h-4 w-4" />
                   Add
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTransferDialog(true)}
+                  className="h-9 px-2.5 gap-1 text-xs"
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                  Transfer
                 </Button>
                 <Button
                   variant="outline"
@@ -1144,29 +1381,36 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
               className="w-full"
             >
               <TabsList className={cn(
-                "grid w-full grid-cols-3",
+                "grid w-full grid-cols-4",
                 isMobile ? "mb-4" : "mb-6"
               )}>
                 <TabsTrigger value="income" className={cn(
                   "gap-1",
-                  isMobile ? "text-xs px-2" : "gap-2"
+                  isMobile ? "text-xs px-1" : "gap-2"
                 )}>
                   <TrendingUp className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
                   {isMobile ? `Inc (${incomeCount})` : `Income (${incomeCount})`}
                 </TabsTrigger>
                 <TabsTrigger value="expense" className={cn(
                   "gap-1",
-                  isMobile ? "text-xs px-2" : "gap-2"
+                  isMobile ? "text-xs px-1" : "gap-2"
                 )}>
                   <TrendingDown className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
                   {isMobile ? `Exp (${expenseCount})` : `Expense (${expenseCount})`}
                 </TabsTrigger>
                 <TabsTrigger value="investment" className={cn(
                   "gap-1",
-                  isMobile ? "text-xs px-2" : "gap-2"
+                  isMobile ? "text-xs px-1" : "gap-2"
                 )}>
                   <PiggyBank className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
                   {isMobile ? `Inv (${investmentCount})` : `Investment (${investmentCount})`}
+                </TabsTrigger>
+                <TabsTrigger value="transfer" className={cn(
+                  "gap-1",
+                  isMobile ? "text-xs px-1" : "gap-2"
+                )}>
+                  <ArrowLeftRight className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
+                  {isMobile ? `Trf (${transferCount})` : `Transfer (${transferCount})`}
                 </TabsTrigger>
               </TabsList>
 
@@ -1181,6 +1425,12 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   isMobile={isMobile}
                   refreshKey={refreshKey}
                   onCountsUpdated={handleCountsUpdated}
+                  categories={availableCategories}
+                  onDataChanged={() => {
+                    fetchTransactions(false)
+                    fetchBalanceData()
+                    setRefreshKey((k) => k + 1)
+                  }}
                 />
               </TabsContent>
 
@@ -1195,6 +1445,12 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   isMobile={isMobile}
                   refreshKey={refreshKey}
                   onCountsUpdated={handleCountsUpdated}
+                  categories={availableCategories}
+                  onDataChanged={() => {
+                    fetchTransactions(false)
+                    fetchBalanceData()
+                    setRefreshKey((k) => k + 1)
+                  }}
                 />
               </TabsContent>
 
@@ -1209,6 +1465,32 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
                   isMobile={isMobile}
                   refreshKey={refreshKey}
                   onCountsUpdated={handleCountsUpdated}
+                  categories={availableCategories}
+                  onDataChanged={() => {
+                    fetchTransactions(false)
+                    fetchBalanceData()
+                    setRefreshKey((k) => k + 1)
+                  }}
+                />
+              </TabsContent>
+
+              <TabsContent value="transfer" className="mt-0">
+                <TransactionTable
+                  type="transfer"
+                  onDelete={handleDelete}
+                  onEdit={setEditingTransaction}
+                  searchQuery={searchQuery}
+                  monthFilter={monthFilter}
+                  categoryFilter={categoryFilter}
+                  isMobile={isMobile}
+                  refreshKey={refreshKey}
+                  onCountsUpdated={handleCountsUpdated}
+                  categories={availableCategories}
+                  onDataChanged={() => {
+                    fetchTransactions(false)
+                    fetchBalanceData()
+                    setRefreshKey((k) => k + 1)
+                  }}
                 />
               </TabsContent>
             </Tabs>
@@ -1229,6 +1511,17 @@ export function TransactionHistoryTab({ initialTransactions }: TransactionHistor
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onTransactionAdded={handleTransactionAdded}
+      />
+
+      <TransferFundsDialog
+        open={showTransferDialog}
+        onOpenChange={setShowTransferDialog}
+        onSaved={() => {
+          setShowTransferDialog(false)
+          fetchTransactions(false)
+          fetchBalanceData()
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </>
   )

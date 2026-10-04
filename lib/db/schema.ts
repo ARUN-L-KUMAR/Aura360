@@ -265,6 +265,72 @@ export const transactions = pgTable(
 )
 
 // ============================================
+// BUDGETS (FINANCE MODULE)
+// ============================================
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    period: varchar("period", { length: 20 }).notNull().default("monthly"),
+    month: varchar("month", { length: 7 }),
+    alertThreshold: integer("alert_threshold").notNull().default(80),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdIdx: index("budgets_workspace_id_idx").on(table.workspaceId),
+    userIdIdx: index("budgets_user_id_idx").on(table.userId),
+    workspaceUserMonthCategoryIdx: uniqueIndex("budgets_workspace_user_month_category_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.month,
+      table.category
+    ),
+  })
+)
+
+// ============================================
+// FINANCIAL GOALS (SINKING FUNDS)
+// ============================================
+
+export const financialGoals = pgTable(
+  "financial_goals",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    targetAmount: decimal("target_amount", { precision: 12, scale: 2 }).notNull(),
+    currentAmount: decimal("current_amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    targetDate: date("target_date"),
+    category: text("category").default("Savings"),
+    color: varchar("color", { length: 30 }).default("#3b82f6"),
+    notes: text("notes"),
+    status: varchar("status", { length: 20 }).notNull().default("in_progress"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdIdx: index("financial_goals_workspace_id_idx").on(table.workspaceId),
+    userIdIdx: index("financial_goals_user_id_idx").on(table.userId),
+    statusIdx: index("financial_goals_status_idx").on(table.status),
+  })
+)
+
+// ============================================
 // SUBSCRIPTIONS
 // ============================================
 
@@ -381,6 +447,33 @@ export const fashionItems = pgTable(
     userIdIdx: index("fashion_items_user_id_idx").on(table.userId),
     categoryIdx: index("fashion_items_category_idx").on(table.category),
     statusIdx: index("fashion_items_status_idx").on(table.status),
+  })
+)
+
+export const fashionOutfits = pgTable(
+  "fashion_outfits",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    itemIds: uuid("item_ids").array().notNull(),
+    occasion: text("occasion"),
+    vibe: text("vibe"),
+    notes: text("notes"),
+    wearCount: integer("wear_count").default(0).notNull(),
+    lastWornDate: date("last_worn_date"),
+    wornDates: date("worn_dates").array(), // history of dates the outfit was worn
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    workspaceIdIdx: index("fashion_outfits_workspace_id_idx").on(table.workspaceId),
+    userIdIdx: index("fashion_outfits_user_id_idx").on(table.userId),
   })
 )
 
@@ -816,6 +909,8 @@ export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
   transactions: many(transactions),
   walletLedger: many(walletLedger),
   walletBalances: many(walletBalances),
+  budgets: many(budgets),
+  financialGoals: many(financialGoals),
   fashionItems: many(fashionItems),
   fitness: many(fitness),
   food: many(food),
@@ -882,6 +977,28 @@ export const walletBalancesRelations = relations(walletBalances, ({ one }) => ({
   }),
   user: one(users, {
     fields: [walletBalances.userId],
+    references: [users.id],
+  }),
+}))
+
+export const budgetsRelations = relations(budgets, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [budgets.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(users, {
+    fields: [budgets.userId],
+    references: [users.id],
+  }),
+}))
+
+export const financialGoalsRelations = relations(financialGoals, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [financialGoals.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(users, {
+    fields: [financialGoals.userId],
     references: [users.id],
   }),
 }))

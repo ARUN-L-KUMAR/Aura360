@@ -382,7 +382,7 @@ export function EditFashionDialog({ item, open, onOpenChange, onUpdate }: EditFa
             {status !== "wishlist" && (
               <div className="grid gap-2">
                 <Label htmlFor="edit-condition">Condition</Label>
-                <Select value={condition} onValueChange={setCondition}>
+                <Select value={condition} onValueChange={(val: any) => setCondition(val)}>
                   <SelectTrigger id="edit-condition">
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>

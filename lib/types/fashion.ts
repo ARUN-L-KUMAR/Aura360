@@ -42,3 +42,19 @@ export interface FashionItem {
   createdAt: Date | string
   updatedAt: Date | string
 }
+
+export interface FashionOutfit {
+  id: string
+  workspaceId: string
+  userId: string
+  name: string
+  itemIds: string[]
+  occasion: string | null
+  vibe: string | null
+  notes: string | null
+  wearCount: number
+  lastWornDate: string | null
+  wornDates: string[] | null
+  createdAt: Date | string
+  updatedAt: Date | string
+}

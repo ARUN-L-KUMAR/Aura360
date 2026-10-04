@@ -195,6 +195,29 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
 
       {/* Main Nav */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-3 space-y-1">
+        {/* Search Trigger in Sidebar */}
+        <button
+          onClick={() => window.dispatchEvent(new Event("open_aura360_search"))}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 text-muted-foreground hover:bg-secondary hover:text-foreground mb-2 group/search",
+            isCollapsed && "justify-center px-0"
+          )}
+          title="Search (Cmd+K)"
+        >
+          <Search className="w-4 h-4 shrink-0 group-hover/search:text-primary transition-colors" />
+          <span className={cn(
+            "text-xs font-semibold tracking-tight transition-all duration-300 whitespace-nowrap",
+            isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 flex-1 text-left"
+          )}>
+            Search
+          </span>
+          {!isCollapsed && (
+            <kbd className="h-4 inline-flex items-center rounded border border-border/80 bg-muted/60 px-1 font-mono text-[9px] text-muted-foreground">
+              ⌘K
+            </kbd>
+          )}
+        </button>
+
         <div className={cn(
           "px-3 mb-2 transition-opacity duration-300",
           isCollapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100"

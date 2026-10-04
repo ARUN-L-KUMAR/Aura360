@@ -15,11 +15,23 @@ import {
   type AIModel,
   type AIUsageMetadata,
   type ChatMessage,
+  type AIInlineData,
   type GenerationConfig,
+  type AiToolDeclaration,
+  type AiFunctionCall,
+  type AiGenerateResult,
   GeminiApiError,
   GeminiRateLimitError,
   GeminiTimeoutError,
 } from "./types"
+
+export type GeminiInput = {
+  prompt?: string
+  messages?: ChatMessage[]
+  systemPrompt?: string
+  inlineData?: AIInlineData
+  tools?: AiToolDeclaration[]
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,19 +47,41 @@ function buildEndpoint(model: AIModel): string {
 }
 
 function buildBody(
-  input: {
-    prompt?: string
-    messages?: ChatMessage[]
-    systemPrompt?: string
-  },
+  input: GeminiInput,
   config: GenerationConfig
 ): object {
   // Build contents array
-  const contents: { role: string; parts: { text: string }[] }[] = []
+  const contents: { role: string; parts: any[] }[] = []
 
-  if (input.messages && input.messages.length > 0) {
+  if (input.inlineData) {
+    const parts: any[] = [{ inlineData: input.inlineData }]
+    if (input.prompt) {
+      parts.push({ text: input.prompt })
+    }
+    contents.push({ role: "user", parts })
+  } else if (input.messages && input.messages.length > 0) {
     for (const msg of input.messages) {
-      contents.push({ role: msg.role, parts: [{ text: msg.content }] })
+      if (msg.parts && msg.parts.length > 0) {
+        contents.push({
+          role: msg.role === "function" ? "user" : msg.role,
+          parts: msg.parts,
+        })
+      } else if (msg.role === "function" && msg.functionResponse) {
+        contents.push({
+          role: "user",
+          parts: [{ functionResponse: msg.functionResponse }],
+        })
+      } else if (msg.functionCall) {
+        contents.push({
+          role: "model",
+          parts: [{ functionCall: msg.functionCall }],
+        })
+      } else {
+        contents.push({
+          role: msg.role,
+          parts: [{ text: msg.content ?? "" }],
+        })
+      }
     }
   } else if (input.prompt) {
     contents.push({ role: "user", parts: [{ text: input.prompt }] })
@@ -60,6 +94,11 @@ function buildBody(
     body.systemInstruction = { parts: [{ text: input.systemPrompt }] }
   }
 
+  if (input.tools && input.tools.length > 0) {
+    body.tools = [{ functionDeclarations: input.tools }]
+    body.toolConfig = { functionCallingConfig: { mode: "AUTO" } }
+  }
+
   body.generationConfig = {
     temperature: config.temperature ?? 0.7,
     maxOutputTokens: config.maxOutputTokens ?? 4096,
@@ -70,7 +109,7 @@ function buildBody(
   return body
 }
 
-function extractText(body: Record<string, unknown>): string {
+function extractResult(body: Record<string, unknown>): { text?: string; functionCall?: AiFunctionCall; rawParts?: any[] } {
   const candidate = (body as any)?.candidates?.[0]
   if (!candidate) {
     throw new GeminiApiError("No candidate received from Gemini")
@@ -79,6 +118,17 @@ function extractText(body: Record<string, unknown>): string {
   const parts = candidate?.content?.parts
   if (!Array.isArray(parts) || parts.length === 0) {
     throw new GeminiApiError("Empty or malformed Gemini response")
+  }
+
+  const fnPart = parts.find((p: any) => p.functionCall)
+  if (fnPart?.functionCall) {
+    return {
+      functionCall: {
+        name: fnPart.functionCall.name,
+        args: (fnPart.functionCall.args as Record<string, unknown>) ?? {},
+      },
+      rawParts: parts,
+    }
   }
 
   const text = parts
@@ -90,7 +140,15 @@ function extractText(body: Record<string, unknown>): string {
     throw new GeminiApiError("Empty text in Gemini response")
   }
 
-  return text
+  return { text, rawParts: parts }
+}
+
+function extractText(body: Record<string, unknown>): string {
+  const result = extractResult(body)
+  if (!result.text) {
+    throw new GeminiApiError("Expected text response from Gemini, got function call")
+  }
+  return result.text
 }
 
 function extractUsage(
@@ -113,25 +171,21 @@ async function sleep(ms: number): Promise<void> {
 }
 
 const FALLBACK_CANDIDATES: Record<string, AIModel[]> = {
-  "gemini-flash-latest": ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash"],
-  "gemini-3.5-flash": ["gemini-flash-latest", "gemini-2.5-flash"],
-  "gemini-flash-lite-latest": ["gemini-flash-latest", "gemini-2.5-flash-lite"],
-  "gemini-2.5-flash": ["gemini-flash-latest", "gemini-3.5-flash"],
-  "gemini-3.1-flash-lite-preview": ["gemini-flash-latest", "gemini-flash-lite-latest"],
-  "gemini-2.5-flash-lite": ["gemini-flash-lite-latest", "gemini-flash-latest"],
-  "gemini-3-flash-preview": ["gemini-flash-latest", "gemini-3.5-flash"],
-  "gemini-3.1-flash-lite": ["gemini-flash-latest", "gemini-flash-lite-latest"],
+  "gemini-flash-latest": ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview"],
+  "gemini-3.5-flash": ["gemini-flash-latest", "gemini-2.5-flash", "gemini-3-flash-preview"],
+  "gemini-flash-lite-latest": ["gemini-flash-latest", "gemini-2.5-flash"],
+  "gemini-2.5-flash": ["gemini-flash-latest", "gemini-3.5-flash", "gemini-3-flash-preview"],
+  "gemini-3.1-flash-lite-preview": ["gemini-flash-latest", "gemini-2.5-flash"],
+  "gemini-2.5-flash-lite": ["gemini-flash-latest", "gemini-2.5-flash"],
+  "gemini-3-flash-preview": ["gemini-flash-latest", "gemini-3.5-flash", "gemini-2.5-flash"],
+  "gemini-3.1-flash-lite": ["gemini-flash-latest", "gemini-2.5-flash"],
 }
 
-async function callGeminiSingle(
+async function callGeminiSingleRaw(
   model: AIModel,
-  input: {
-    prompt?: string
-    messages?: ChatMessage[]
-    systemPrompt?: string
-  },
+  input: GeminiInput,
   config: GenerationConfig
-): Promise<{ text: string; usage: AIUsageMetadata }> {
+): Promise<{ body: Record<string, unknown>; usage: AIUsageMetadata }> {
   const apiKey = process.env.GEMINI_API_KEY
 
   if (!apiKey || apiKey === "your_gemini_api_key_here") {
@@ -163,10 +217,7 @@ async function callGeminiSingle(
           res.status === 429 ? "Rate limit reached" : `Model ${model} is experiencing high demand (503)`,
           res.status
         )
-        if (attempt < MAX_RETRIES) {
-          await sleep(600 * 2 ** attempt)
-          continue
-        }
+        // Fail fast on 429 to immediately try active fallback model
         break
       }
 
@@ -176,10 +227,9 @@ async function callGeminiSingle(
       }
 
       const responseBody = (await res.json()) as Record<string, unknown>
-      const text = extractText(responseBody)
       const usage = extractUsage(responseBody, model, latencyMs)
 
-      return { text, usage }
+      return { body: responseBody, usage }
     } catch (err) {
       if (err instanceof GeminiApiError) {
         if (err.statusCode !== 429 && err.statusCode !== 503) throw err
@@ -197,21 +247,17 @@ async function callGeminiSingle(
   throw lastError
 }
 
-async function callGemini(
+async function callGeminiCore(
   model: AIModel,
-  input: {
-    prompt?: string
-    messages?: ChatMessage[]
-    systemPrompt?: string
-  },
+  input: GeminiInput,
   config: GenerationConfig
-): Promise<{ text: string; usage: AIUsageMetadata }> {
-  const modelsToTry = [model, ...(FALLBACK_CANDIDATES[model] || [])]
+): Promise<{ body: Record<string, unknown>; usage: AIUsageMetadata }> {
+  const modelsToTry = Array.from(new Set([model, ...(FALLBACK_CANDIDATES[model] || ["gemini-3.6-flash", "gemini-3-flash-preview"])]))
   let lastError: Error = new GeminiApiError("No response from Gemini models")
 
   for (const candidate of modelsToTry) {
     try {
-      return await callGeminiSingle(candidate, input, config)
+      return await callGeminiSingleRaw(candidate, input, config)
     } catch (err: any) {
       lastError = err
       console.warn(`[GeminiClient] Model ${candidate} unavailable (${err.message}), checking fallback...`)
@@ -219,6 +265,31 @@ async function callGemini(
   }
 
   throw lastError
+}
+
+async function callGemini(
+  model: AIModel,
+  input: GeminiInput,
+  config: GenerationConfig
+): Promise<{ text: string; usage: AIUsageMetadata }> {
+  const { body, usage } = await callGeminiCore(model, input, config)
+  const text = extractText(body)
+  return { text, usage }
+}
+
+async function callGeminiWithTools(
+  model: AIModel,
+  input: GeminiInput,
+  config: GenerationConfig
+): Promise<AiGenerateResult> {
+  const { body, usage } = await callGeminiCore(model, input, config)
+  const result = extractResult(body)
+  return {
+    text: result.text,
+    functionCall: result.functionCall,
+    rawParts: result.rawParts,
+    usage,
+  }
 }
 
 // ─── Public Client API ────────────────────────────────────────────────────────
@@ -231,14 +302,10 @@ export class GeminiClient {
   }
 
   /**
-   * Generate a plain-text response from a single prompt or a chat message array.
+   * Generate a plain-text response from a single prompt, chat messages, or multimodal image.
    */
   async generateText(
-    input: {
-      prompt?: string
-      messages?: ChatMessage[]
-      systemPrompt?: string
-    },
+    input: GeminiInput,
     options: {
       model?: AIModel
       config?: GenerationConfig
@@ -254,11 +321,7 @@ export class GeminiClient {
    * Automatically enables JSON mode and parses the output.
    */
   async generateJson<T>(
-    input: {
-      prompt?: string
-      messages?: ChatMessage[]
-      systemPrompt?: string
-    },
+    input: GeminiInput,
     options: {
       model?: AIModel
       config?: GenerationConfig
@@ -278,6 +341,21 @@ export class GeminiClient {
     } catch {
       throw new GeminiApiError(`Gemini returned invalid JSON: ${text.substring(0, 200)}`)
     }
+  }
+
+  /**
+   * Generate a response with function-calling support.
+   */
+  async generateWithTools(
+    input: GeminiInput,
+    options: {
+      model?: AIModel
+      config?: GenerationConfig
+    } = {}
+  ): Promise<AiGenerateResult> {
+    const model = options.model ?? this.defaultModel
+    const config = options.config ?? {}
+    return callGeminiWithTools(model, input, config)
   }
 
   /**

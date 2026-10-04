@@ -1,19 +1,21 @@
 /**
  * POST /api/ai/search
  *
- * AI-powered semantic search across Aura360 modules.
+ * Platform-wide AI search across all Aura360 modules.
  *
- * Request body:
+ * Supported request formats:
+ * 1. Platform-wide server-side DB search (recommended):
  * {
- *   "query": "natural language search string",
- *   "candidates": [{ id, title, description?, module, tags? }]
+ *   "query": "transactions for groceries",
+ *   "module": "all" | "finance" | "notes" | "fitness" | "food" | "fashion" | "skincare" | "time" | "saved",
+ *   "includeAiSummary": true,
+ *   "model": "qwen/qwen3.8-27b"
  * }
  *
- * Response:
+ * 2. Legacy client-side candidate re-ranking:
  * {
- *   "results": [{ id, title, description?, module, tags?, score, reason? }],
- *   "usage": { ... },
- *   "source": "ai" | "fallback"
+ *   "query": "search string",
+ *   "candidates": [{ id, title, description?, module, tags? }]
  * }
  */
 
@@ -21,9 +23,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { smartSearch } from "@/lib/ai/services/smart-search"
+import { executeUnifiedSearch, type SearchModule } from "@/lib/search/unified-search"
+import type { AIModel } from "@/lib/ai/types"
 
 const searchSchema = z.object({
-  query: z.string().min(1).max(200),
+  query: z.string().min(1).max(300),
+  module: z
+    .enum(["all", "notes", "finance", "fitness", "food", "fashion", "skincare", "time", "saved"])
+    .optional(),
+  includeAiSummary: z.boolean().optional(),
+  model: z.string().optional(),
   candidates: z
     .array(
       z.object({
@@ -34,39 +43,56 @@ const searchSchema = z.object({
         tags: z.array(z.string()).optional(),
       })
     )
-    .max(100),
+    .max(100)
+    .optional(),
 })
 
 export async function POST(request: NextRequest) {
   try {
-    await getWorkspaceContext()
+    const ctx = await getWorkspaceContext()
 
     const body = await request.json()
     const parsed = searchSchema.safeParse(body)
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
+        { error: "Invalid search request", details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
-    const result = await smartSearch.rankResults(parsed.data.query, parsed.data.candidates)
+    const { query, module, includeAiSummary, model, candidates } = parsed.data
 
-    return NextResponse.json({
-      results: result.data,
-      usage: result.usage,
-      source: result.source,
+    // If client supplied candidates explicitly (legacy path)
+    if (candidates && candidates.length > 0) {
+      const result = await smartSearch.rankResults(query, candidates)
+      return NextResponse.json({
+        results: result.data,
+        usage: result.usage,
+        source: result.source,
+      })
+    }
+
+    // Platform-wide search across database tables
+    const searchResponse = await executeUnifiedSearch(query, ctx, {
+      module: module as SearchModule | "all",
+      includeAiSummary: includeAiSummary ?? true,
+      model: model as AIModel,
     })
-  } catch (error) {
-    console.error("[POST /api/ai/search] error:", error)
 
-    if (error instanceof Error && error.message.includes("Unauthorized")) {
+    return NextResponse.json(searchResponse)
+  } catch (error: any) {
+    if (
+      error?.digest?.startsWith("NEXT_REDIRECT") ||
+      error?.message?.includes("NEXT_REDIRECT") ||
+      error?.message?.includes("Unauthorized")
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    console.error("[POST /api/ai/search] error:", error)
     return NextResponse.json(
-      { error: "Failed to perform AI search" },
+      { error: "Failed to perform search across platform" },
       { status: 500 }
     )
   }

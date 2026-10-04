@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession } from "next-auth/react"
 import { Logo } from "@/components/ui/logo"
+import { NotificationBell } from "@/components/layout/notification-bell"
 
 interface NavbarProps {}
 
@@ -61,13 +62,21 @@ export function Navbar({}: NavbarProps) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1 mr-2 px-1 py-1 rounded-lg bg-secondary/20 border border-border/10">
-             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md hover:bg-background transition-colors">
-                <Search className="w-4 h-4 text-muted-foreground" />
-             </Button>
-          </div>
+          <button
+            onClick={() => window.dispatchEvent(new Event("open_aura360_search"))}
+            className="flex items-center gap-2 h-8 px-2.5 rounded-lg bg-secondary/60 hover:bg-secondary border border-border/60 hover:border-border text-muted-foreground hover:text-foreground transition-all text-xs"
+            title="Search workspace (Cmd+K)"
+          >
+            <Search className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="hidden md:inline font-normal text-muted-foreground/80">Search anything...</span>
+            <kbd className="hidden sm:inline-flex h-4 items-center gap-0.5 rounded border border-border/80 bg-background/80 px-1 font-mono text-[9px] text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
 
           <ThemeToggle />
+
+          <NotificationBell />
 
           <Link href="/dashboard/profile">
             <div className="w-9 h-9 rounded-xl bg-secondary border border-border p-0.5 group overflow-hidden transition-all hover:border-primary/50 shadow-sm">

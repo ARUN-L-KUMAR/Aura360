@@ -22,9 +22,10 @@ import { toast } from "sonner"
 interface AddMealDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function AddMealDialog({ open, onOpenChange }: AddMealDialogProps) {
+export function AddMealDialog({ open, onOpenChange, onSuccess }: AddMealDialogProps) {
   const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">("breakfast")
   const [foodName, setFoodName] = useState("")
   const [calories, setCalories] = useState("")
@@ -63,6 +64,7 @@ export function AddMealDialog({ open, onOpenChange }: AddMealDialogProps) {
       toast.success("Meal added successfully")
       resetForm()
       onOpenChange(false)
+      if (onSuccess) onSuccess()
       router.refresh()
     } catch (error) {
       console.error("Error creating meal:", error)

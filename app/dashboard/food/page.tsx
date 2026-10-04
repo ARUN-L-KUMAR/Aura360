@@ -2,9 +2,7 @@ import { getAuthSession } from "@/lib/auth-helpers"
 import { db, food as foodTable } from "@/lib/db"
 import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
-import { FoodStats } from "@/components/food/food-stats"
-import { MealsList } from "@/components/food/meals-list"
-import { AddMealButton } from "@/components/food/add-meal-button"
+import { FoodClientManager } from "@/components/food/food-client-manager"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function FoodPage() {
@@ -31,17 +29,14 @@ export default async function FoodPage() {
       <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Food"
-          description="Track your meals and nutrition"
+          description="Your adaptive nutrition, macro architecture, and culinary studio"
           iconName="utensils-crossed"
           iconBgColor="bg-secondary"
           iconColor="text-slate-600 dark:text-slate-400"
-        >
-          <AddMealButton />
-        </ModuleHeader>
+        />
 
-        <div className="space-y-6">
-          <FoodStats meals={meals || []} />
-          <MealsList initialMeals={meals || []} />
+        <div className="mt-6">
+          <FoodClientManager initialMeals={meals || []} />
         </div>
       </div>
     </div>

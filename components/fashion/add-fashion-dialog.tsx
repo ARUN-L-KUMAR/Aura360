@@ -109,7 +109,7 @@ export function AddFashionDialog({ open, onOpenChange }: AddFashionDialogProps) 
       } catch (error) {
         console.error("Error fetching product data:", error)
         // Show user-friendly error message
-        alert(`Failed to fetch product data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast.error(`Failed to fetch product data: ${error instanceof Error ? error.message : 'Unknown error'}`)
       } finally {
         setFetchLoading(false)
       }

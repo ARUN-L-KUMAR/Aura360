@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, AlertCircle, CheckCircle2, Target, Banknote } from "lucide-react"
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, AlertCircle, CheckCircle2, Target, Banknote, CreditCard, Clock } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
 import { EditBalanceDialog } from "./edit-balance-dialog"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
@@ -22,13 +22,43 @@ interface FinanceOverviewTabProps {
 export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
   const isMobile = useIsMobile()
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null)
+  const [budgetSummary, setBudgetSummary] = useState<any>(null)
+  const [subSummary, setSubSummary] = useState<any>(null)
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
   const [balanceError, setBalanceError] = useState<string | null>(null)
 
-  // Fetch balance data on mount and when transactions count changes
+  // Fetch balance data, budget summary, and subscription renewals
   useEffect(() => {
     fetchBalanceData()
+    fetchBudgetSummary()
+    fetchSubSummary()
   }, [transactions.length])
+
+  const fetchBudgetSummary = async () => {
+    try {
+      const timestamp = new Date().getTime()
+      const res = await fetch(`/api/finance/budgets?_=${timestamp}`)
+      const data = await res.json()
+      if (res.ok && data.success && data.summary) {
+        setBudgetSummary(data.summary)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchSubSummary = async () => {
+    try {
+      const timestamp = new Date().getTime()
+      const res = await fetch(`/api/finance/subscriptions?_=${timestamp}`)
+      const data = await res.json()
+      if (res.ok && data.success && data.summary) {
+        setSubSummary(data.summary)
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   const fetchBalanceData = async () => {
     try {
@@ -435,6 +465,121 @@ export function FinanceOverviewTab({ transactions }: FinanceOverviewTabProps) {
                 <span className={cn("font-semibold", isMobile ? "text-sm" : "")}>
                   ₹{balanceData.cashBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Monthly Budget Pace Widget (if budget exists) */}
+      {budgetSummary && budgetSummary.overallCap > 0 && (
+        <Card className={cn(
+          "backdrop-blur-sm bg-card/80 border-l-4",
+          budgetSummary.isOverBudget
+            ? "border-l-red-500"
+            : budgetSummary.percentage >= 80
+            ? "border-l-amber-500"
+            : "border-l-blue-500"
+        )}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  budgetSummary.isOverBudget
+                    ? "bg-red-50 dark:bg-red-950/50 text-red-600"
+                    : budgetSummary.percentage >= 80
+                    ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600"
+                    : "bg-blue-50 dark:bg-blue-950/50 text-blue-600"
+                )}>
+                  <Target className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    Monthly Budget Pace
+                    {budgetSummary.isOverBudget && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-600 font-bold">
+                        Exceeded
+                      </span>
+                    )}
+                    {budgetSummary.percentage >= 80 && !budgetSummary.isOverBudget && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-600 font-bold">
+                        Near Limit
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm font-semibold text-foreground">
+                    Spent ₹{budgetSummary.totalSpent.toLocaleString("en-IN")} of ₹{budgetSummary.overallCap.toLocaleString("en-IN")}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className={cn(
+                  "text-lg font-bold",
+                  budgetSummary.isOverBudget
+                    ? "text-red-600"
+                    : budgetSummary.percentage >= 80
+                    ? "text-amber-600"
+                    : "text-foreground"
+                )}>
+                  {budgetSummary.percentage}% used
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  ₹{budgetSummary.remaining.toLocaleString("en-IN")} remaining
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full bg-secondary h-2 rounded-full overflow-hidden border">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-300",
+                  budgetSummary.isOverBudget
+                    ? "bg-red-600"
+                    : budgetSummary.percentage >= 80
+                    ? "bg-amber-500"
+                    : "bg-blue-600"
+                )}
+                style={{ width: `${Math.min(100, budgetSummary.percentage)}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upcoming Subscription Renewals Alert Banner */}
+      {subSummary && (subSummary.dueIn7DaysCount > 0 || subSummary.overdueCount > 0) && (
+        <Card className={cn(
+          "backdrop-blur-sm bg-card/80 border-l-4",
+          subSummary.overdueCount > 0 ? "border-l-red-500" : "border-l-amber-500"
+        )}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  subSummary.overdueCount > 0
+                    ? "bg-red-50 dark:bg-red-950/50 text-red-600"
+                    : "bg-amber-50 dark:bg-amber-950/50 text-amber-600"
+                )}>
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold flex items-center gap-2">
+                    {subSummary.overdueCount > 0
+                      ? `⚠️ ${subSummary.overdueCount} Subscription Payment Overdue`
+                      : `Upcoming Auto-Debits: ${subSummary.dueIn7DaysCount} Bills Due in Next 7 Days`}
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Monthly recurring burn rate: ₹{subSummary.monthlyBurnRate.toLocaleString("en-IN")}/mo across {subSummary.activeCount} active services.
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Check Subscriptions tab</span>
               </div>
             </div>
           </CardContent>

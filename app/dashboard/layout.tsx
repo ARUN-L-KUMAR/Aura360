@@ -1,4 +1,5 @@
 import { DashboardLayoutClient } from "@/components/layout/dashboard-layout-client"
+import { PageContextProvider } from "@/lib/context/page-context"
 
 export default function DashboardLayout({
   children,
@@ -6,8 +7,10 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <DashboardLayoutClient>
-      {children}
-    </DashboardLayoutClient>
+    <PageContextProvider>
+      <DashboardLayoutClient>
+        {children}
+      </DashboardLayoutClient>
+    </PageContextProvider>
   )
 }

@@ -1,13 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Grid3X3, List, ShoppingCart, Sparkles, Calendar } from "lucide-react"
+import { Grid3X3, List, ShoppingCart, Sparkles, Calendar, Bookmark } from "lucide-react"
 import { DragDropDashboard } from "./drag-drop-dashboard"
 import { WardrobeView } from "./wardrobe-view"
 import { WishlistView } from "./wishlist-view"
 import { FashionSenseBoard } from "./fashion-sense-board"
+import dynamic from "next/dynamic"
+// Heavy AI Designer Studio — lazy loaded (~53KB)
+const FashionAiDesignerStudio = dynamic(
+  () => import("./fashion-ai-designer-studio").then(m => ({ default: m.FashionAiDesignerStudio })),
+  { ssr: false, loading: () => <div className="flex items-center justify-center min-h-[400px] text-muted-foreground text-sm">Loading AI Studio...</div> }
+)
+
 import { SeasonalPlanner } from "./seasonal-planner"
+import { OutfitsView } from "./outfits-view"
 import type { FashionItem } from "@/lib/types/fashion"
 import { toast } from "sonner"
 
@@ -17,6 +25,11 @@ interface FashionClientManagerProps {
 
 export function FashionClientManager({ initialItems = [] }: FashionClientManagerProps) {
   const [items, setItems] = useState<FashionItem[]>(initialItems)
+
+  // Re-sync when the server re-renders with fresh data (e.g. after router.refresh() from the add dialog)
+  useEffect(() => {
+    setItems(initialItems)
+  }, [initialItems])
 
   const wardrobeItems = items.filter(i => i.status === "wardrobe")
   const wishlistItems = items.filter(i => i.status === "wishlist")
@@ -50,33 +63,41 @@ export function FashionClientManager({ initialItems = [] }: FashionClientManager
     setItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item))
   }
 
+  const handleAddItem = (newItem: FashionItem) => {
+    setItems(prev => [newItem, ...prev])
+  }
+
   const handleReorder = async (reorderedWardrobeItems: FashionItem[]) => {
-    // 1. Update local state immediately for snappy UI
-    const otherItems = items.filter(i => i.status !== "wardrobe")
-    const newItems = [...reorderedWardrobeItems.reverse(), ...otherItems] // reverse because priority is higher first, but storage might be different. Wait.
-    // Actually, WardrobeView already handled the priorities.
-    
-    // Merge back into main items list
+    // 1. Update local state immediately for snappy UI.
+    // WardrobeView already assigned priorities (higher first), so keep its order as-is.
     setItems(prev => {
       const remaining = prev.filter(i => i.status !== "wardrobe")
       return [...reorderedWardrobeItems, ...remaining]
     })
 
-    // 2. Persist changes (de-duped/optimized)
-    // Only update items whose priority actually changed compared to current state
-    for (const item of reorderedWardrobeItems) {
+    // 2. Persist only the items whose priority changed, in parallel
+    const changed = reorderedWardrobeItems.filter(item => {
       const original = items.find(i => i.id === item.id)
-      if (original && original.metadata?.priority !== item.metadata?.priority) {
-        try {
-          await fetch(`/api/fashion?id=${item.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ metadata: item.metadata }),
-          })
-        } catch (error) {
-          console.error(`Failed to persist priority for item ${item.id}:`, error)
-        }
-      }
+      return original && original.metadata?.priority !== item.metadata?.priority
+    })
+    if (changed.length === 0) return
+
+    const results = await Promise.allSettled(
+      changed.map(async item => {
+        const response = await fetch(`/api/fashion?id=${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metadata: item.metadata }),
+        })
+        if (!response.ok) throw new Error(`Failed to persist priority for item ${item.id}`)
+      })
+    )
+
+    if (results.some(r => r.status === "rejected")) {
+      console.error("Failed to persist wardrobe order:", results.filter(r => r.status === "rejected"))
+      // Roll back to the order we had before the drag
+      setItems(items)
+      toast.error("Couldn't save the new order")
     }
   }
 
@@ -100,6 +121,10 @@ export function FashionClientManager({ initialItems = [] }: FashionClientManager
             <TabsTrigger value="designer" className="shrink-0 gap-2 px-3 md:px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground whitespace-nowrap">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Designer</span>
+            </TabsTrigger>
+            <TabsTrigger value="outfits" className="shrink-0 gap-2 px-3 md:px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground whitespace-nowrap">
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>Outfits</span>
             </TabsTrigger>
             <TabsTrigger value="planner" className="shrink-0 gap-2 px-3 md:px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground whitespace-nowrap">
               <Calendar className="w-3.5 h-3.5" />
@@ -135,12 +160,18 @@ export function FashionClientManager({ initialItems = [] }: FashionClientManager
           </TabsContent>
 
           <TabsContent value="designer" className="mt-0 outline-none focus-visible:ring-0">
-            <FashionSenseBoard
+            <FashionAiDesignerStudio
               wardrobeItems={wardrobeItems}
               wishlistItems={wishlistItems}
               onItemMovedToWardrobe={(item) => handleUpdateStatus(item.id, "wardrobe")}
               onItemMovedToWishlist={(item) => handleUpdateStatus(item.id, "wishlist")}
+              onItemAdded={handleAddItem}
+              onUpdateItem={handleUpdateItem}
             />
+          </TabsContent>
+
+          <TabsContent value="outfits" className="mt-0 outline-none focus-visible:ring-0">
+            <OutfitsView items={items} onUpdateItem={handleUpdateItem} />
           </TabsContent>
 
           <TabsContent value="planner" className="mt-0 outline-none focus-visible:ring-0">

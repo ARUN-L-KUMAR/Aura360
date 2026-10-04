@@ -1,30 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { DashboardSidebar } from "./dashboard-sidebar"
 import { Navbar } from "./navbar"
 import { FloatingAiWidget } from "@/components/ai/floating-ai-widget"
+import { GlobalAiSearchDialog } from "@/components/search/global-ai-search-dialog"
 
 export function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-background flex overflow-hidden opacity-0">
-        <div className="flex-1 flex flex-col min-h-screen relative overflow-y-auto no-scrollbar">
-          <main className="flex-1 pt-24 pb-12">
-            {children}
-          </main>
-        </div>
-      </div>
-    )
-  }
+  const pathname = usePathname()
+  const isChatPage = pathname?.startsWith("/dashboard/chat")
 
   return (
     <div className="min-h-screen bg-background flex overflow-hidden">
@@ -41,7 +28,8 @@ export function DashboardLayoutClient({ children }: { children: React.ReactNode 
         <main className="flex-1 pb-32 lg:pb-12">
           {children}
         </main>
-        <FloatingAiWidget />
+        {!isChatPage && <FloatingAiWidget />}
+        <GlobalAiSearchDialog />
       </div>
     </div>
   )

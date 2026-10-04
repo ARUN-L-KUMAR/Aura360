@@ -246,3 +246,74 @@
 .animate-shine {
   animation: shine 2s ease-in-out infinite;
 }
+
+/* ─── Modern Application Toast Design (Sonner) ─── */
+[data-sonner-toaster] {
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+}
+
+[data-sonner-toast] {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.dark [data-sonner-toast] {
+  background: oklch(0.16 0.02 240 / 0.96) !important;
+  color: oklch(0.95 0.01 200) !important;
+  border: 1px solid oklch(0.32 0.02 240) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: var(--foreground) !important;
+  font-weight: 500 !important;
+}
+
+.dark [data-sonner-toast] [data-title] {
+  color: oklch(0.95 0.01 200) !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
+/* Status Icon & Border Accents */
+[data-sonner-toast][data-type="success"] {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] svg {
+  color: #10b981 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] svg {
+  color: #f43f5e !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-icon] svg {
+  color: #f59e0b !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-color: rgba(14, 165, 233, 0.35) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] svg {
+  color: #0ea5e9 !important;
+}

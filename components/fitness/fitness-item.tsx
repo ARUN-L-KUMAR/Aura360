@@ -80,17 +80,17 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
     },
   }
 
-  const config = typeConfig[entry.type]
-  const Icon = config.icon
+  const config = typeConfig[entry?.type as keyof typeof typeConfig] || typeConfig.workout
+  const Icon = config?.icon || Activity
 
   const getDisplayText = () => {
-    if (entry.type === "workout") {
-      return `${entry.workoutType} - ${entry.durationMinutes} min${entry.caloriesBurned ? `, ${entry.caloriesBurned} cal` : ""}`
+    if (entry?.type === "workout") {
+      return `${entry.workoutType || "Workout"} - ${entry.durationMinutes || 0} min${entry.caloriesBurned ? `, ${entry.caloriesBurned} cal` : ""}`
     }
-    if (entry.type === "measurement") {
-      return `${entry.measurementType}: ${entry.measurementValue} ${entry.measurementUnit}`
+    if (entry?.type === "measurement") {
+      return `${entry.measurementType || "Metric"}: ${entry.measurementValue ?? ""} ${entry.measurementUnit || ""}`
     }
-    return entry.notes || "Goal"
+    return entry?.notes || entry?.workoutType || "Fitness Activity"
   }
 
   return (
@@ -103,7 +103,7 @@ export function FitnessItem({ entry, onDelete, onUpdate }: FitnessItemProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="font-medium truncate">{getDisplayText()}</p>
-              <Badge className={`${config.badge} border-0`}>{entry.type}</Badge>
+              <Badge className={`${config.badge} border-0`}>{entry?.type || "activity"}</Badge>
             </div>
             {entry.notes && entry.type !== "goal" && (
               <p className="text-sm text-muted-foreground truncate">{entry.notes}</p>

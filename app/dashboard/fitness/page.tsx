@@ -2,9 +2,7 @@ import { getAuthSession } from "@/lib/auth-helpers"
 import { db, fitness as fitnessTable } from "@/lib/db"
 import { eq, and, desc } from "drizzle-orm"
 import { redirect } from "next/navigation"
-import { FitnessStats } from "@/components/fitness/fitness-stats"
-import { FitnessLog } from "@/components/fitness/fitness-log"
-import { AddFitnessButton } from "@/components/fitness/add-fitness-button"
+import { FitnessClientManager } from "@/components/fitness/fitness-client-manager"
 import { ModuleHeader } from "@/components/ui/module-header"
 
 export default async function FitnessPage() {
@@ -31,17 +29,14 @@ export default async function FitnessPage() {
       <div className="mx-auto max-w-7xl p-6 sm:p-10 pb-24 md:pb-10">
         <ModuleHeader
           title="Fitness"
-          description="Track your workouts and progress"
+          description="Your adaptive strength, periodization, and recovery operating system"
           iconName="dumbbell"
           iconBgColor="bg-secondary"
           iconColor="text-slate-600 dark:text-slate-400"
-        >
-          <AddFitnessButton />
-        </ModuleHeader>
+        />
 
-        <div className="space-y-6">
-          <FitnessStats fitnessData={fitnessData || []} />
-          <FitnessLog initialData={(fitnessData || []) as any} />
+        <div className="mt-6">
+          <FitnessClientManager initialData={(fitnessData || []) as any} />
         </div>
       </div>
     </div>

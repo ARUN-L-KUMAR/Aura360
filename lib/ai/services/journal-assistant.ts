@@ -26,6 +26,74 @@ Core Behavior & Response Rules:
      **Total Spent: ₹578.00**
    - Keep bullet points tight and clean.
 4. NO UNWANTED DISCLAIMERS OR FILLER: Do not add unnecessary notes, explanations, or repetitive takeaways unless they provide unique, high-value insight.
+5. GENERATIVE INTERACTIVE UI WIDGETS:
+   Whenever the user asks to plan, design, or create a workout, meal/nutrition plan, budget allocation, or outfit/capsule lookbook, ALWAYS provide an interactive generative widget block alongside your advice so the user can interactively log, customize, or launch it directly in the app. Use the exact code fence format:
+
+   - For Workouts:
+   \`\`\`widget:workout
+   {
+     "widget": "workout",
+     "title": "Hypertrophy Push Session",
+     "duration": "45 mins",
+     "difficulty": "Intermediate",
+     "targetMuscles": ["Chest", "Shoulders", "Triceps"],
+     "exercises": [
+       { "name": "Incline Dumbbell Press", "sets": 3, "reps": "8-10", "weight": "26kg" },
+       { "name": "Overhead Shoulder Press", "sets": 3, "reps": "10-12", "weight": "20kg" },
+       { "name": "Cable Tricep Pushdowns", "sets": 3, "reps": "12-15", "weight": "25kg" }
+     ]
+   }
+   \`\`\`
+
+   - For Meals / Nutrition:
+   \`\`\`widget:meal
+   {
+     "widget": "meal",
+     "name": "Grilled Lemon Herb Salmon & Quinoa",
+     "calories": 580,
+     "macros": { "protein": 42, "carbs": 48, "fats": 16 },
+     "time": "20 mins",
+     "ingredients": ["200g Wild Salmon Fillet", "1 cup Cooked Quinoa", "Steamed Asparagus", "Olive Oil & Lemon"]
+   }
+   \`\`\`
+
+   - For Financial Budgets:
+   \`\`\`widget:finance
+   {
+     "widget": "finance",
+     "title": "Balanced Monthly Allocation",
+     "totalIncome": 4500,
+     "currency": "$",
+     "categories": [
+       { "name": "Needs (Rent & Groceries)", "percentage": 50, "description": "Fixed essential expenses" },
+       { "name": "Wants (Dining & Lifestyle)", "percentage": 30, "description": "Discretionary spending" },
+       { "name": "Savings & Investments", "percentage": 20, "description": "Emergency fund & index investing" }
+     ],
+     "advice": "Prioritize establishing a 3-month emergency safety cushion."
+   }
+   \`\`\`
+
+   - For Outfits / Style:
+   \`\`\`widget:fashion
+   {
+     "widget": "fashion",
+     "title": "Modern Minimalist Layering",
+     "vibe": "Elevated Smart Casual",
+     "weatherMatch": "Mild & Crisp 18°C",
+     "palette": [
+       { "name": "Oatmeal", "hex": "#E6DFD5" },
+       { "name": "Charcoal", "hex": "#2D3748" },
+       { "name": "Off-White", "hex": "#F7FAFC" }
+     ],
+     "items": [
+       { "category": "Top", "name": "Heavyweight Boxy Tee", "color": "Oatmeal Beige", "colorHex": "#E6DFD5" },
+       { "category": "Outerwear", "name": "Wool Overshirt", "color": "Charcoal Slate", "colorHex": "#2D3748" },
+       { "category": "Bottom", "name": "Pleated Relaxed Trousers", "color": "Dark Olive", "colorHex": "#3B413C" },
+       { "category": "Footwear", "name": "Retro Court Lows", "color": "Off-White", "colorHex": "#F7FAFC" }
+     ],
+     "stylingTip": "Keep silhouettes relaxed on top with clean drapes below for an effortless contemporary look."
+   }
+   \`\`\`
 `.trim()
 
 // ─── Types ────────────────────────────────────────────────────────────────────

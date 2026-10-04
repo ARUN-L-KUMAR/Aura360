@@ -88,6 +88,7 @@ export async function GET(request: Request) {
           income: count(sql`CASE WHEN ${transactions.type} = 'income' THEN 1 END`),
           expense: count(sql`CASE WHEN ${transactions.type} = 'expense' THEN 1 END`),
           investment: count(sql`CASE WHEN ${transactions.type} = 'investment' THEN 1 END`),
+          transfer: count(sql`CASE WHEN ${transactions.type} = 'transfer' THEN 1 END`),
         })
         .from(transactions)
         .where(
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
         income: Number(countsResult[0]?.income || 0),
         expense: Number(countsResult[0]?.expense || 0),
         investment: Number(countsResult[0]?.investment || 0),
+        transfer: Number(countsResult[0]?.transfer || 0),
       },
     })
   } catch (error) {

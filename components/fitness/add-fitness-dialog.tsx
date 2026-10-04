@@ -22,9 +22,10 @@ import { toast } from "sonner"
 interface AddFitnessDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function AddFitnessDialog({ open, onOpenChange }: AddFitnessDialogProps) {
+export function AddFitnessDialog({ open, onOpenChange, onSuccess }: AddFitnessDialogProps) {
   const [type, setType] = useState<"workout" | "measurement" | "goal">("workout")
   const [workoutType, setWorkoutType] = useState("")
   const [duration, setDuration] = useState("")
@@ -71,6 +72,7 @@ export function AddFitnessDialog({ open, onOpenChange }: AddFitnessDialogProps) 
       toast.success("Fitness entry added successfully")
       resetForm()
       onOpenChange(false)
+      if (onSuccess) onSuccess()
       router.refresh()
     } catch (error) {
       console.error("Error creating fitness entry:", error)

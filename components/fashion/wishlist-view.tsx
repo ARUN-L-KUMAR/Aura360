@@ -30,15 +30,14 @@ export function WishlistView({ items, onDeleteItem, onUpdateItem }: WishlistView
   })
 
   const handleMarkAsBought = async (item: FashionItem) => {
-    if (!confirm(`Mark "${item.name}" as bought and move to wardrobe?`)) return
-
     try {
+      const purchaseDate = new Date().toISOString().split('T')[0]
       const response = await fetch(`/api/fashion?id=${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "wardrobe",
-          purchaseDate: new Date().toISOString().split('T')[0],
+          purchaseDate,
         }),
       })
 
@@ -46,7 +45,7 @@ export function WishlistView({ items, onDeleteItem, onUpdateItem }: WishlistView
         throw new Error("Failed to mark as bought")
       }
 
-      const updatedItem = { ...item, status: "wardrobe" as "wardrobe" }
+      const updatedItem = { ...item, status: "wardrobe" as const, purchaseDate }
       onUpdateItem(updatedItem)
       toast.success("Item marked as bought")
     } catch (error) {

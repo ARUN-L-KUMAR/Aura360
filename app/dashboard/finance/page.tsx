@@ -1,11 +1,17 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, lazy, Suspense } from "react"
 import { FinanceOverviewTab } from "@/components/finance/finance-overview-tab"
 import { TransactionHistoryTab } from "@/components/finance/transaction-history-tab"
-import { ReportsTab } from "@/components/finance/reports-tab"
+import { BudgetsGoalsTab } from "@/components/finance/budgets-goals-tab"
+import { SubscriptionsTab } from "@/components/finance/subscriptions-tab"
+// Heavy tabs — lazy loaded to reduce initial bundle
+import dynamic from "next/dynamic"
+const ReportsTab = dynamic(() => import("@/components/finance/reports-tab").then(m => ({ default: m.ReportsTab })), { ssr: false, loading: () => <div className="flex items-center justify-center min-h-[400px] text-muted-foreground text-sm">Loading reports...</div> })
+const FinanceAiDesignerTab = dynamic(() => import("@/components/finance/finance-ai-designer-tab").then(m => ({ default: m.FinanceAiDesignerTab })), { ssr: false, loading: () => <div className="flex items-center justify-center min-h-[400px] text-muted-foreground text-sm">Loading AI designer...</div> })
 import { ShareTransactionModal } from "@/components/finance/share-transaction-modal"
-import { DollarSign, LayoutDashboard, History, BarChart3, ArrowUp, Share2, ArrowLeft, Home, LayoutGrid, RefreshCw } from "lucide-react"
+import { ReceiptScannerModal } from "@/components/finance/receipt-scanner-modal"
+import { DollarSign, LayoutDashboard, History, BarChart3, Target, CreditCard, ScanLine, ArrowUp, Share2, ArrowLeft, Home, LayoutGrid, RefreshCw, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
@@ -48,6 +54,7 @@ export default function FinancePage() {
   const [activeMainTab, setActiveMainTab] = useState("overview")
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
 
   // Memoize filtered transactions to prevent downstream re-render cascades
   const transformedTransactions = useMemo(
@@ -232,6 +239,25 @@ export default function FinancePage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setShowReceiptModal(true)}
+                    className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary h-9 px-4 text-primary hover:text-primary"
+                  >
+                    <ScanLine className="h-3.5 w-3.5" />
+                    Scan Receipt
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-[10px] font-bold">Auto-extract bill with Gemini Vision</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setShowShareModal(true)}
                     className="gap-2 font-bold text-[10px] uppercase tracking-widest border-border shadow-none hover:bg-secondary h-9 px-4"
                   >
@@ -269,7 +295,10 @@ export default function FinancePage() {
               {[
                 { val: "overview", label: "Overview", icon: LayoutDashboard },
                 { val: "transactions", label: "Ledger", icon: History },
-                { val: "reports", label: "Analytics", icon: BarChart3 }
+                { val: "budgets", label: "Budgets & Goals", icon: Target },
+                { val: "subscriptions", label: "Subscriptions", icon: CreditCard },
+                { val: "reports", label: "Analytics", icon: BarChart3 },
+                { val: "designer", label: "AI Designer", icon: Sparkles }
               ].map(tab => (
                 <TabsTrigger 
                   key={tab.val}
@@ -286,27 +315,48 @@ export default function FinancePage() {
           {/* Mobile Bottom Navigation Tabs */}
           {isMobile && (
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t safe-area-bottom">
-              <TabsList className="grid grid-cols-3 h-16 bg-transparent">
+              <TabsList className="grid grid-cols-6 h-16 bg-transparent">
                 <TabsTrigger 
                   value="overview" 
-                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
-                  <LayoutDashboard className="h-5 w-5" />
+                  <LayoutDashboard className="h-4 w-4" />
                   Overview
                 </TabsTrigger>
                 <TabsTrigger 
                   value="transactions" 
-                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
-                  <History className="h-5 w-5" />
+                  <History className="h-4 w-4" />
                   History
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="reports" 
-                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[10px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                  value="budgets" 
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
                 >
-                  <BarChart3 className="h-5 w-5" />
+                  <Target className="h-4 w-4" />
+                  Budgets
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="subscriptions" 
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Subs
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="reports" 
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                >
+                  <BarChart3 className="h-4 w-4" />
                   Reports
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="designer" 
+                  className="flex-col gap-1 h-full rounded-none font-bold uppercase tracking-widest text-[9px] text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-secondary/50"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  AI Studio
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -319,12 +369,20 @@ export default function FinancePage() {
             </TabsContent>
 
             <TabsContent value="transactions">
-              <TransactionHistoryTab initialTransactions={transformedTransactions} />
+              <TransactionHistoryTab initialTransactions={transactions} />
+            </TabsContent>
+
+            <TabsContent value="budgets">
+              <BudgetsGoalsTab transactions={transformedTransactions} />
+            </TabsContent>
+
+            <TabsContent value="subscriptions">
+              <SubscriptionsTab />
             </TabsContent>
 
             <TabsContent value="reports">
               <ReportsTab 
-                transactions={transformedTransactions} 
+                transactions={transactions} 
                 balanceData={balanceData ? {
                   id: null,
                   workspaceId: "",
@@ -336,6 +394,13 @@ export default function FinancePage() {
                   difference: 0,
                   updatedAt: new Date().toISOString()
                 } : null}
+              />
+            </TabsContent>
+
+            <TabsContent value="designer">
+              <FinanceAiDesignerTab 
+                transactions={transformedTransactions} 
+                onDeploySuccess={handleRefresh}
               />
             </TabsContent>
           </div>
@@ -364,6 +429,13 @@ export default function FinancePage() {
           // Reload the page to get fresh data
           window.location.reload()
         }}
+      />
+
+      {/* AI Multimodal Receipt & Invoice Scanner Modal */}
+      <ReceiptScannerModal
+        open={showReceiptModal}
+        onOpenChange={setShowReceiptModal}
+        onTransactionSaved={handleRefresh}
       />
     </div>
   )
