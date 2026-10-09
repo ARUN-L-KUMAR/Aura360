@@ -158,3 +158,40 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
   }
   return data as T;
 }
+
+/**
+ * Like api(), but returns the raw Response so the caller can read a streaming body (server-sent
+ * events). Signs in / refreshes the token the same way and throws ApiError for non-2xx answers.
+ */
+export async function apiStream(path: string, options: RequestOptions = {}): Promise<Response> {
+  let response = await rawFetch(path, options, accessToken);
+
+  if (response.status === 401 && !options.anonymous && refreshToken) {
+    if (await refreshSession()) {
+      response = await rawFetch(path, options, accessToken);
+    }
+  }
+
+  if (!response.ok) {
+    const data = await parse(response);
+    const message =
+      (data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
+        ? (data as { error: string }).error
+        : null) ?? `Request failed (${response.status})`;
+    throw new ApiError(message, response.status, data);
+  }
+  return response;
+}
+
+api.get = <T = unknown>(path: string, options?: Omit<RequestOptions, 'method'>) =>
+  api<T>(path, { ...options, method: 'GET' });
+
+api.post = <T = unknown>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+  api<T>(path, { ...options, method: 'POST', body });
+
+api.patch = <T = unknown>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>) =>
+  api<T>(path, { ...options, method: 'PATCH', body });
+
+api.delete = <T = unknown>(path: string, options?: Omit<RequestOptions, 'method'>) =>
+  api<T>(path, { ...options, method: 'DELETE' });
+
