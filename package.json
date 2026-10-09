@@ -14,7 +14,8 @@
     "db:clear-transactions": "tsx scripts/clear-transactions.ts",
     "db:clear-all-finance": "tsx scripts/clear-all-finance-data.ts",
     "db:shift-dates": "tsx scripts/shift-transactions-plus-one-day.ts",
-    "db:create-fashion-profile": "tsx scripts/create-fashion-profile-table.ts"
+    "db:create-fashion-profile": "tsx scripts/create-fashion-profile-table.ts",
+    "db:create-mobile-auth": "tsx scripts/create-mobile-auth-tables.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -74,6 +75,7 @@
     "embla-carousel-react": "8.5.1",
     "geist": "^1.3.1",
     "input-otp": "1.4.1",
+    "jose": "^6.2.12",
     "lucide-react": "^0.454.0",
     "motion": "^13.4.4",
     "next": "16.1.1",

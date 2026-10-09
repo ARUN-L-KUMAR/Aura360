@@ -104,6 +104,27 @@ export const sessions = pgTable(
   })
 )
 
+// Refresh tokens for the mobile app (access tokens are short-lived JWTs, see lib/mobile-token.ts)
+export const mobileRefreshTokens = pgTable(
+  "mobile_refresh_tokens",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(), // sha256 of the opaque token
+    deviceName: text("device_name"),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    revokedAt: timestamp("revoked_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    lastUsedAt: timestamp("last_used_at", { mode: "date" }),
+  },
+  (table) => ({
+    tokenHashIdx: uniqueIndex("mobile_refresh_tokens_hash_idx").on(table.tokenHash),
+    userIdIdx: index("mobile_refresh_tokens_user_id_idx").on(table.userId),
+  })
+)
+
 export const verificationTokens = pgTable(
   "verification_tokens",
   {

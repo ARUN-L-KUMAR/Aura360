@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { auth } from "@/lib/auth"
+import { getApiSession } from "@/lib/auth-helpers"
 import { ProductScrapeError, scrapeProduct } from "@/lib/services/product-scraper"
 
 export const runtime = "nodejs"
@@ -16,7 +16,7 @@ const requestSchema = z.object({ url: z.string().url() })
  * ones the user keeps to Cloudinary when the item is saved.
  */
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  const session = await getApiSession()
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }

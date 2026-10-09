@@ -15,9 +15,10 @@ import NextAuth, { type NextAuthConfig } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import { db } from "@/lib/db"
-import { users, workspaces, workspaceMembers, accounts } from "@/lib/db/schema"
+import { workspaces } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
-import bcrypt from "bcryptjs"
+import { verifyCredentials } from "@/lib/credentials"
+import { ensureGoogleUser } from "@/lib/google-user"
 
 export const authConfig: NextAuthConfig = {
   // No adapter needed for JWT strategy
@@ -37,31 +38,10 @@ export const authConfig: NextAuthConfig = {
           throw new Error("Email and password required")
         }
 
-        // Find user by email
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email as string))
-          .limit(1)
-
-        if (!user || !user.password) {
-          throw new Error("Invalid email or password")
-        }
-
-        // Check if email is verified
-        if (!user.emailVerified) {
-          throw new Error("Please verify your email before signing in")
-        }
-
-        // Verify password
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
+        const user = await verifyCredentials(
+          credentials.email as string,
+          credentials.password as string
         )
-
-        if (!isValid) {
-          throw new Error("Invalid email or password")
-        }
 
         return {
           id: user.id,
@@ -115,47 +95,10 @@ export const authConfig: NextAuthConfig = {
     async signIn({ user, account, profile }) {
       // For OAuth providers, ensure user exists in database
       if (account?.provider === "google" && user.email) {
-        // Check if user exists
-        const [existingUser] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, user.email))
-          .limit(1)
-
-        if (!existingUser) {
-          // Create user
-          const [newUser] = await db.insert(users).values({
-            email: user.email,
-            name: user.name || user.email.split("@")[0],
-            image: user.image,
-            emailVerified: new Date(),
-          }).returning()
-
-          // Create OAuth account link
-          await db.insert(accounts).values({
-            userId: newUser.id,
-            type: account.type,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            access_token: account.access_token,
-            expires_at: account.expires_at,
-            token_type: account.token_type,
-            scope: account.scope,
-            id_token: account.id_token,
-          })
-
-          // Create default workspace
-          const slug = `${user.email.split("@")[0]}-${Date.now()}`
-          await db.insert(workspaces).values({
-            name: `${newUser.name}'s Workspace`,
-            slug,
-            ownerId: newUser.id,
-          })
-
-          user.id = newUser.id
-        } else {
-          user.id = existingUser.id
-        }
+        user.id = await ensureGoogleUser(
+          { email: user.email, name: user.name, image: user.image },
+          account
+        )
       }
       return true
     },
