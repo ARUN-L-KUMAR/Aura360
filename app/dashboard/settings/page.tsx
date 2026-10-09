@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { ModuleHeader } from "@/components/ui/module-header"
+import { NotificationSettings } from "@/components/settings/notification-settings"
 
 export default async function SettingsPage() {
   const session = await getAuthSession()
@@ -109,44 +110,8 @@ export default async function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Notifications Panel */}
-            <Card className="backdrop-blur-sm bg-card/50 border-border shadow-sm transition-all hover:border-primary/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-                 <div className="space-y-1">
-                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-orange-600" />
-                    Signals
-                  </CardTitle>
-                  <CardDescription className="text-xs font-semibold">Manage system alerts and broadcasts</CardDescription>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center">
-                   <div className="w-2 h-2 rounded-full bg-orange-600 animate-pulse" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                   <div className="p-4 rounded-xl bg-secondary/30 border border-border flex flex-col justify-between h-24">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email Uplink</p>
-                      <div className="flex items-center justify-between">
-                         <span className="text-[10px] font-bold py-1 px-2 bg-emerald-500/10 text-emerald-600 rounded">ACTIVE</span>
-                         <span className="text-[10px] font-bold text-muted-foreground/40">v2.1</span>
-                      </div>
-                   </div>
-                   <div className="p-4 rounded-xl bg-secondary/30 border border-border flex flex-col justify-between h-24 opacity-60 grayscale cursor-not-allowed">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Push Frequency</p>
-                      <div className="flex items-center justify-between">
-                         <span className="text-[10px] font-bold py-1 px-2 bg-secondary text-muted-foreground rounded">STABLE</span>
-                         <span className="text-[10px] font-bold text-muted-foreground/40">BETA</span>
-                      </div>
-                   </div>
-                </div>
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-                   <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed text-primary/70">
-                      System Note: Direct signal routing is currently optimized for primary email relays. Real-time push protocols are in development.
-                   </p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Notifications: channels, quiet hours, reminders */}
+            <NotificationSettings />
           </div>
         </div>
       </div>
