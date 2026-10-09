@@ -3,6 +3,8 @@
  * Optimized for fast batch imports from Excel/CSV
  */
 
+import { after } from "next/server"
+import { checkBudgetsForTransactions } from "@/lib/services/budget-alerts"
 import { NextResponse } from "next/server"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { db, transactions } from "@/lib/db"
@@ -67,6 +69,8 @@ export async function POST(request: Request) {
           .insert(transactions)
           .values(transactionValues)
           .returning()
+
+        after(() => checkBudgetsForTransactions(context, insertedTransactions))
 
         results.succeeded += batch.length
       } catch (error) {

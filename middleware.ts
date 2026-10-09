@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
 
   // API routes are private unless listed here. (The page rules below are looser on purpose:
   // "/" in that list matches every path, and pages enforce auth themselves via getAuthSession.)
-  const publicApiRoutes = ["/api/auth", "/api/mobile/auth", "/api/health"]
+  const publicApiRoutes = ["/api/auth", "/api/mobile/auth", "/api/health", "/api/cron"]
   if (isApi && !session && !publicApiRoutes.some((route) => path.startsWith(route))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -43,6 +43,7 @@ export async function middleware(request: NextRequest) {
     "/api/auth",
     "/api/mobile/auth",
     "/api/health",
+    "/api/cron",
   ]
 
   const isPublicRoute = publicRoutes.some((route) =>

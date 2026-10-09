@@ -1,20 +1,28 @@
 /**
  * Budget Alert Service
  *
- * Checks if any budgets have exceeded their alert threshold and
- * creates in-app notifications for the user. Called after transactions are created.
+ * Notifies the user when a category budget reaches its alert threshold or goes over. Runs after
+ * transactions are created (web, bulk import, AI chat) and once a day from the scheduled job, which also
+ * covers edits and imports. Each budget alerts once per month per level (threshold, over), so repeats never spam.
  */
 
-import { db, notifications, budgets, transactions } from "@/lib/db"
+import { db, budgets, transactions } from "@/lib/db"
 import { and, eq, gte, lte, sum } from "drizzle-orm"
 import type { WorkspaceContext } from "@/lib/db"
+import { notify, type NotifyResult } from "@/lib/notifications/dispatch"
+import { loadPrefs, type NotificationPrefs } from "@/lib/notifications/preferences"
+import { monthEnd } from "@/lib/notifications/time"
 
 export async function checkBudgetAlerts(
   ctx: WorkspaceContext,
   category: string,
-  month: string // YYYY-MM format
-): Promise<void> {
+  month: string, // YYYY-MM format
+  options: { prefs?: NotificationPrefs; now?: Date; dryRun?: boolean } = {}
+): Promise<NotifyResult | null> {
   try {
+    const prefs = options.prefs ?? (await loadPrefs(ctx.userId))
+    if (!prefs.budget.enabled) return null
+
     // Find budget for this category and month
     const [budget] = await db
       .select()
@@ -29,15 +37,12 @@ export async function checkBudgetAlerts(
       )
       .limit(1)
 
-    if (!budget) return
+    if (!budget) return null
 
     const budgetLimit = parseFloat(budget.amount || "0")
-    if (budgetLimit <= 0) return
+    if (budgetLimit <= 0) return null
 
-    // Sum spending in this category for the month
-    const monthStart = `${month}-01`
-    const monthEnd = `${month}-31`
-
+    // Sum spending in this category for the month (monthEnd handles 28/29/30/31-day months)
     const [spendResult] = await db
       .select({ total: sum(transactions.amount) })
       .from(transactions)
@@ -47,41 +52,57 @@ export async function checkBudgetAlerts(
           eq(transactions.userId, ctx.userId),
           eq(transactions.category, category),
           eq(transactions.type, "expense"),
-          gte(transactions.date, monthStart),
-          lte(transactions.date, monthEnd)
+          gte(transactions.date, `${month}-01`),
+          lte(transactions.date, monthEnd(month))
         )
       )
 
     const spent = parseFloat(String(spendResult?.total ?? "0"))
-    const threshold = (budget.alertThreshold ?? 80) / 100
+    const threshold = budget.alertThreshold ?? 80
     const percentage = (spent / budgetLimit) * 100
+    if (percentage < threshold) return null
 
-    // Check if we should send an alert
-    if (percentage >= (budget.alertThreshold ?? 80)) {
-      const isOver = spent > budgetLimit
-      const title = isOver
-        ? `⚠️ Budget Exceeded: ${category}`
-        : `🔔 Budget Alert: ${category}`
-      const message = isOver
-        ? `You've spent ₹${spent.toFixed(0)} of your ₹${budgetLimit.toFixed(0)} ${category} budget — ${(percentage - 100).toFixed(0)}% over limit.`
-        : `You've used ${percentage.toFixed(0)}% of your ₹${budgetLimit.toFixed(0)} ${category} budget (₹${spent.toFixed(0)} spent).`
+    const isOver = spent > budgetLimit
+    const title = isOver ? `⚠️ Budget exceeded: ${category}` : `🔔 Budget alert: ${category}`
+    const message = isOver
+      ? `You've spent ₹${spent.toFixed(0)} of your ₹${budgetLimit.toFixed(0)} ${category} budget, ${(percentage - 100).toFixed(0)}% over the limit.`
+      : `You've used ${percentage.toFixed(0)}% of your ₹${budgetLimit.toFixed(0)} ${category} budget (₹${spent.toFixed(0)} spent).`
 
-      // Avoid duplicate alerts — check if a similar one was created today
-      const today = new Date().toISOString().split("T")[0]
-
-      // Insert notification (allow duplicates day-wise for now)
-      await db.insert(notifications).values({
-        workspaceId: ctx.workspaceId,
-        userId: ctx.userId,
-        title,
-        message,
-        type: isOver ? "warning" : "info",
-        actionUrl: "/dashboard/finance?tab=budgets",
-        metadata: { category, month, percentage: percentage.toFixed(1), source: "budget_alert" },
-      })
-    }
+    return await notify({
+      ctx,
+      kind: "budget",
+      title,
+      message,
+      type: isOver ? "warning" : "info",
+      actionUrl: "/dashboard/finance?tab=budgets",
+      dedupeKey: `budget:${budget.id}:${month}:${isOver ? "over" : "threshold"}`,
+      metadata: { category, month, percentage: percentage.toFixed(1) },
+      prefs,
+      now: options.now,
+      dryRun: options.dryRun,
+    })
   } catch (err) {
     // Never block the main flow
     console.warn("[BudgetAlert] Error checking budget alerts:", err)
+    return null
+  }
+}
+
+/** After new transactions are saved: check the budget of each (category, month) they touched. */
+export async function checkBudgetsForTransactions(
+  ctx: WorkspaceContext,
+  rows: Array<{ type: string; category: string; date: string | Date }>
+): Promise<void> {
+  const pairs = new Map<string, { category: string; month: string }>()
+  for (const row of rows) {
+    if (row.type !== "expense") continue
+    const month = (row.date instanceof Date ? row.date.toISOString() : String(row.date)).slice(0, 7)
+    if (/^\d{4}-\d{2}$/.test(month)) pairs.set(`${row.category}|${month}`, { category: row.category, month })
+  }
+  if (pairs.size === 0) return
+
+  const prefs = await loadPrefs(ctx.userId)
+  for (const { category, month } of pairs.values()) {
+    await checkBudgetAlerts(ctx, category, month, { prefs })
   }
 }

@@ -7,6 +7,8 @@
  * - Type-safe Drizzle queries
  */
 
+import { after } from "next/server"
+import { checkBudgetsForTransactions } from "@/lib/services/budget-alerts"
 import { NextResponse } from "next/server"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { db, transactions } from "@/lib/db"
@@ -169,6 +171,9 @@ export async function POST(request: Request) {
         notes: notes || null,
       })
       .returning()
+
+    // Budget alert: look at the touched budget after the response is sent
+    after(() => checkBudgetsForTransactions(context, [transaction]))
 
     // Audit log
     await auditCreate(

@@ -15,6 +15,7 @@
     "db:clear-all-finance": "tsx scripts/clear-all-finance-data.ts",
     "db:shift-dates": "tsx scripts/shift-transactions-plus-one-day.ts",
     "db:create-fashion-profile": "tsx scripts/create-fashion-profile-table.ts",
+    "db:create-notifications": "tsx scripts/create-notification-tables.ts",
     "db:create-mobile-auth": "tsx scripts/create-mobile-auth-tables.ts"
   },
   "dependencies": {

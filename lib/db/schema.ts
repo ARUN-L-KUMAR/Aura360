@@ -520,6 +520,70 @@ export const fashionProfiles = pgTable(
 )
 
 // ============================================
+// NOTIFICATION ENGINE (preferences, push devices, de-duplication)
+// ============================================
+
+/** One row per user: which reminders/alerts they want, on which channels, and when. */
+export const notificationPreferences = pgTable(
+  "notification_preferences",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<Record<string, any>>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: uniqueIndex("notification_preferences_user_id_idx").on(table.userId),
+  })
+)
+
+/** Expo push tokens of the user's phones. */
+export const pushTokens = pgTable(
+  "push_tokens",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    platform: text("platform"),
+    deviceName: text("device_name"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tokenIdx: uniqueIndex("push_tokens_token_idx").on(table.token),
+    userIdIdx: index("push_tokens_user_id_idx").on(table.userId),
+  })
+)
+
+/** Remembers which alerts were already sent (for example "budget:<id>:2026-10:over") so none repeats. */
+export const notificationLog = pgTable(
+  "notification_log",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dedupeKey: text("dedupe_key").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userKeyIdx: uniqueIndex("notification_log_user_key_idx").on(table.userId, table.dedupeKey),
+    createdAtIdx: index("notification_log_created_at_idx").on(table.createdAt),
+  })
+)
+
+// ============================================
 // FITNESS MODULE
 // ============================================
 
