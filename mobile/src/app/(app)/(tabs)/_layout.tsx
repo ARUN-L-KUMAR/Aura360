@@ -1,30 +1,28 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import type { ColorValue } from 'react-native';
 
-import { modules, type IconName } from '@/features/modules';
+import { AppTabs } from '@/components/app-tabs';
+import { modules } from '@/features/modules';
 import { useTheme } from '@/theme';
-
-function tabIcon(name: IconName) {
-  return ({ color, size }: { color: ColorValue; size: number }) => <Ionicons name={name} size={size} color={color} />;
-}
 
 export default function TabsLayout() {
   const { colors } = useTheme();
   return (
     <Tabs
+      tabBar={(props) => <AppTabs {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
         sceneStyle: { backgroundColor: colors.background },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('home-outline') }} />
-      <Tabs.Screen name="finance" options={{ title: modules.finance.label, tabBarIcon: tabIcon(modules.finance.icon) }} />
-      <Tabs.Screen name="fitness" options={{ title: modules.fitness.label, tabBarIcon: tabIcon(modules.fitness.icon) }} />
-      <Tabs.Screen name="food" options={{ title: modules.food.label, tabBarIcon: tabIcon(modules.food.icon) }} />
-      <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: tabIcon('grid-outline') }} />
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="finance" options={{ title: modules.finance.label }} />
+      <Tabs.Screen name="fashion" options={{ title: modules.fashion.label }} />
+      <Tabs.Screen name="saved" options={{ title: modules.saved.label }} />
+      <Tabs.Screen name="fitness" options={{ title: modules.fitness.label }} />
+      <Tabs.Screen name="food" options={{ title: modules.food.label }} />
+      <Tabs.Screen name="skincare" options={{ title: modules.skincare.label }} />
+      <Tabs.Screen name="notes" options={{ title: modules.notes.label }} />
+      <Tabs.Screen name="time" options={{ title: modules.time.label }} />
+      <Tabs.Screen name="ai" options={{ title: modules.ai.label }} />
     </Tabs>
   );
 }
