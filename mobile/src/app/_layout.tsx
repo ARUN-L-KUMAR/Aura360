@@ -10,6 +10,7 @@ import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
 import { registerForServerPush } from '@/lib/push';
 import { AuthProvider, useAuth } from '@/providers/auth';
+import { OfflineProvider } from '@/providers/offline';
 import { BiometricsProvider, useBiometrics } from '@/providers/biometrics';
 import { QueryProvider } from '@/providers/query';
 import { ThemeProvider, useTheme } from '@/theme';
@@ -83,11 +84,13 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryProvider>
           <AuthProvider>
-            <ThemeProvider>
-              <BiometricsProvider>
-                <RootContent />
-              </BiometricsProvider>
-            </ThemeProvider>
+            <OfflineProvider>
+              <ThemeProvider>
+                <BiometricsProvider>
+                  <RootContent />
+                </BiometricsProvider>
+              </ThemeProvider>
+            </OfflineProvider>
           </AuthProvider>
         </QueryProvider>
       </SafeAreaProvider>

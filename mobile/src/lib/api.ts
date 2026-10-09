@@ -31,6 +31,8 @@ type RequestOptions = {
   /** Skip the bearer token (login, refresh...). */
   anonymous?: boolean;
   signal?: AbortSignal;
+  /** Used by the offline queue when it replays an entry: fail normally instead of queueing it again. */
+  skipQueue?: boolean;
 };
 
 // Session state lives here (not in React) so every request, from any hook, sees the same tokens.
@@ -39,6 +41,12 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let onSessionLost: (() => void) | null = null;
 let onSessionRefreshed: ((user: StoredUser) => void) | null = null;
+/**
+ * Called when a request could not reach the server at all. If it returns `{ handled: true }`, that value is used as the
+ * answer (this is how a create made offline is saved on the phone instead of failing). See providers/offline.tsx.
+ */
+type OfflineHandler = (path: string, options: RequestOptions) => Promise<{ handled: boolean; value?: unknown }>;
+let offlineHandler: OfflineHandler | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
 
 export const apiSession = {
@@ -57,6 +65,9 @@ export const apiSession = {
   onSessionRefreshed(handler: (user: StoredUser) => void) {
     onSessionRefreshed = handler;
   },
+  setOfflineHandler(handler: OfflineHandler | null) {
+    offlineHandler = handler;
+  },
 };
 
 function buildUrl(path: string, query?: RequestOptions['query']) {
@@ -71,7 +82,11 @@ function buildUrl(path: string, query?: RequestOptions['query']) {
 
 async function rawFetch(path: string, options: RequestOptions, token: string | null) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
   options.signal?.addEventListener('abort', () => controller.abort());
 
   try {
@@ -87,7 +102,8 @@ async function rawFetch(path: string, options: RequestOptions, token: string | n
     });
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    throw new ApiError("Can't reach the server. Check your connection.", 0);
+    // data.timeout: the request may still have reached the server, so it must never be queued and sent again
+    throw new ApiError("Can't reach the server. Check your connection.", 0, timedOut ? { timeout: true } : undefined);
   } finally {
     clearTimeout(timeout);
   }
@@ -140,7 +156,17 @@ function refreshSession(): Promise<boolean> {
 }
 
 export async function api<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
-  let response = await rawFetch(path, options, accessToken);
+  let response: Response;
+  try {
+    response = await rawFetch(path, options, accessToken);
+  } catch (error) {
+    const timedOut = error instanceof ApiError && (error.data as { timeout?: boolean } | undefined)?.timeout === true;
+    if (error instanceof ApiError && error.isNetwork && !timedOut && offlineHandler && !options.skipQueue) {
+      const result = await offlineHandler(path, options);
+      if (result.handled) return result.value as T;
+    }
+    throw error;
+  }
 
   if (response.status === 401 && !options.anonymous && refreshToken) {
     if (await refreshSession()) {

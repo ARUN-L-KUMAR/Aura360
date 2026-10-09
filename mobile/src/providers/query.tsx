@@ -11,13 +11,17 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            gcTime: 24 * 60 * 60 * 1000,
+            // Also how long a saved copy of a screen's data is kept on the phone (see providers/offline.tsx)
+            gcTime: 7 * 24 * 60 * 60 * 1000,
             retry: (failureCount, error) => {
               // Don't hammer the server when the request itself is wrong or we're signed out.
               if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
               return failureCount < 2;
             },
           },
+          // Without this an edit made offline would wait forever. Instead it fails right away (creates are queued
+          // by the offline queue; anything else shows the usual "can't reach the server" error).
+          mutations: { networkMode: 'always' },
         },
       }),
   );
