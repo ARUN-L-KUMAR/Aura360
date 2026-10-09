@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Edit, Shirt, Star, ExternalLink } from "lucide-react"
+import { Trash2, Edit, Shirt, Star, ExternalLink, Images } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { costPerWear } from "@/lib/fashion/wear-stats"
@@ -18,6 +18,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { EditFashionDialog } from "./edit-fashion-dialog"
+import { FashionItemDetailDialog } from "./fashion-item-detail-dialog"
+import { galleryOf } from "@/lib/fashion/product-import"
+import { sizeAvailability } from "@/lib/fashion/size-match"
+import { useFashionProfile } from "./use-fashion-profile"
 import type { FashionItem } from "@/lib/types/fashion"
 
 interface FashionCardProps {
@@ -30,6 +34,11 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
+  const photoCount = galleryOf(item).length
+  const profile = useFashionProfile()
+  const availableSizes = Array.isArray(item.metadata?.availableSizes) ? (item.metadata!.availableSizes as string[]) : []
+  const sizeFlag = item.status === "wishlist" ? sizeAvailability(profile, item.category, availableSizes) : null
   const buyingLink = item.metadata?.buyingLink
   const condition = item.metadata?.condition
 
@@ -63,11 +72,37 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
       <Card className="group relative backdrop-blur-sm bg-card/80 border-border transition-all overflow-hidden">
         <CardHeader className="p-0">
           {item.imageUrl ? (
-            <div className="aspect-square w-full overflow-hidden bg-muted relative">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={`View details for ${item.name}`}
+              onClick={() => setShowDetail(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setShowDetail(true)
+                }
+              }}
+              className="aspect-[3/4] w-full overflow-hidden bg-muted relative cursor-pointer"
+            >
+              {sizeFlag?.status === "unavailable" && (
+                <span
+                  className="absolute bottom-2 left-2 z-10 rounded-full bg-amber-500/95 px-2 py-0.5 text-[10px] font-bold text-white shadow"
+                  title={`Not available in your size (${sizeFlag.mySize}). Listed: ${availableSizes.join(", ")}`}
+                >
+                  Size {sizeFlag.mySize} unavailable
+                </span>
+              )}
+              {photoCount > 1 && (
+                <span className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-bold shadow">
+                  <Images className="h-3 w-3" />
+                  {photoCount}
+                </span>
+              )}
               <img
                 src={item.imageUrl}
                 alt={item.name}
-                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = "/placeholder.jpg";
@@ -77,7 +112,19 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
               />
             </div>
           ) : (
-            <div className="aspect-square w-full bg-secondary flex items-center justify-center border-b">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={`View details for ${item.name}`}
+              onClick={() => setShowDetail(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  setShowDetail(true)
+                }
+              }}
+              className="aspect-[3/4] w-full bg-secondary flex items-center justify-center border-b cursor-pointer"
+            >
               <Shirt className="w-16 h-16 text-muted-foreground/40" />
             </div>
           )}
@@ -85,7 +132,7 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
         <CardContent className="p-4 space-y-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-lg line-clamp-1 tracking-tight">{item.name}</h3>
+              <h3 className="font-bold text-lg line-clamp-1 tracking-tight cursor-pointer hover:underline" onClick={() => setShowDetail(true)}>{item.name}</h3>
               {item.isFavorite && <Star className="w-4 h-4 text-foreground fill-current" />}
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -165,6 +212,13 @@ export function FashionCard({ item, onDelete, onUpdate }: FashionCardProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FashionItemDetailDialog
+        item={item}
+        open={showDetail}
+        onOpenChange={setShowDetail}
+        onEdit={() => setShowEditDialog(true)}
+      />
 
       <EditFashionDialog item={item} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={onUpdate} />
     </>

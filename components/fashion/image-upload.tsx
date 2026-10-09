@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,11 +14,20 @@ interface ImageUploadProps {
   onChange: (url: string) => void
   label?: string
   placeholder?: string
+  /** Hide the inline preview when the parent shows the image elsewhere (e.g. a side panel) */
+  hidePreview?: boolean
+  /** Tighter layout: short button labels and no instruction text */
+  compact?: boolean
 }
 
-export function ImageUpload({ value, onChange, label = "Image", placeholder = "https://example.com/image.jpg" }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, label = "Image", placeholder = "https://example.com/image.jpg", hidePreview = false, compact = false }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(value)
+
+  // Keep the preview in sync when the parent sets the URL (e.g. auto-filled from a product link)
+  useEffect(() => {
+    setPreview(value || null)
+  }, [value])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null) // native camera picker fallback (phones)
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -148,7 +157,7 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
   return (
     <div className="space-y-4">
       <div className="grid gap-2">
-        <Label>{label}</Label>
+        {!compact && <Label>{label}</Label>}
 
         {/* Upload Button */}
         <div className="flex gap-2">
@@ -160,7 +169,7 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
             className="flex-1"
           >
             <Upload className="w-4 h-4 mr-2" />
-            {uploading ? "Uploading..." : "Upload Image"}
+            {uploading ? "Uploading..." : compact ? "Upload" : "Upload Image"}
           </Button>
           <Button
             type="button"
@@ -170,7 +179,7 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
             className="flex-1"
           >
             <Camera className="w-4 h-4 mr-2" />
-            Take Photo
+            {compact ? "Camera" : "Take Photo"}
           </Button>
           <input
             ref={fileInputRef}
@@ -223,12 +232,12 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
       </div>
 
       {/* Preview */}
-      {preview && (
+      {preview && !hidePreview && (
         <div className="relative">
           <img
             src={preview}
             alt="Preview"
-            className="w-full max-w-sm h-48 object-cover rounded-lg border"
+            className="w-full max-w-sm max-h-72 object-contain rounded-lg border bg-muted"
             onError={() => setPreview(null)}
           />
           <Button
@@ -263,11 +272,11 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
         <div className="space-y-3 rounded-lg border p-3">
           <div className="grid grid-cols-2 gap-3">
             <figure className="space-y-1">
-              <img src={value} alt="Original" className="aspect-square w-full rounded-md border object-cover" />
+              <img src={value} alt="Original" className="aspect-[3/4] w-full rounded-md border bg-muted object-contain" />
               <figcaption className="text-center text-xs text-muted-foreground">Original</figcaption>
             </figure>
             <figure className="space-y-1">
-              <img src={enhanced} alt="AI enhanced" className="aspect-square w-full rounded-md border bg-white object-cover" />
+              <img src={enhanced} alt="AI enhanced" className="aspect-[3/4] w-full rounded-md border bg-white object-contain" />
               <figcaption className="text-center text-xs text-muted-foreground">AI enhanced</figcaption>
             </figure>
           </div>
@@ -286,11 +295,13 @@ export function ImageUpload({ value, onChange, label = "Image", placeholder = "h
       )}
 
       {/* Instructions */}
+      {!compact && (
       <div className="text-sm text-muted-foreground">
         <p>• Upload, take a photo, or paste a URL</p>
         <p>• Supported formats: JPG, PNG, GIF, WebP</p>
         <p>• Maximum file size: 5MB</p>
       </div>
+      )}
     </div>
   )
 }

@@ -61,12 +61,12 @@ function SortableBoardCard({ item, onRemove }: SortableBoardCardProps) {
       {...listeners}
     >
       <CardContent className="p-3">
-        <div className="aspect-square w-full overflow-hidden bg-muted relative rounded">
+        <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative rounded">
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+              className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = "/placeholder.jpg";
@@ -313,12 +313,12 @@ export function FashionSenseBoard({
                   }}
                 >
                   <CardContent className="p-1.5">
-                    <div className="aspect-square w-full overflow-hidden bg-muted rounded-md relative">
+                    <div className="aspect-[3/4] w-full overflow-hidden bg-muted rounded-md relative">
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                          className="w-full h-full object-contain transition-transform group-hover:scale-110"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">

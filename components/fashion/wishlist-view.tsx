@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FashionCard } from "./fashion-card"
+import { AddFashionButton } from "./add-fashion-button"
 import { Search, Plus, ShoppingCart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -64,7 +65,7 @@ export function WishlistView({ items, onDeleteItem, onUpdateItem }: WishlistView
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
@@ -74,6 +75,7 @@ export function WishlistView({ items, onDeleteItem, onUpdateItem }: WishlistView
             className="pl-9 bg-card/80 backdrop-blur-sm h-10 md:h-9 text-xs"
           />
         </div>
+        <AddFashionButton defaultType="need_to_buy" className="h-10 md:h-9" />
       </div>
 
       {filteredItems.length === 0 ? (

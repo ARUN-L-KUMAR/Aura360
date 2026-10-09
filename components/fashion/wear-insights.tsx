@@ -23,9 +23,9 @@ const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`
 function ItemRow({ item, right }: { item: FashionItem; right: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 py-1.5">
-      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
+      <div className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
         {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <Shirt className="h-4 w-4 text-muted-foreground/40" />

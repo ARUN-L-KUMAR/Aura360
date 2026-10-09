@@ -78,12 +78,12 @@ function SortableBoardCard({ item, onRemove }: SortableBoardCardProps) {
       {...listeners}
     >
       <CardContent className="p-2.5">
-        <div className="aspect-square w-full overflow-hidden bg-muted relative rounded-md">
+        <div className="aspect-[3/4] w-full overflow-hidden bg-muted relative rounded-md">
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
               onError={(e) => {
                 const target = e.target as HTMLImageElement
                 target.src = "/placeholder.jpg"
@@ -641,12 +641,12 @@ export function FashionAiDesignerStudio({
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                           {itemsInOutfit.map((item) => (
                             <div key={item.id} className="group relative rounded-lg border bg-secondary/30 overflow-hidden">
-                              <div className="aspect-square w-full">
+                              <div className="aspect-[3/4] w-full">
                                 {item.imageUrl ? (
                                   <img
                                     src={item.imageUrl}
                                     alt={item.name}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -875,12 +875,12 @@ export function FashionAiDesignerStudio({
                         }}
                       >
                         <CardContent className="p-1.5">
-                          <div className="aspect-square w-full overflow-hidden bg-muted rounded relative">
+                          <div className="aspect-[3/4] w-full overflow-hidden bg-muted rounded relative">
                             {item.imageUrl ? (
                               <img
                                 src={item.imageUrl}
                                 alt={item.name}
-                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                className="w-full h-full object-contain transition-transform group-hover:scale-105"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">

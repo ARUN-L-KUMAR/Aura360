@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { SortableFashionCard } from "./sortable-fashion-card"
+import { AddFashionButton } from "./add-fashion-button"
 import { Search, Info, CheckSquare, X, Shirt, WashingMachine, Sparkles, Tag, Trash2, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { isNeglected, localDateString } from "@/lib/fashion/wear-stats"
@@ -199,6 +200,7 @@ export function WardrobeView({ items, onDeleteItem, onUpdateItem, onReorder }: W
               className="pl-9 bg-card/80 backdrop-blur-sm h-10 md:h-9 text-xs"
             />
           </div>
+          <AddFashionButton defaultType="buyed" className="h-10 md:h-9" />
           <Button
             variant={selectMode ? "secondary" : "outline"}
             size="sm"

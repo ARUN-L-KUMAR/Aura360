@@ -199,9 +199,9 @@ export function OutfitsView({ items, onUpdateItem }: OutfitsViewProps) {
               <div className="flex gap-2 overflow-x-auto">
                 {pieces.map((item) => (
                   <div key={item.id} className="w-16 shrink-0" title={item.name}>
-                    <div className="aspect-square overflow-hidden rounded-md bg-muted">
+                    <div className="aspect-[3/4] overflow-hidden rounded-md bg-muted">
                       {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+                        <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" loading="lazy" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
                           <Shirt className="h-5 w-5 text-muted-foreground/40" />
