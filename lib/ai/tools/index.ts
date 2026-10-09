@@ -10,7 +10,7 @@ import {
 import { getFitnessLogs, logWorkout } from "./fitness"
 import { getFoodLogs, logMeal } from "./food"
 import { getNotes, createNote, updateNote } from "./notes"
-import { getWardrobe, getWishlist, addFashionItem } from "./fashion"
+import { getWardrobe, getWishlist, addFashionItem, getFashionProfile } from "./fashion"
 import { getSkincareRoutine, addSkincareProduct } from "./skincare"
 import { getTimeLogs, logTimeEntry } from "./time"
 import { getSavedItems, saveItem } from "./saved"
@@ -28,6 +28,7 @@ export const toolRegistry: Record<string, AiTool> = {
   [getNotes.name]: getNotes,
   [getWardrobe.name]: getWardrobe,
   [getWishlist.name]: getWishlist,
+  [getFashionProfile.name]: getFashionProfile,
   [getSkincareRoutine.name]: getSkincareRoutine,
   [addSkincareProduct.name]: addSkincareProduct,
   [getTimeLogs.name]: getTimeLogs,

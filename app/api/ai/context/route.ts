@@ -7,6 +7,8 @@
 
 import { NextResponse } from "next/server"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
+import { loadFashionProfile } from "@/lib/fashion/profile-server"
+import { describeFashionProfile } from "@/lib/fashion/profile"
 import { db, transactions, notes, fitness, food, skincare, savedItems, fashionItems } from "@/lib/db"
 import { eq, desc, and } from "drizzle-orm"
 
@@ -134,6 +136,14 @@ export async function getAIContext(workspaceId: string, userId: string) {
 
     sections.push(
       `Fashion Collection (${recentFashion.length} items: ${wardrobe.length} in Wardrobe, ${wishlist.length} in Wishlist):\n${items}`
+    )
+  }
+
+  const fitProfile = describeFashionProfile(await loadFashionProfile({ workspaceId, userId }))
+  if (fitProfile) {
+    sections.push(
+      `Fashion Fit Profile (personalise outfit, color, size and fit advice with this: flatter the skin tone, favor favorite colors, never suggest avoided colors):
+${fitProfile}`
     )
   }
 

@@ -5,6 +5,8 @@ import { eq, and, desc } from "drizzle-orm"
 import { openaiGroqClient } from "@/lib/ai/openai-groq-client"
 import { geminiClient } from "@/lib/ai/gemini-client"
 import { FAST_MODEL, getProviderForModel } from "@/lib/ai/types"
+import { loadFashionProfile } from "@/lib/fashion/profile-server"
+import { profilePromptBlock } from "@/lib/fashion/profile"
 
 export async function POST(request: Request) {
   try {
@@ -37,6 +39,9 @@ export async function POST(request: Request) {
         )
       )
       .orderBy(desc(fashionItems.createdAt))
+
+    // The user's saved fit profile (measurements, sizes, skin tone, colors); empty string when none is saved
+    const profileBlock = profilePromptBlock(await loadFashionProfile(context))
 
     const wardrobeItems = allItems.filter((i) => i.status === "wardrobe")
     const wishlistItems = allItems.filter((i) => i.status === "wishlist")
@@ -71,7 +76,7 @@ Task: Create 3 distinct, exceptionally styled complete outfit combinations using
 
 WARDROBE INVENTORY:
 ${JSON.stringify(inventorySummary, null, 2)}
-
+${profileBlock}
 STYLING DIRECTIVES:
 - Target Occasion: ${occasion}
 - Weather / Season: ${season}
@@ -237,6 +242,7 @@ ${JSON.stringify(
   2
 )}
 
+${profileBlock}
 EVALUATE:
 1. Overall Style Harmony Score (0 - 100).
 2. Color Contrast & Palette Theory (are the tones working in harmony or clashing?).
@@ -358,6 +364,7 @@ Current Wishlist Items: ${JSON.stringify(
         2
       )}
 
+${profileBlock}
 RULES:
 1. Identify 3 to 4 specific, timeless wardrobe gaps that the user doesn't already have.
 2. For each recommendation, provide:

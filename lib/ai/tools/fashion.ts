@@ -3,6 +3,8 @@ import { db, fashionItems } from "@/lib/db"
 import { and, eq, desc, ilike, or } from "drizzle-orm"
 import { auditCreate } from "@/lib/audit"
 import type { AiTool } from "./types"
+import { loadFashionProfile } from "@/lib/fashion/profile-server"
+import { describeFashionProfile } from "@/lib/fashion/profile"
 
 function stemWord(word: string): string {
   const w = word.trim()
@@ -246,3 +248,22 @@ export const addFashionItem: AiTool = {
   },
 }
 
+
+export const getFashionProfile: AiTool = {
+  name: "get_fashion_profile",
+  description:
+    "Fetch the user's saved fit profile: body measurements, usual sizes (tops, bottoms, shoes), skin tone and undertone, hair/eye color, preferred fit, style tags, favorite colors and colors they avoid. Call this before recommending outfits, colors, sizes or fit, and when asked about their measurements or size.",
+  parameters: z.object({}),
+  mutates: false,
+  handler: async (_args, ctx) => {
+    const profile = await loadFashionProfile(ctx)
+    const summary = describeFashionProfile(profile)
+    if (!summary) {
+      return {
+        hasProfile: false,
+        message: "The user hasn't filled in their fit profile yet. They can add it in Fashion > My Fit.",
+      }
+    }
+    return { hasProfile: true, summary, profile }
+  },
+}
