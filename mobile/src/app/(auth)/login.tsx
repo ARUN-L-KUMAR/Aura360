@@ -1,18 +1,22 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/providers/auth';
-import { spacing, useTheme } from '@/theme';
+import { moduleColors, radius, spacing, useTheme } from '@/theme';
 
 export default function LoginScreen() {
   const { signIn, serverUrl, setServerUrl } = useAuth();
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
+  const isDark = scheme === 'dark';
   const passwordRef = useRef<TextInput>(null);
 
   const [email, setEmail] = useState('');
@@ -46,23 +50,56 @@ export default function LoginScreen() {
 
   return (
     <Screen contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-      <View style={{ gap: spacing.xs, marginBottom: spacing.lg }}>
-        <Text variant="title">Aura360</Text>
-        <Text muted>Sign in to your personal dashboard.</Text>
+      {/* Brand Hero Halo */}
+      <View style={{ alignItems: 'center', marginBottom: spacing.xl, gap: spacing.sm }}>
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 24,
+            backgroundColor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)',
+            borderWidth: 1.5,
+            borderColor: `${moduleColors.ai}60`,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: moduleColors.ai,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 14,
+            elevation: 8,
+          }}>
+          <Ionicons name="sparkles" size={36} color={moduleColors.ai} />
+        </View>
+
+        <Text variant="title" style={{ fontSize: 32, fontWeight: '800', letterSpacing: -0.5 }}>
+          Aura360
+        </Text>
+        <Text muted style={{ fontSize: 15, textAlign: 'center' }}>
+          Your integrated daily command center
+        </Text>
       </View>
 
-      <View style={{ gap: spacing.md }}>
+      {/* Login Form in GlassCard */}
+      <GlassCard
+        glowColor={moduleColors.ai}
+        style={{
+          gap: spacing.md,
+          padding: spacing.xl,
+          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
+        }}>
         <Input
-          label="Email"
+          label="Email Address"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
           textContentType="emailAddress"
+          placeholder="user@example.com"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
         />
+
         <Input
           ref={passwordRef}
           label="Password"
@@ -71,29 +108,59 @@ export default function LoginScreen() {
           secureTextEntry
           autoComplete="password"
           textContentType="password"
+          placeholder="••••••••"
           returnKeyType="go"
           onSubmitEditing={submit}
         />
-        {error ? <Text color="danger">{error}</Text> : null}
+
+        {error ? (
+          <View
+            style={{
+              padding: spacing.md,
+              borderRadius: radius.md,
+              backgroundColor: `${colors.danger}18`,
+              borderWidth: 1,
+              borderColor: `${colors.danger}40`,
+            }}>
+            <Text color="danger" style={{ fontWeight: '600' }}>
+              {error}
+            </Text>
+          </View>
+        ) : null}
+
         <Button title="Sign in" onPress={submit} loading={loading} />
-      </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}>
-        <Text muted>New here?</Text>
-        <Link href="/sign-up" style={{ color: colors.text, fontWeight: '600' }}>
-          Create an account
-        </Link>
-      </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.xs }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+          <Text variant="caption" muted style={{ fontWeight: '600', textTransform: 'uppercase' }}>
+            or
+          </Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+        </View>
 
-      <View style={{ gap: spacing.sm, alignItems: 'center' }}>
-        <Pressable onPress={() => setShowServer((v) => !v)} hitSlop={8}>
+        <GoogleSignInButton onError={setError} />
+
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, paddingTop: spacing.xs }}>
+          <Text muted>New to Aura?</Text>
+          <Link href="/sign-up" style={{ color: moduleColors.ai, fontWeight: '700' }}>
+            Create an account
+          </Link>
+        </View>
+      </GlassCard>
+
+      {/* Server Endpoint Config */}
+      <View style={{ gap: spacing.sm, alignItems: 'center', marginTop: spacing.xl }}>
+        <Pressable onPress={() => setShowServer((v) => !v)} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="settings-outline" size={14} color={colors.textMuted} />
           <Text variant="caption" muted>
             Server: {serverUrl}
           </Text>
         </Pressable>
+
         {showServer ? (
-          <View style={{ alignSelf: 'stretch', gap: spacing.sm }}>
+          <GlassCard style={{ alignSelf: 'stretch', gap: spacing.sm, padding: spacing.md }}>
             <Input
+              label="Backend URL"
               value={serverDraft}
               onChangeText={setServerDraft}
               autoCapitalize="none"
@@ -101,9 +168,9 @@ export default function LoginScreen() {
               keyboardType="url"
               placeholder="https://your-server.example.com"
             />
-            <Button title="Save server address" variant="secondary" onPress={saveServer} />
+            <Button title="Save Server URL" variant="secondary" onPress={saveServer} />
             <Button
-              title="Use automatic address"
+              title="Reset to default local URL"
               variant="ghost"
               onPress={async () => {
                 await setServerUrl(null);
@@ -111,7 +178,7 @@ export default function LoginScreen() {
                 setShowServer(false);
               }}
             />
-          </View>
+          </GlassCard>
         ) : null}
       </View>
     </Screen>

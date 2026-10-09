@@ -13,6 +13,7 @@ type AuthContextValue = {
   user: StoredUser | null;
   serverUrl: string;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   setServerUrl: (url: string | null) => Promise<void>;
   /** Re-read the signed-in user's name / avatar after the profile changes. */
@@ -87,6 +88,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedIn');
   }, []);
 
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    const session = await api<SessionResponse>('/api/mobile/auth/google', {
+      method: 'POST',
+      anonymous: true,
+      body: {
+        idToken,
+        deviceName: [Device.manufacturer, Device.modelName].filter(Boolean).join(' ') || undefined,
+      },
+    });
+
+    apiSession.setTokens({ accessToken: session.accessToken, refreshToken: session.refreshToken });
+    await storage.saveTokens({ accessToken: session.accessToken, refreshToken: session.refreshToken });
+    await storage.saveUser(session.user);
+    setUser(session.user);
+    setStatus('signedIn');
+  }, []);
+
   const signOut = useCallback(async () => {
     const refreshToken = apiSession.getRefreshToken();
     if (refreshToken) {
@@ -115,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ status, user, serverUrl, signIn, signOut, setServerUrl, updateUser }),
-    [status, user, serverUrl, signIn, signOut, setServerUrl, updateUser],
+    () => ({ status, user, serverUrl, signIn, signInWithGoogle, signOut, setServerUrl, updateUser }),
+    [status, user, serverUrl, signIn, signInWithGoogle, signOut, setServerUrl, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
