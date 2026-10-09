@@ -12,6 +12,7 @@ import { Camera, Upload, X, User as UserIcon, Loader2, Mail, Calendar, LogOut } 
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useSession, signOut } from "next-auth/react"
+import { clearOfflineCaches } from "@/lib/offline/client"
 
 interface User {
   id: string
@@ -243,6 +244,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   }
 
   const handleSignOut = async () => {
+    await clearOfflineCaches()
     await signOut({ callbackUrl: "/" })
   }
 

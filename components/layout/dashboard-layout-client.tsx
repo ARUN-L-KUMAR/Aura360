@@ -7,6 +7,7 @@ import { DashboardSidebar } from "./dashboard-sidebar"
 import { Navbar } from "./navbar"
 import { FloatingAiWidget } from "@/components/ai/floating-ai-widget"
 import { GlobalAiSearchDialog } from "@/components/search/global-ai-search-dialog"
+import { OfflineIndicator } from "@/components/offline/offline-indicator"
 
 export function DashboardLayoutClient({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -25,6 +26,7 @@ export function DashboardLayoutClient({ children }: { children: React.ReactNode 
         isSidebarCollapsed && "lg:ml-[72px]"
       )}>
         <Navbar />
+        <OfflineIndicator />
         <main className="flex-1 pb-32 lg:pb-12">
           {children}
         </main>

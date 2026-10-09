@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { ReactQueryProvider } from "@/components/providers/react-query-provider"
+import { OfflineManager } from "@/components/offline/offline-manager"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ReactQueryProvider>
           <AuthProvider>
+            <OfflineManager />
             <ThemeProvider
               attribute="class"
               defaultTheme="system"

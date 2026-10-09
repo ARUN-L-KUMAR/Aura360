@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession, signOut } from "next-auth/react"
+import { clearOfflineCaches } from "@/lib/offline/client"
 import { 
   Sparkles, 
   DollarSign, 
@@ -148,6 +149,7 @@ export default function LandingPage() {
 
   // Handle sign out
   const handleSignOut = async () => {
+    await clearOfflineCaches()
     await signOut({ callbackUrl: "/" })
   }
 

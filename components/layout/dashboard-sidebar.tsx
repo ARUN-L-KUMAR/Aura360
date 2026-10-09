@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "next-auth/react"
+import { clearOfflineCaches } from "@/lib/offline/client"
 import { Logo } from "@/components/ui/logo"
 import { useState, useEffect } from "react"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
@@ -109,7 +110,8 @@ export function DashboardSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed:
     return () => window.removeEventListener("resize", checkMobile)
   }, [setIsCollapsed])
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await clearOfflineCaches()
     signOut({ callbackUrl: "/" })
   }
 
