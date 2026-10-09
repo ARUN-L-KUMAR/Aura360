@@ -3,6 +3,8 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 
+import { api } from '@/lib/api';
+
 const NOTIF_PREFS_KEY = 'aura.notification_preferences';
 
 export interface NotificationPreferences {
@@ -60,6 +62,21 @@ export function addNotificationResponseListener(
     return { remove: () => {} };
   }
   return Notifications.addNotificationResponseReceivedListener(listener);
+}
+
+/**
+ * True when the server is already sending skincare reminders to this phone (push on, a phone connected, skincare reminders
+ * on), so the phone's own ones should pause. Any failure (offline, signed out) returns false and keeps the local ones.
+ */
+async function serverSendsSkincare(): Promise<boolean> {
+  try {
+    const { prefs, devices } = await api<{ prefs: { push: boolean; skincare: { enabled: boolean } }; devices: number }>(
+      '/api/notifications/preferences',
+    );
+    return devices > 0 && prefs.push && prefs.skincare.enabled;
+  } catch {
+    return false;
+  }
 }
 
 export const notificationService = {
@@ -133,8 +150,10 @@ export const notificationService = {
 
     await Notifications.cancelAllScheduledNotificationsAsync();
 
+    const serverHasSkincare = await serverSendsSkincare();
+
     // 1. Morning Skincare at 8:00 AM
-    if (activePrefs.morningSkincare) {
+    if (activePrefs.morningSkincare && !serverHasSkincare) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '☀️ Morning Skincare',
@@ -151,7 +170,7 @@ export const notificationService = {
     }
 
     // 2. Evening Skincare at 10:00 PM
-    if (activePrefs.eveningSkincare) {
+    if (activePrefs.eveningSkincare && !serverHasSkincare) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🌙 Evening Skincare & Wind Down',

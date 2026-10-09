@@ -9,6 +9,7 @@ import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useDashboard, type DashboardTransaction } from '@/features/dashboard/use-dashboard';
 import { modules, type ModuleKey } from '@/features/modules';
+import { useUnreadCount } from '@/features/notifications/hooks';
 import { formatDay, formatMoney, greeting } from '@/lib/format';
 import { useAuth } from '@/providers/auth';
 import { radius, spacing, useTheme } from '@/theme';
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   const { colors, scheme, toggleTheme } = useTheme();
   const router = useRouter();
   const { data, isPending, isError, error, refetch, isRefetching } = useDashboard();
+  const { data: unread = 0 } = useUnreadCount();
   const [chartFilter, setChartFilter] = useState<'weekly' | 'monthly'>('weekly');
 
   const firstName = (data?.profile.name ?? user?.name ?? '').split(' ')[0];
@@ -80,6 +82,41 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            onPress={() => router.push('/notifications' as Href)}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.actionButton,
+              {
+                backgroundColor: colors.accent,
+                opacity: pressed ? 0.75 : 1,
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              },
+            ]}>
+            <Ionicons name={unread > 0 ? 'notifications' : 'notifications-outline'} size={19} color={colors.text} />
+            {unread > 0 ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  paddingHorizontal: 4,
+                  backgroundColor: colors.danger,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Text variant="caption" style={{ color: '#ffffff', fontSize: 10, lineHeight: 12, fontWeight: '700' }}>
+                  {unread > 9 ? '9+' : unread}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Switch to ${scheme === 'dark' ? 'light' : 'dark'} mode`}

@@ -17,6 +17,8 @@ export default function AppLayout() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="notifications/index" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="notifications/settings" options={{ title: 'Alerts & reminders' }} />
         <Stack.Screen name="module/[slug]" options={{ title: '' }} />
         <Stack.Screen name="finance/transaction" options={{ presentation: 'modal', title: 'Transaction' }} />
         <Stack.Screen name="finance/budget" options={{ presentation: 'modal', title: 'Budget' }} />

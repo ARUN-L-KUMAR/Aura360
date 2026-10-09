@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Switch, View } from 'react-native';
 
@@ -24,6 +25,7 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 ];
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { user, signOut, serverUrl } = useAuth();
   const { mode, setMode, colors, scheme } = useTheme();
   const isDark = scheme === 'dark';
@@ -119,6 +121,23 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+      </GlassCard>
+
+      {/* Alerts & reminders sent by the server (budget, renewals, workout, meals, skincare, unworn clothes) */}
+      <GlassCard style={{ padding: spacing.md }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/notifications/settings' as never)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <Ionicons name="notifications" size={20} color={moduleColors.finance} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontWeight: '700' }}>Alerts & reminders</Text>
+            <Text variant="caption" muted>
+              Budget alerts, renewals, workout, meals and more. Sent to this phone, even when the app is closed.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
       </GlassCard>
 
       {/* Habit Reminders & Notifications Section */}
