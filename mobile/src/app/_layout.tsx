@@ -1,10 +1,11 @@
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AnimatedSplash } from '@/components/animated-splash';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
 import { AuthProvider, useAuth } from '@/providers/auth';
@@ -16,10 +17,6 @@ SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
   const { status } = useAuth();
-
-  useEffect(() => {
-    if (status !== 'loading') SplashScreen.hideAsync();
-  }, [status]);
 
   if (status === 'loading') return null;
 
@@ -43,6 +40,14 @@ function RootContent() {
   const { status } = useAuth();
   const { isLocked } = useBiometrics();
   const signedIn = status === 'signedIn';
+  const [splashDone, setSplashDone] = useState(false);
+  const finishSplash = useCallback(() => setSplashDone(true), []);
+
+  // The animated splash hides the native one once it is drawn. This is only a safety net in case it never mounts.
+  useEffect(() => {
+    const timer = setTimeout(() => void SplashScreen.hideAsync().catch(() => {}), 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (signedIn) {
@@ -64,6 +69,7 @@ function RootContent() {
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <RootStack />
+      {!splashDone && <AnimatedSplash ready={status !== 'loading'} onFinish={finishSplash} />}
       {signedIn && isLocked ? <BiometricLockScreen /> : null}
     </>
   );
