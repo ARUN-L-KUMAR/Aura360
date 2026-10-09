@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Grid3X3, List, ShoppingCart, Sparkles, Calendar, Bookmark } from "lucide-react"
+import { Grid3X3, List, ShoppingCart, Sparkles, Calendar, Bookmark, Ruler } from "lucide-react"
 import { DragDropDashboard } from "./drag-drop-dashboard"
 import { WardrobeView } from "./wardrobe-view"
 import { WishlistView } from "./wishlist-view"
@@ -16,6 +16,7 @@ const FashionAiDesignerStudio = dynamic(
 
 import { SeasonalPlanner } from "./seasonal-planner"
 import { OutfitsView } from "./outfits-view"
+import { FashionProfileView } from "./fashion-profile-view"
 import type { FashionItem } from "@/lib/types/fashion"
 import { toast } from "sonner"
 
@@ -130,6 +131,10 @@ export function FashionClientManager({ initialItems = [] }: FashionClientManager
               <Calendar className="w-3.5 h-3.5" />
               <span>Planner</span>
             </TabsTrigger>
+            <TabsTrigger value="fit" className="shrink-0 gap-2 px-3 md:px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground whitespace-nowrap">
+              <Ruler className="w-3.5 h-3.5" />
+              <span>My Fit</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -179,6 +184,10 @@ export function FashionClientManager({ initialItems = [] }: FashionClientManager
               items={wardrobeItems}
               onUpdateItem={handleUpdateItem}
             />
+          </TabsContent>
+
+          <TabsContent value="fit" className="mt-0 outline-none focus-visible:ring-0">
+            <FashionProfileView />
           </TabsContent>
         </div>
       </Tabs>

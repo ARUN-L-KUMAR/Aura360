@@ -477,6 +477,27 @@ export const fashionOutfits = pgTable(
   })
 )
 
+/** One row per user: body measurements, sizes, looks and style basics used across the fashion module. */
+export const fashionProfiles = pgTable(
+  "fashion_profiles",
+  {
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<Record<string, any>>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: uniqueIndex("fashion_profiles_user_id_idx").on(table.userId),
+    workspaceIdIdx: index("fashion_profiles_workspace_id_idx").on(table.workspaceId),
+  })
+)
+
 // ============================================
 // FITNESS MODULE
 // ============================================

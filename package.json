@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "db:clear-transactions": "tsx scripts/clear-transactions.ts",
     "db:clear-all-finance": "tsx scripts/clear-all-finance-data.ts",
-    "db:shift-dates": "tsx scripts/shift-transactions-plus-one-day.ts"
+    "db:shift-dates": "tsx scripts/shift-transactions-plus-one-day.ts",
+    "db:create-fashion-profile": "tsx scripts/create-fashion-profile-table.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
