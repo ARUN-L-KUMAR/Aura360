@@ -2,9 +2,10 @@ import { Text as RNText, type TextProps } from 'react-native';
 
 import { useTheme, type ThemeColors } from '@/theme';
 
-type Variant = 'title' | 'heading' | 'body' | 'caption' | 'label';
+type Variant = 'display' | 'title' | 'heading' | 'body' | 'caption' | 'label';
 
 const variants: Record<Variant, { fontSize: number; fontWeight: '400' | '500' | '600' | '700'; lineHeight: number }> = {
+  display: { fontSize: 32, fontWeight: '700', lineHeight: 38 },
   title: { fontSize: 28, fontWeight: '700', lineHeight: 34 },
   heading: { fontSize: 18, fontWeight: '600', lineHeight: 24 },
   body: { fontSize: 15, fontWeight: '400', lineHeight: 21 },

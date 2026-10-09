@@ -6,6 +6,8 @@ const KEYS = {
   refresh: 'aura.refreshToken',
   user: 'aura.user',
   server: 'aura.serverUrl',
+  theme: 'aura.theme',
+  biometrics: 'aura.biometrics',
 } as const;
 
 export type StoredUser = {
@@ -66,4 +68,8 @@ export const storage = {
 
   getServerUrl: () => read(KEYS.server),
   setServerUrl: (url: string | null) => write(KEYS.server, url),
+  getTheme: () => read(KEYS.theme),
+  setTheme: (mode: string | null) => write(KEYS.theme, mode),
+  getBiometricEnabled: async () => (await read(KEYS.biometrics)) === 'true',
+  setBiometricEnabled: (enabled: boolean) => write(KEYS.biometrics, enabled ? 'true' : 'false'),
 };

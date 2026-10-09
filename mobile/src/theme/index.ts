@@ -1,8 +1,11 @@
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
+
+import { storage } from '@/lib/storage';
 
 /**
  * Aura360 palette, matching the web app's deep slate look (app/globals.css).
- * Components read colours through useTheme(), so light / dark follows the phone setting.
+ * Components read colours through useTheme(), so light / dark follows the user setting or phone system.
  */
 export const palettes = {
   light: {
@@ -38,6 +41,8 @@ export const palettes = {
 } as const;
 
 export type ThemeColors = { [K in keyof typeof palettes.light]: string };
+export type ThemeMode = 'system' | 'light' | 'dark';
+export type ColorScheme = 'light' | 'dark';
 
 /** One accent per module, used for icons and charts so each area is recognisable at a glance. */
 export const moduleColors = {
@@ -55,7 +60,67 @@ export const moduleColors = {
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 export const radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
 
-export function useTheme() {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  return { scheme, colors: palettes[scheme] as ThemeColors };
+export type ThemeContextValue = {
+  mode: ThemeMode;
+  scheme: ColorScheme;
+  colors: ThemeColors;
+  setMode: (mode: ThemeMode) => void;
+  toggleTheme: () => void;
+};
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const [mode, setModeState] = useState<ThemeMode>('system');
+
+  useEffect(() => {
+    storage.getTheme().then((saved) => {
+      if (saved === 'system' || saved === 'light' || saved === 'dark') {
+        setModeState(saved);
+      }
+    });
+  }, []);
+
+  const setMode = useCallback((newMode: ThemeMode) => {
+    setModeState(newMode);
+    void storage.setTheme(newMode);
+  }, []);
+
+  const scheme: ColorScheme = mode === 'system' ? systemScheme : mode;
+
+  const toggleTheme = useCallback(() => {
+    const next: ThemeMode = scheme === 'dark' ? 'light' : 'dark';
+    setMode(next);
+  }, [scheme, setMode]);
+
+  const value = useMemo(
+    () => ({
+      mode,
+      scheme,
+      colors: palettes[scheme] as ThemeColors,
+      setMode,
+      toggleTheme,
+    }),
+    [mode, scheme, setMode, toggleTheme]
+  );
+
+  return createElement(ThemeContext.Provider, { value }, children);
+}
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+  const systemScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+
+  if (!context) {
+    return {
+      mode: 'system',
+      scheme: systemScheme,
+      colors: palettes[systemScheme] as ThemeColors,
+      setMode: () => {},
+      toggleTheme: () => {},
+    };
+  }
+
+  return context;
 }

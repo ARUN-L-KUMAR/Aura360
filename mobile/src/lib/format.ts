@@ -34,3 +34,24 @@ export function greeting(date = new Date()) {
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
 }
+
+/** "2026-10" for a date, in the phone's timezone. */
+export function monthKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function shiftMonth(key: string, delta: number) {
+  const [year, month] = key.split('-').map(Number);
+  return monthKey(new Date(year, month - 1 + delta, 1));
+}
+
+/** "October 2026" */
+export function monthLabel(key: string) {
+  const [year, month] = key.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+/** "2026-10-09" for a date, in the phone's timezone. */
+export function todayIso(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}

@@ -3,6 +3,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing, useTheme } from '@/theme';
 
+/** Standard page padding (safe areas + gutters), shared by scroll screens and FlatList screens. */
+export function useScreenPadding(topInset = true) {
+  const insets = useSafeAreaInsets();
+  return {
+    paddingTop: (topInset ? insets.top : 0) + spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: insets.bottom + spacing.xxl,
+    gap: spacing.lg,
+  };
+}
+
 type Props = ScrollViewProps & {
   /** Pull-to-refresh handler; shows the spinner while `refreshing` is true. */
   onRefresh?: () => void;
@@ -14,7 +25,7 @@ type Props = ScrollViewProps & {
 /** Scrollable page with the app background, safe-area padding, keyboard handling and pull-to-refresh. */
 export function Screen({ children, onRefresh, refreshing = false, topInset = true, contentContainerStyle, ...rest }: Props) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const padding = useScreenPadding(topInset);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -23,15 +34,7 @@ export function Screen({ children, onRefresh, refreshing = false, topInset = tru
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textMuted} /> : undefined}
         {...rest}
-        contentContainerStyle={[
-          {
-            paddingTop: (topInset ? insets.top : 0) + spacing.lg,
-            paddingHorizontal: spacing.lg,
-            paddingBottom: insets.bottom + spacing.xxl,
-            gap: spacing.lg,
-          },
-          contentContainerStyle,
-        ]}>
+        contentContainerStyle={[padding, contentContainerStyle]}>
         {children}
       </ScrollView>
     </KeyboardAvoidingView>
