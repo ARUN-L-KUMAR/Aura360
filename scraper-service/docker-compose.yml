@@ -1,0 +1,24 @@
+services:
+  scraper:
+    build: .
+    restart: unless-stopped
+    init: true # reaps zombie Chromium processes
+    ipc: host # recommended by Playwright so Chromium does not crash on shared memory
+    environment:
+      SCRAPER_SERVICE_KEY: ${SCRAPER_SERVICE_KEY:?set SCRAPER_SERVICE_KEY in .env}
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-2}
+    # Bound to localhost only. Reach it through the Cloudflare tunnel below or a reverse proxy.
+    ports:
+      - "127.0.0.1:3001:3001"
+
+  # Optional: publishes the scraper at https://scraper.makefans.online without opening router ports.
+  # Start with:  docker compose --profile tunnel up -d
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - scraper
