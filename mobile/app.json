@@ -32,11 +32,20 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "aff8c9d8-390f-4f1d-aae4-e0f079b97a5a"
+      }
+    },
+    "owner": "arun-l-kumar"
   }
 }
