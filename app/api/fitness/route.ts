@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db, fitness } from "@/lib/db"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { auditCreate, auditUpdate, auditDelete } from "@/lib/audit"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, gte, lte } from "drizzle-orm"
 import { z } from "zod"
 
 const exerciseSchema = z.object({
@@ -31,24 +31,38 @@ const createFitnessSchema = z.object({
   exercises: z.array(exerciseSchema).optional(),
   notes: z.string().optional(),
   mood: z.string().optional(),
+  // Free-form extras, e.g. { name: "Chest & Triceps" } from the mobile app. The web ignores it.
+  metadata: z.record(z.any()).optional(),
 })
 
 const updateFitnessSchema = createFitnessSchema.partial()
 
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
 /**
- * GET /api/fitness - Fetch all fitness entries
+ * GET /api/fitness - Fetch fitness entries.
+ * Optional `from` / `to` (YYYY-MM-DD, inclusive) limit the range; without them every entry is returned.
  */
 export async function GET(request: NextRequest) {
   try {
     const context = await getWorkspaceContext()
-    
+    const { searchParams } = new URL(request.url)
+    const from = searchParams.get("from")
+    const to = searchParams.get("to")
+
+    if ((from && !DAY_PATTERN.test(from)) || (to && !DAY_PATTERN.test(to))) {
+      return NextResponse.json({ error: "from / to must be YYYY-MM-DD" }, { status: 400 })
+    }
+
     const entries = await db
       .select()
       .from(fitness)
       .where(
         and(
           eq(fitness.workspaceId, context.workspaceId),
-          eq(fitness.userId, context.userId)
+          eq(fitness.userId, context.userId),
+          from ? gte(fitness.date, from) : undefined,
+          to ? lte(fitness.date, to) : undefined
         )
       )
       .orderBy(desc(fitness.date), desc(fitness.createdAt))

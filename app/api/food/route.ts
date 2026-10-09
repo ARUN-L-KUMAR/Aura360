@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db, food } from "@/lib/db"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { auditCreate, auditUpdate, auditDelete } from "@/lib/audit"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, gte, lte } from "drizzle-orm"
 import { z } from "zod"
 
 const createFoodSchema = z.object({
@@ -29,20 +29,32 @@ const createFoodSchema = z.object({
 
 const updateFoodSchema = createFoodSchema.partial()
 
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
 /**
- * GET /api/food - Fetch all food entries
+ * GET /api/food - Fetch food entries.
+ * Optional `from` / `to` (YYYY-MM-DD, inclusive) limit the range; without them every entry is returned.
  */
 export async function GET(request: NextRequest) {
   try {
     const context = await getWorkspaceContext()
-    
+    const { searchParams } = new URL(request.url)
+    const from = searchParams.get("from")
+    const to = searchParams.get("to")
+
+    if ((from && !DAY_PATTERN.test(from)) || (to && !DAY_PATTERN.test(to))) {
+      return NextResponse.json({ error: "from / to must be YYYY-MM-DD" }, { status: 400 })
+    }
+
     const meals = await db
       .select()
       .from(food)
       .where(
         and(
           eq(food.workspaceId, context.workspaceId),
-          eq(food.userId, context.userId)
+          eq(food.userId, context.userId),
+          from ? gte(food.date, from) : undefined,
+          to ? lte(food.date, to) : undefined
         )
       )
       .orderBy(desc(food.date), desc(food.createdAt))

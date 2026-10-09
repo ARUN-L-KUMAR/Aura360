@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db, timeLogs } from "@/lib/db"
 import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { auditCreate, auditUpdate, auditDelete } from "@/lib/audit"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, gte, lte } from "drizzle-orm"
 import { z } from "zod"
 
 const createTimeLogSchema = z.object({
@@ -24,20 +24,32 @@ const createTimeLogSchema = z.object({
 
 const updateTimeLogSchema = createTimeLogSchema.partial()
 
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
 /**
- * GET /api/time - Fetch all time logs
+ * GET /api/time - Fetch time logs.
+ * Optional `from` / `to` (YYYY-MM-DD, inclusive) limit the range; without them every log is returned.
  */
 export async function GET(request: NextRequest) {
   try {
     const context = await getWorkspaceContext()
-    
+    const { searchParams } = new URL(request.url)
+    const from = searchParams.get("from")
+    const to = searchParams.get("to")
+
+    if ((from && !DAY_PATTERN.test(from)) || (to && !DAY_PATTERN.test(to))) {
+      return NextResponse.json({ error: "from / to must be YYYY-MM-DD" }, { status: 400 })
+    }
+
     const logs = await db
       .select()
       .from(timeLogs)
       .where(
         and(
           eq(timeLogs.workspaceId, context.workspaceId),
-          eq(timeLogs.userId, context.userId)
+          eq(timeLogs.userId, context.userId),
+          from ? gte(timeLogs.date, from) : undefined,
+          to ? lte(timeLogs.date, to) : undefined
         )
       )
       .orderBy(desc(timeLogs.date), desc(timeLogs.createdAt))
