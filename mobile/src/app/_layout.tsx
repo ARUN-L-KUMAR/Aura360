@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
+import { registerForServerPush } from '@/lib/push';
 import { AuthProvider, useAuth } from '@/providers/auth';
 import { BiometricsProvider, useBiometrics } from '@/providers/biometrics';
 import { QueryProvider } from '@/providers/query';
@@ -52,6 +53,7 @@ function RootContent() {
   useEffect(() => {
     if (signedIn) {
       void notificationService.rescheduleAll();
+      void registerForServerPush();
     }
   }, [signedIn]);
 

@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api, apiSession, type SessionResponse } from '@/lib/api';
 import { defaultApiUrl } from '@/lib/config';
 import { storage, type StoredUser } from '@/lib/storage';
+import { unregisterFromServerPush } from '@/lib/push';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    await unregisterFromServerPush();
     const refreshToken = apiSession.getRefreshToken();
     if (refreshToken) {
       // Best effort: even if the server is unreachable the device is signed out locally.
