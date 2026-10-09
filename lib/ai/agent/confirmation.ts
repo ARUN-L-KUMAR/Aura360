@@ -5,6 +5,8 @@
  * and reviewed by the user with human-readable summaries before execution.
  */
 
+import { getCachedProduct } from "@/lib/fashion/product-link-cache"
+
 export interface PendingAction {
   tool: string
   args: Record<string, any>
@@ -66,6 +68,14 @@ export function buildSummary(tool: string, args: Record<string, any>): string {
       const target = args.status === "wishlist" ? "Wishlist" : "Wardrobe"
       const price = args.price ? ` (₹${args.price})` : ""
       return `Add${name} to your ${target}${price}?`
+    }
+
+    case "add_fashion_item_from_link": {
+      const target = args.status === "wardrobe" ? "Wardrobe" : "Wishlist"
+      const product = typeof args.url === "string" ? getCachedProduct(args.url) : null
+      if (!product) return `Add the product from this link to your ${target}?`
+      const price = product.price.current ? ` (₹${product.price.current})` : ""
+      return `Add "${product.product_name}"${price} to your ${target}?`
     }
 
     case "add_skincare_product": {

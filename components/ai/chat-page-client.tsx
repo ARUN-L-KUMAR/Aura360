@@ -84,6 +84,9 @@ function formatToolLabel(tool: string, status: "running" | "completed"): string 
     create_note: "Creating note...",
     update_note: "Updating note...",
     add_fashion_item: "Adding fashion item...",
+    get_product_from_link: "Reading the product link...",
+    add_fashion_item_from_link: "Adding the product...",
+    get_fashion_profile: "Checking your fit profile...",
     log_time_entry: "Logging time entry...",
   }
 

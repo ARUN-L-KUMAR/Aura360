@@ -11,6 +11,7 @@ import { getFitnessLogs, logWorkout } from "./fitness"
 import { getFoodLogs, logMeal } from "./food"
 import { getNotes, createNote, updateNote } from "./notes"
 import { getWardrobe, getWishlist, addFashionItem, getFashionProfile } from "./fashion"
+import { getProductFromLink, addFashionItemFromLink } from "./fashion-link"
 import { getSkincareRoutine, addSkincareProduct } from "./skincare"
 import { getTimeLogs, logTimeEntry } from "./time"
 import { getSavedItems, saveItem } from "./saved"
@@ -29,6 +30,7 @@ export const toolRegistry: Record<string, AiTool> = {
   [getWardrobe.name]: getWardrobe,
   [getWishlist.name]: getWishlist,
   [getFashionProfile.name]: getFashionProfile,
+  [getProductFromLink.name]: getProductFromLink,
   [getSkincareRoutine.name]: getSkincareRoutine,
   [addSkincareProduct.name]: addSkincareProduct,
   [getTimeLogs.name]: getTimeLogs,
@@ -43,6 +45,7 @@ export const toolRegistry: Record<string, AiTool> = {
   [createNote.name]: createNote,
   [updateNote.name]: updateNote,
   [addFashionItem.name]: addFashionItem,
+  [addFashionItemFromLink.name]: addFashionItemFromLink,
   [logTimeEntry.name]: logTimeEntry,
 }
 

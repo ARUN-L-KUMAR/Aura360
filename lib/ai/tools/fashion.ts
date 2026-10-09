@@ -223,6 +223,7 @@ export const addFashionItem: AiTool = {
     size: z.string().optional().describe("Size"),
     price: z.number().positive().optional().describe("Price or cost in ₹"),
     notes: z.string().optional().describe("Notes"),
+    buyingLink: z.string().url().optional().describe("Link where the item can be bought, if the user gave one"),
   }),
   mutates: true,
   handler: async (args, ctx) => {
@@ -240,6 +241,7 @@ export const addFashionItem: AiTool = {
         size: args.size,
         price: args.price !== undefined ? String(args.price) : undefined,
         notes: args.notes,
+        metadata: args.buyingLink ? { buyingLink: args.buyingLink } : undefined,
       })
       .returning()
 
