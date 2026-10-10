@@ -13,6 +13,11 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
+
+# Local release signing credentials and build output (see scripts/README.md) - never commit
+keystore.properties
+/release-out/
 *.p8
 *.p12
 *.key
