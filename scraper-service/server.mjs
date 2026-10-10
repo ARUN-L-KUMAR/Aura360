@@ -104,6 +104,10 @@ function release() {
 // hostname -> time we last loaded that site's home page in this profile
 const warmedAt = new Map()
 const WARM_TTL_MS = 20 * 60 * 1000
+// hostname -> time until which we will not touch that site again (it refused this connection)
+const blockedUntil = new Map()
+const IP_BLOCK_COOLDOWN_MS = Number(process.env.BLOCK_COOLDOWN_MIN ?? 15) * 60 * 1000
+const PAGE_BLOCK_COOLDOWN_MS = 2 * 60 * 1000
 const MAX_ATTEMPTS = 3
 
 // The shops answer a refused request with a tiny "Access Denied" / robot-check page instead of the product
@@ -133,12 +137,23 @@ async function warm(page, host) {
   await page.goto(`https://${host}/`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {})
   const until = Date.now() + WARM_MS
   while (Date.now() < until) await humanPause(page)
-  warmedAt.set(host.replace(/^www\./, ""), Date.now())
+  const denied = looksDenied(await page.content().catch(() => ""))
+  if (!denied) warmedAt.set(host.replace(/^www\./, ""), Date.now())
+  return denied // true = even the home page was refused, i.e. this connection is blocked by the shop right now
 }
 
 async function render(url) {
   const started = Date.now()
   const host = new URL(url).hostname.toLowerCase()
+  const siteKey = host.replace(/^www\./, "")
+
+  const cooldown = blockedUntil.get(siteKey)
+  if (cooldown && cooldown > Date.now()) {
+    const minutes = Math.ceil((cooldown - Date.now()) / 60000)
+    console.log(`[render] ${host} skipped: refused this connection recently, retrying in ~${minutes} min`)
+    return { html: "", finalUrl: url, status: 0, blocked: true, reason: "cooldown" }
+  }
+
   const context = await getContext()
   const page = await context.newPage()
 
@@ -156,9 +171,12 @@ async function render(url) {
     })
 
     // Warm the session on the site's home page first, unless this profile has recently done so
-    const siteKey = host.replace(/^www\./, "")
     if (!warmedAt.has(siteKey) || Date.now() - warmedAt.get(siteKey) > WARM_TTL_MS) {
-      await warm(page, host)
+      if (await warm(page, host)) {
+        blockedUntil.set(siteKey, Date.now() + IP_BLOCK_COOLDOWN_MS)
+        console.log(`[render] ${host} home page refused (connection blocked by the shop); pausing this site for ${IP_BLOCK_COOLDOWN_MS / 60000} min`)
+        return { html: "", finalUrl: url, status: 0, blocked: true, reason: "ip-blocked" }
+      }
     }
 
     let html = ""
@@ -181,14 +199,18 @@ async function render(url) {
       if (!looksDenied(html)) break
 
       // Refused: spend more time as a normal visitor on the home page, then ask again
-      if (attempts < MAX_ATTEMPTS) await warm(page, host)
+      if (attempts < MAX_ATTEMPTS && (await warm(page, host))) {
+        blockedUntil.set(siteKey, Date.now() + IP_BLOCK_COOLDOWN_MS)
+        break
+      }
     }
 
     const ok = !looksDenied(html)
+    if (!ok && !blockedUntil.has(siteKey)) blockedUntil.set(siteKey, Date.now() + PAGE_BLOCK_COOLDOWN_MS)
     console.log(
       `[render] ${host} status=${status} len=${html.length} attempts=${Math.min(attempts, MAX_ATTEMPTS)} ok=${ok} ms=${Date.now() - started}`
     )
-    return { html, finalUrl: page.url(), status }
+    return { html, finalUrl: page.url(), status, blocked: !ok }
   } finally {
     await page.close().catch(() => {})
   }
@@ -254,7 +276,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[scraper-service] listening on :${PORT}`)
-  if (process.env.PREWARM !== "0") void prewarm()
+  // Off by default: every start-up (and every redeploy) would otherwise load two shop home pages. Set PREWARM=1 to
+  // trade that traffic for a faster first request.
+  if (process.env.PREWARM === "1") void prewarm()
 })
 
 // Warm the browser profile in the background, so the first real request is not the slow, most-likely-refused one
@@ -264,7 +288,10 @@ async function prewarm() {
     for (const host of ["www.ajio.com", "www.meesho.com"]) {
       const page = await context.newPage()
       try {
-        await warm(page, host)
+        if (await warm(page, host)) {
+          blockedUntil.set(host.replace(/^www\./, ""), Date.now() + IP_BLOCK_COOLDOWN_MS)
+          console.log(`[scraper-service] ${host} refused the warm-up visit; pausing this site for ${IP_BLOCK_COOLDOWN_MS / 60000} min`)
+        }
       } finally {
         await page.close().catch(() => {})
       }

@@ -180,7 +180,7 @@ async function fetchDirect(startUrl: string): Promise<{ html: string; finalUrl: 
  * Enabled by setting SCRAPER_SERVICE_URL and SCRAPER_SERVICE_KEY. Returns null when it is unreachable
  * (e.g. the laptop is off) so the caller can fall back to other methods.
  */
-async function fetchViaRenderService(url: string): Promise<{ html: string; finalUrl: string } | null> {
+async function fetchViaRenderService(url: string): Promise<{ html: string; finalUrl: string; blocked?: boolean } | null> {
   const baseUrl = process.env.SCRAPER_SERVICE_URL
   const apiKey = process.env.SCRAPER_SERVICE_KEY
   if (!baseUrl || !apiKey) return null
@@ -198,7 +198,9 @@ async function fetchViaRenderService(url: string): Promise<{ html: string; final
       return null
     }
 
-    const data = (await response.json()) as { html?: string; finalUrl?: string }
+    const data = (await response.json()) as { html?: string; finalUrl?: string; blocked?: boolean }
+    // The shop refused your server's connection: say so, so the caller does not hit it again with a plain fetch
+    if (data.blocked) return { html: "", finalUrl: url, blocked: true }
     if (!data.html || looksBlocked(data.html)) return null
 
     // The service already restricts redirects, but never trust a remote answer blindly
@@ -867,6 +869,16 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapedProduct> {
 
   // 1) Own server first: real browser on a home IP gets through where plain requests are blocked
   const rendered = await fetchViaRenderService(trimmed)
+  if (rendered?.blocked) {
+    // Refused from the home connection. A plain request from the same connection will be refused too, so go
+    // straight to the paid fallback (if configured) instead of adding another hit.
+    const viaApi = await fetchViaScraperApi(trimmed, platform)
+    if (viaApi) return parseProductHtml(viaApi, trimmed, platform)
+    throw new ProductScrapeError(
+      `${platform[0].toUpperCase()}${platform.slice(1)} is blocking this connection right now. Try again in a while, or fill in the details manually.`,
+      422
+    )
+  }
   if (rendered) {
     try {
       return parseProductHtml(rendered.html, rendered.finalUrl, platform)
