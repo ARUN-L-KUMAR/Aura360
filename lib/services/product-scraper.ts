@@ -9,7 +9,7 @@ const PLATFORM_HOSTS: Array<{ platform: ShoppingPlatform; test: RegExp }> = [
   { platform: "flipkart", test: /(^|\.)(flipkart\.com|fkrt\.(it|cc))$/ },
   { platform: "myntra", test: /(^|\.)myntra\.com$/ },
   { platform: "meesho", test: /(^|\.)meesho\.com$/ },
-  { platform: "ajio", test: /(^|\.)(ajio\.com|ajiio\.in)$/ },
+  { platform: "ajio", test: /(^|\.)(ajio\.com|ajiio\.in)$|^ajioapps\.onelink\.me$/ },
 ]
 
 const MAX_REDIRECTS = 5
@@ -42,6 +42,55 @@ function assertAllowedUrl(rawUrl: string): ShoppingPlatform {
     throw new ProductScrapeError("Unsupported site. Paste a link from Amazon, Flipkart, Myntra, Meesho or Ajio.", 400)
   }
   return platform
+}
+
+// The Ajio app's "Share" button produces an AppsFlyer OneLink (ajioapps.onelink.me/...). On a desktop browser it
+// redirects to the Ajio *home page* and carries the real product page in a `deep_link_value` parameter, so follow
+// that one redirect ourselves and take the product URL from it.
+const SHARE_LINK_HOST = /^ajioapps\.onelink\.me$/
+
+async function resolveShareLink(rawUrl: string): Promise<string> {
+  let host = ""
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase()
+  } catch {
+    return rawUrl
+  }
+  if (!SHARE_LINK_HOST.test(host)) return rawUrl
+
+  const failure = new ProductScrapeError(
+    "Couldn't read this Ajio share link. Open it in a browser and paste the product page address instead.",
+    422
+  )
+
+  let location: string | null = null
+  try {
+    const response = await fetch(rawUrl, {
+      headers: BROWSER_HEADERS,
+      redirect: "manual",
+      signal: AbortSignal.timeout(10000),
+      cache: "no-store",
+    })
+    location = response.headers.get("location")
+  } catch {
+    throw failure
+  }
+  if (!location) throw failure
+
+  const target = new URL(location, rawUrl)
+  const candidate = target.searchParams.get("deep_link_value") ?? target.searchParams.get("af_web_dp") ?? target.toString()
+
+  // The destination must itself be an allowed shop page, and a product page (not the home page)
+  let product: URL
+  try {
+    product = new URL(candidate)
+  } catch {
+    throw failure
+  }
+  if (detectShoppingPlatform(product.toString()) !== "ajio" || !/\/p\/[^/]+/.test(product.pathname)) throw failure
+  if (SHARE_LINK_HOST.test(product.hostname.toLowerCase())) throw failure
+
+  return product.toString()
 }
 
 const BROWSER_HEADERS: Record<string, string> = {
@@ -811,7 +860,9 @@ export function parseProductHtml(html: string, url: string, platform: ShoppingPl
 }
 
 export async function scrapeProduct(rawUrl: string): Promise<ScrapedProduct> {
-  const trimmed = rawUrl.trim()
+  const requested = rawUrl.trim()
+  assertAllowedUrl(requested)
+  const trimmed = await resolveShareLink(requested)
   const platform = assertAllowedUrl(trimmed)
 
   // 1) Own server first: real browser on a home IP gets through where plain requests are blocked
