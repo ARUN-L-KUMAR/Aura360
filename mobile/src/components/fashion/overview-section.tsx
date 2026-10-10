@@ -11,7 +11,7 @@ import { FashionCard } from './fashion-card';
 
 interface OverviewSectionProps {
   items: FashionItem[];
-  header: React.ReactNode;
+  header?: React.ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onGoToWardrobe: () => void;
   onGoToWishlist: () => void;
@@ -60,7 +60,7 @@ export function OverviewSection({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Hero Wardrobe Valuation Card */}
       <GlassCard glowColor={moduleColors.fashion} style={styles.heroCard}>

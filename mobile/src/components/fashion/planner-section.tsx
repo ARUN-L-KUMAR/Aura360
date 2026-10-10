@@ -13,7 +13,7 @@ import { FashionCard } from './fashion-card';
 
 interface PlannerSectionProps {
   items: FashionItem[];
-  header: React.ReactNode;
+  header?: React.ReactNode;
   onSelectItem: (item: FashionItem) => void;
 }
 
@@ -40,7 +40,7 @@ export function PlannerSection({ items, header, onSelectItem }: PlannerSectionPr
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Laundry Room Section */}
       <GlassCard glowColor="#ef4444" style={styles.laundryRoomCard}>

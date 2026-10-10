@@ -12,7 +12,7 @@ import { radius, spacing, useTheme } from '@/theme';
 
 interface OutfitsSectionProps {
   items: FashionItem[];
-  header: React.ReactNode;
+  header?: React.ReactNode;
   onCreateOutfit: () => void;
 }
 
@@ -45,7 +45,7 @@ export function OutfitsSection({ items, header, onCreateOutfit }: OutfitsSection
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Header Bar */}
       <View style={styles.titleRow}>

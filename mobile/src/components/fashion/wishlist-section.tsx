@@ -13,7 +13,7 @@ import { FashionCard } from './fashion-card';
 
 interface WishlistSectionProps {
   items: FashionItem[];
-  header: React.ReactNode;
+  header?: React.ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
 }
@@ -54,7 +54,7 @@ export function WishlistSection({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Target Budget Card */}
       <GlassCard glowColor="#3b82f6" style={styles.budgetCard}>

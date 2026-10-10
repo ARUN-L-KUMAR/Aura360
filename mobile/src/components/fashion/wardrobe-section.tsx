@@ -11,7 +11,7 @@ import { FashionCard } from './fashion-card';
 
 interface WardrobeSectionProps {
   items: FashionItem[];
-  header: React.ReactNode;
+  header?: React.ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
 }
@@ -58,7 +58,7 @@ export function WardrobeSection({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Search Input */}
       <View

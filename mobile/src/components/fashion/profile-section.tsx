@@ -7,10 +7,10 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Text } from '@/components/ui/text';
 import { useFashionProfile, useSaveFashionProfile } from '@/features/fashion/hooks';
 import type { FashionProfileData } from '@/features/fashion/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { moduleColors, radius, spacing, useTheme } from '@/theme';
 
 interface ProfileSectionProps {
-  header: React.ReactNode;
+  header?: React.ReactNode;
 }
 
 const STYLE_OPTIONS = [
@@ -112,7 +112,7 @@ export function ProfileSection({ header }: ProfileSectionProps) {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header}
+      {header ? header : null}
 
       {/* Hero Profile Intro */}
       <GlassCard glowColor="#ec4899" style={styles.introCard}>
