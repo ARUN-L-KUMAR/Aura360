@@ -141,7 +141,7 @@ async function fetchViaRenderService(url: string): Promise<{ html: string; final
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey },
       body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(40000),
+      signal: AbortSignal.timeout(60000),
       cache: "no-store",
     })
     if (!response.ok) {
@@ -855,6 +855,6 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapedProduct> {
 
   throw new ProductScrapeError(
     `${platform[0].toUpperCase()}${platform.slice(1)} blocked the request. Try again in a moment, or fill in the details manually.`,
-    502
+    422
   )
 }

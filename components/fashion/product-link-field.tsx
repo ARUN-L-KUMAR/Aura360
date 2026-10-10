@@ -43,7 +43,7 @@ export function ProductLinkField({ id, value, onChange, onFetched, label = "Buyi
         body: JSON.stringify({ url: target }),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || "Failed to fetch product details")
+      if (!response.ok) throw new Error(data.error || `Could not fetch product details (HTTP ${response.status}). Please try again.`)
 
       onFetched(data as ScrapedProduct)
       toast.success("Product details filled in")
