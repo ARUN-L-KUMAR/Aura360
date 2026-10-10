@@ -411,6 +411,11 @@ function Test-ApiUrl {
         return
     }
     $h = $uri.Host
+    $apiPath = $uri.AbsolutePath.TrimEnd('/')
+    if ($apiPath) {
+        & $report ("EXPO_PUBLIC_API_URL (from $from) has a path ('$apiPath'). The app adds its own /api/... paths to this base, so every request would 404. Use only the server address: " + $uri.Scheme + '://' + $uri.Authority)
+        return
+    }
     $isLoopback = $h -in 'localhost', '10.0.2.2', '0.0.0.0', '::1', '[::1]' -or $h -match '^127\.'
     $isPrivate  = $h -match '^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)' -or $h -like '*.local'
     if ($isLoopback) {

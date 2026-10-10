@@ -14,9 +14,22 @@ const API_PORT = 3000;
  * The user can override all of this on the sign-in screen ("Server"), which is how the app
  * will be pointed at the home server later.
  */
+/**
+ * The server base is only ever `scheme://host[:port]`. The app adds its own `/api/...` paths, so a pasted address such
+ * as `https://example.com/api/health` would otherwise make every request a 404.
+ */
+export function normaliseServerUrl(value: string): string {
+  const trimmed = value.trim();
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
+}
+
 export function defaultApiUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
-  if (fromEnv) return fromEnv.replace(/\/+$/, '');
+  if (fromEnv) return normaliseServerUrl(fromEnv);
 
   const metroHost = Constants.expoConfig?.hostUri?.split(':')[0];
   if (metroHost) return `http://${metroHost}:${API_PORT}`;

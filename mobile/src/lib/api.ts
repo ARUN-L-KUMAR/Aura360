@@ -1,4 +1,4 @@
-import { REQUEST_TIMEOUT_MS, defaultApiUrl } from '@/lib/config';
+import { REQUEST_TIMEOUT_MS, defaultApiUrl, normaliseServerUrl } from '@/lib/config';
 import { storage, type StoredUser } from '@/lib/storage';
 
 export class ApiError extends Error {
@@ -52,7 +52,7 @@ let refreshInFlight: Promise<boolean> | null = null;
 export const apiSession = {
   getBaseUrl: () => baseUrl,
   setBaseUrl(url: string) {
-    baseUrl = url.replace(/\/+$/, '');
+    baseUrl = normaliseServerUrl(url);
   },
   setTokens(tokens: { accessToken: string | null; refreshToken: string | null }) {
     accessToken = tokens.accessToken;
