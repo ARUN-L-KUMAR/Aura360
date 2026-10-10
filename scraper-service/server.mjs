@@ -1,6 +1,11 @@
 import http from "node:http"
 import crypto from "node:crypto"
-import { chromium } from "playwright"
+import { chromium } from "patchright"
+import { rmSync } from "node:fs"
+
+// A stray rejection from the browser library (e.g. "Frame was detached" after a page closes) must not kill the service
+process.on("unhandledRejection", (error) => console.error("[scraper-service] unhandled rejection:", error?.message ?? error))
+process.on("uncaughtException", (error) => console.error("[scraper-service] uncaught exception:", error?.message ?? error))
 
 const PORT = Number(process.env.PORT ?? 3001)
 const API_KEY = process.env.SCRAPER_SERVICE_KEY ?? ""
@@ -35,33 +40,41 @@ function isAllowedUrl(raw) {
   }
 }
 
-// Same user agent that passed the Amazon check in the manual Playwright test
-const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
+// One persistent browser profile shared by every request. The shops' bot protection (Akamai) scores the whole
+// session, so a profile that has already loaded a few pages, with its cookies, passes where a brand-new
+// browser is refused. Patchright is a patched Playwright that removes the usual automation giveaways.
+const PROFILE_DIR = process.env.PROFILE_DIR || "/tmp/aura360-scraper-profile"
 
-let browserPromise = null
-function getBrowser() {
-  if (!browserPromise) {
-    browserPromise = chromium
-      .launch({
+let contextPromise = null
+function getContext() {
+  if (!contextPromise) {
+    // a restarted container keeps its filesystem; drop a stale profile lock / old session
+    rmSync(PROFILE_DIR, { recursive: true, force: true })
+    contextPromise = chromium
+      .launchPersistentContext(PROFILE_DIR, {
         // Ajio blocks invisible (headless) browsers but accepts a normal window, so run headful by default.
-        // In Docker this runs inside a virtual display (xvfb-run). Set HEADFUL=0 to go back to headless.
+        // In Docker this runs inside a virtual display (see start.sh). Set HEADFUL=0 to go back to headless.
         headless: process.env.HEADFUL === "0",
-        // BROWSER_CHANNEL=chrome uses real Google Chrome instead of the bundled Chromium (installed in the Dockerfile)
+        // BROWSER_CHANNEL=chrome uses real Google Chrome (installed in the Dockerfile); msedge works for local testing
         ...(process.env.BROWSER_CHANNEL ? { channel: process.env.BROWSER_CHANNEL } : {}),
-        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
+        viewport: null, // real window size, as patchright recommends
+        locale: "en-IN",
+        timezoneId: "Asia/Kolkata",
+        args: ["--no-sandbox", "--disable-dev-shm-usage"],
       })
-      .then((browser) => {
-        browser.on("disconnected", () => {
-          browserPromise = null
+      .then((context) => {
+        context.on("close", () => {
+          contextPromise = null
+          warmedAt.clear()
         })
-        return browser
+        return context
       })
       .catch((error) => {
-        browserPromise = null
+        contextPromise = null
         throw error
       })
   }
-  return browserPromise
+  return contextPromise
 }
 
 class HttpError extends Error {
@@ -88,49 +101,96 @@ function release() {
   else active--
 }
 
+// hostname -> time we last loaded that site's home page in this profile
+const warmedAt = new Map()
+const WARM_TTL_MS = 20 * 60 * 1000
+const MAX_ATTEMPTS = 3
+
+// The shops answer a refused request with a tiny "Access Denied" / robot-check page instead of the product
+function looksDenied(html) {
+  if (html.length > 20000) return false
+  return /access denied|robot check|captcha|are you a human|reference #\d/i.test(html)
+}
+
+// How long to dwell on a site's home page so its bot-check script can validate the session
+const WARM_MS = Number(process.env.WARM_MS ?? 6000)
+
+async function humanPause(page) {
+  try {
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.move(220 + i * 160, 260 + (i % 2) * 110, { steps: 10 })
+      await page.mouse.wheel(0, 320)
+      await page.waitForTimeout(450)
+    }
+  } catch {
+    // purely cosmetic
+  }
+}
+
+// Load the site's home page and behave like a visitor for a few seconds. Cookies from this visit are what
+// make the following product-page request look normal to the shop's bot protection.
+async function warm(page, host) {
+  await page.goto(`https://${host}/`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {})
+  const until = Date.now() + WARM_MS
+  while (Date.now() < until) await humanPause(page)
+  warmedAt.set(host.replace(/^www\./, ""), Date.now())
+}
+
 async function render(url) {
-  const browser = await getBrowser()
-  const context = await browser.newContext({
-    locale: "en-IN",
-    timezoneId: "Asia/Kolkata",
-    userAgent: USER_AGENT,
-    viewport: { width: 1366, height: 768 },
-  })
+  const started = Date.now()
+  const host = new URL(url).hostname.toLowerCase()
+  const context = await getContext()
+  const page = await context.newPage()
 
   try {
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => undefined })
-    })
-
-    const page = await context.newPage()
-
     await page.route("**/*", (route) => {
       const request = route.request()
       // Never follow a page navigation (e.g. a redirect) to a non-shopping host
       if (request.isNavigationRequest() && request.frame() === page.mainFrame() && !isAllowedUrl(request.url())) {
         return route.abort()
       }
-      // We only need the markup, so skip heavy assets
+      // We only need the markup, so skip video and fonts. Images are left alone: a page that loads none looks like a bot.
       const type = request.resourceType()
-      if (type === "image" || type === "media" || type === "font") return route.abort()
+      if (type === "media" || type === "font") return route.abort()
       return route.continue()
     })
 
-    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS })
+    // Warm the session on the site's home page first, unless this profile has recently done so
+    const siteKey = host.replace(/^www\./, "")
+    if (!warmedAt.has(siteKey) || Date.now() - warmedAt.get(siteKey) > WARM_TTL_MS) {
+      await warm(page, host)
+    }
 
-    // Give client-rendered shops a moment to inject their product markup
-    await page
-      .waitForSelector('#productTitle, script[type="application/ld+json"], h1', { state: "attached", timeout: 8000 })
-      .catch(() => {})
-    await page.waitForTimeout(1200)
+    let html = ""
+    let status = 0
+    let attempts = 0
+    for (attempts = 1; attempts <= MAX_ATTEMPTS; attempts++) {
+      const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS })
+      status = response?.status() ?? 0
 
-    const finalUrl = page.url()
-    if (!isAllowedUrl(finalUrl)) throw new HttpError(422, "Page redirected to an unsupported site")
+      // Give client-rendered shops a moment to inject their product markup
+      await page
+        .waitForSelector('#productTitle, script[type="application/ld+json"], h1', { state: "attached", timeout: 8000 })
+        .catch(() => {})
+      await page.waitForTimeout(1200)
 
-    const html = (await page.content()).slice(0, MAX_HTML_CHARS)
-    return { html, finalUrl, status: response?.status() ?? 0 }
+      const finalUrl = page.url()
+      if (!isAllowedUrl(finalUrl)) throw new HttpError(422, "Page redirected to an unsupported site")
+
+      html = (await page.content()).slice(0, MAX_HTML_CHARS)
+      if (!looksDenied(html)) break
+
+      // Refused: spend more time as a normal visitor on the home page, then ask again
+      if (attempts < MAX_ATTEMPTS) await warm(page, host)
+    }
+
+    const ok = !looksDenied(html)
+    console.log(
+      `[render] ${host} status=${status} len=${html.length} attempts=${Math.min(attempts, MAX_ATTEMPTS)} ok=${ok} ms=${Date.now() - started}`
+    )
+    return { html, finalUrl: page.url(), status }
   } finally {
-    await context.close().catch(() => {})
+    await page.close().catch(() => {})
   }
 }
 
@@ -192,13 +252,34 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, () => console.log(`[scraper-service] listening on :${PORT}`))
+server.listen(PORT, () => {
+  console.log(`[scraper-service] listening on :${PORT}`)
+  if (process.env.PREWARM !== "0") void prewarm()
+})
+
+// Warm the browser profile in the background, so the first real request is not the slow, most-likely-refused one
+async function prewarm() {
+  try {
+    const context = await getContext()
+    for (const host of ["www.ajio.com", "www.meesho.com"]) {
+      const page = await context.newPage()
+      try {
+        await warm(page, host)
+      } finally {
+        await page.close().catch(() => {})
+      }
+    }
+    console.log("[scraper-service] browser profile warmed")
+  } catch (error) {
+    console.error("[scraper-service] warm-up skipped:", error?.message ?? error)
+  }
+}
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
     server.close()
-    const browser = await browserPromise?.catch(() => null)
-    await browser?.close().catch(() => {})
+    const context = await contextPromise?.catch(() => null)
+    await context?.close().catch(() => {})
     process.exit(0)
   })
 }

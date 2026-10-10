@@ -2,13 +2,13 @@
   "name": "aura360-scraper-service",
   "version": "1.0.0",
   "private": true,
-  "description": "Renders shopping product pages in a real Chromium browser and returns the HTML. Runs on your own server (home IP).",
+  "description": "Renders shopping product pages in a real Chrome browser and returns the HTML. Runs on your own server (home IP).",
   "type": "module",
   "main": "server.mjs",
   "scripts": {
     "start": "node server.mjs"
   },
   "dependencies": {
-    "playwright": "1.49.0"
+    "patchright": "1.49.1"
   }
 }
