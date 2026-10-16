@@ -1,41 +1,128 @@
-import { Pressable, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { layout, radius, spacing, spring, useTheme } from '@/theme';
 
-type Props<T extends string> = {
-  options: { value: T; label: string }[];
+export type SegmentedOption<T extends string> = {
   value: T;
-  onChange: (value: T) => void;
+  label: string;
+  disabled?: boolean;
 };
 
-export function Segmented<T extends string>({ options, value, onChange }: Props<T>) {
-  const { colors } = useTheme();
+type Props<T extends string> = {
+  options: SegmentedOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+  /** Disables every segment. */
+  disabled?: boolean;
+  /** Spoken name of the group, e.g. "Transaction type". */
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
+};
+
+const PAD = spacing.xs;
+/** Segment height. With the track padding the control is 48pt tall and every segment is a >= 44pt target. */
+const SEGMENT_HEIGHT = layout.minTouchTarget - PAD;
+
+/**
+ * Single-choice control with a sliding thumb. Equal-width segments; labels wrap to two lines instead of truncating.
+ * Announced as a radio group: each segment is a radio with a checked state.
+ */
+export function Segmented<T extends string>({ options, value, onChange, disabled, accessibilityLabel, style }: Props<T>) {
+  const { colors, reduceMotion, elevation } = useTheme();
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const x = useSharedValue(0);
+  const placed = useRef(false);
+
+  const count = Math.max(options.length, 1);
+  const index = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
+  const segmentWidth = size ? (size.width - PAD * 2) / count : 0;
+
+  useEffect(() => {
+    if (!size) return;
+    const to = index * segmentWidth;
+    if (!placed.current || reduceMotion) {
+      placed.current = true;
+      x.value = withTiming(to, { duration: 1 });
+    } else {
+      x.value = withSpring(to, spring.gentle);
+    }
+  }, [index, segmentWidth, size, reduceMotion, x]);
+
+  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize((prev) => (prev && prev.width === width && prev.height === height ? prev : { width, height }));
+  };
+
   return (
     <View
-      accessibilityRole="tablist"
-      style={{ flexDirection: 'row', backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: 3 }}>
+      accessibilityRole="radiogroup"
+      accessibilityLabel={accessibilityLabel}
+      onLayout={onLayout}
+      style={[{ flexDirection: 'row', backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: PAD }, style]}>
+      {size ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              top: PAD,
+              left: PAD,
+              width: segmentWidth,
+              height: size.height - PAD * 2,
+              borderRadius: radius.sm,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              ...elevation(1),
+            },
+            thumbStyle,
+          ]}
+        />
+      ) : null}
       {options.map((option) => {
         const selected = option.value === value;
+        const off = disabled || option.disabled;
         return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(option.value)}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              paddingVertical: spacing.sm,
-              borderRadius: radius.sm + 1,
-              backgroundColor: selected ? colors.card : 'transparent',
-              borderWidth: selected ? 1 : 0,
-              borderColor: colors.border,
-            }}>
-            <Text variant="label" style={{ fontWeight: selected ? '600' : '500' }} muted={!selected}>
-              {option.label}
-            </Text>
-          </Pressable>
+          <View key={option.value} style={{ flex: 1 }}>
+            <PressableScale
+              accessibilityRole="radio"
+              accessibilityLabel={option.label}
+              accessibilityState={{ checked: selected, disabled: !!off }}
+              disabled={off}
+              scaleTo={1}
+              ringRadius={radius.sm}
+              hitSlop={{ top: PAD, bottom: PAD }}
+              onPress={() => {
+                if (selected) return;
+                haptics.select();
+                onChange(option.value);
+              }}
+              style={{
+                minHeight: SEGMENT_HEIGHT,
+                paddingHorizontal: spacing.sm,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <Text
+                variant="label"
+                weight={selected ? 'semiBold' : 'medium'}
+                color={selected ? 'text' : 'textSecondary'}
+                numberOfLines={2}
+                style={{ textAlign: 'center' }}>
+                {option.label}
+              </Text>
+            </PressableScale>
+          </View>
         );
       })}
     </View>
