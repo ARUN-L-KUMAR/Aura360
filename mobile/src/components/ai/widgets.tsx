@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { toIsoDay } from '@/components/ui/date-field';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
+import { Card } from '@/components/ui/card';
+import { toIsoDay } from '@/components/ui/date-field';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Text } from '@/components/ui/text';
 import { buildExercise, sessionActions, useLiveSession } from '@/features/fitness/session-store';
 import { useSaveMeal } from '@/features/food/hooks';
 import type { MealType } from '@/features/food/types';
 import { formatMoney } from '@/lib/format';
-import { moduleColors, radius, spacing } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /**
  * The assistant can answer with a fenced JSON block (```widget:workout …```). These render it as a
@@ -122,18 +123,20 @@ export function AiWidget({ widget }: { widget: Widget }) {
   }
 }
 
-function Heading({ icon, color, title, subtitle }: { icon: keyof typeof Ionicons.glyphMap; color: string; title: string; subtitle?: string }) {
+function Heading({ icon, module, title, subtitle }: { icon: keyof typeof Ionicons.glyphMap; module: ModuleKey; title: string; subtitle?: string }) {
+  const { accent } = useTheme();
+  const a = accent(module);
   return (
     <View style={styles.heading}>
-      <View style={[styles.headingIcon, { backgroundColor: `${color}22` }]}>
-        <Ionicons name={icon} size={18} color={color} />
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.headingIcon, { backgroundColor: a.soft, borderColor: a.border }]}>
+        <Ionicons name={icon} size={20} color={a.text} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="title" style={{ fontSize: 16 }} numberOfLines={2}>
+      <View style={styles.grow}>
+        <Text variant="title" accessibilityRole="header" numberOfLines={2}>
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" muted numberOfLines={2}>
+          <Text variant="caption" color="textSecondary" numberOfLines={2}>
             {subtitle}
           </Text>
         ) : null}
@@ -144,53 +147,51 @@ function Heading({ icon, color, title, subtitle }: { icon: keyof typeof Ionicons
 
 function WorkoutWidget({ data }: { data: WorkoutData }) {
   const router = useRouter();
+  const { confirm } = useNotify();
   const { session } = useLiveSession();
-  const color = moduleColors.fitness;
 
-  function start() {
-    const begin = () => {
-      sessionActions.start(
-        data.title,
-        data.exercises.map((ex) => buildExercise({ name: ex.name, sets: Number(ex.sets) || undefined, reps: ex.reps })),
-      );
-      router.navigate('/fitness');
-    };
+  async function start() {
     if (session) {
-      Alert.alert('Replace current workout?', `"${session.title}" is still in progress.`, [
-        { text: 'Keep current', style: 'cancel' },
-        { text: 'Replace', style: 'destructive', onPress: begin },
-      ]);
-    } else {
-      begin();
+      const replace = await confirm({
+        title: 'Replace current workout?',
+        message: `"${session.title}" is still in progress.`,
+        confirmLabel: 'Replace',
+        cancelLabel: 'Keep current',
+        destructive: true,
+      });
+      if (!replace) return;
     }
+    sessionActions.start(
+      data.title,
+      data.exercises.map((ex) => buildExercise({ name: ex.name, sets: Number(ex.sets) || undefined, reps: ex.reps })),
+    );
+    router.navigate('/fitness');
   }
 
   return (
-    <GlassCard glowColor={color} style={styles.card}>
-      <Heading icon="barbell-outline" color={color} title={data.title} subtitle={`${data.focus} · ~${data.durationMinutes} min`} />
+    <Card variant="tinted" accent="fitness" style={styles.card}>
+      <Heading icon="barbell-outline" module="fitness" title={data.title} subtitle={`${data.focus} · about ${data.durationMinutes} min`} />
       {data.exercises.map((ex, index) => (
-        <View key={`${ex.name}-${index}`} style={styles.row}>
-          <Text style={{ flex: 1 }} numberOfLines={2}>
+        <View key={`${ex.name}-${index}`} accessible accessibilityLabel={`${ex.name}, ${ex.sets} sets of ${ex.reps}`} style={styles.row}>
+          <Text style={styles.grow} numberOfLines={2}>
             {ex.name}
           </Text>
-          <Text muted>
+          <Text color="textSecondary" numeric>
             {ex.sets} × {ex.reps}
           </Text>
         </View>
       ))}
-      <Button title="Start this workout" onPress={start} />
-    </GlassCard>
+      <Button title="Start this workout" leftIcon="play" onPress={() => void start()} />
+    </Card>
   );
 }
 
 function MealWidget({ data }: { data: MealData }) {
   const save = useSaveMeal();
+  const notify = useNotify();
   const [logged, setLogged] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const color = moduleColors.food;
 
   async function log() {
-    setError(null);
     try {
       await save.mutateAsync({
         input: {
@@ -207,14 +208,15 @@ function MealWidget({ data }: { data: MealData }) {
         },
       });
       setLogged(true);
+      notify.success('Meal logged');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not log this meal.');
+      notify.error(e instanceof Error ? e.message : 'Could not log this meal.');
     }
   }
 
   return (
-    <GlassCard glowColor={color} style={styles.card}>
-      <Heading icon="restaurant-outline" color={color} title={data.title} subtitle={data.mealType[0].toUpperCase() + data.mealType.slice(1)} />
+    <Card variant="tinted" accent="food" style={styles.card}>
+      <Heading icon="restaurant-outline" module="food" title={data.title} subtitle={data.mealType[0].toUpperCase() + data.mealType.slice(1)} />
       <View style={styles.macroRow}>
         <Macro label="kcal" value={Math.round(data.calories)} />
         <Macro label="Protein" value={`${Math.round(data.protein)}g`} />
@@ -222,111 +224,132 @@ function MealWidget({ data }: { data: MealData }) {
         <Macro label="Fats" value={`${Math.round(data.fats)}g`} />
       </View>
       {data.items.slice(0, 8).map((item, index) => (
-        <Text key={`${item.name}-${index}`} variant="caption" muted>
+        <Text key={`${item.name}-${index}`} variant="caption" color="textSecondary">
           • {item.name}
           {item.portion ? ` (${item.portion})` : ''}
         </Text>
       ))}
-      {error ? <Text color="danger">{error}</Text> : null}
-      <Button title={logged ? 'Logged ✓' : 'Log this meal'} onPress={log} loading={save.isPending} disabled={logged} variant={logged ? 'secondary' : 'primary'} />
-    </GlassCard>
+      <Button
+        title={logged ? 'Logged' : 'Log this meal'}
+        leftIcon={logged ? 'checkmark' : 'add'}
+        onPress={() => void log()}
+        loading={save.isPending}
+        disabled={logged}
+        variant={logged ? 'secondary' : 'primary'}
+      />
+    </Card>
   );
 }
 
 function Macro({ label, value }: { label: string; value: string | number }) {
   return (
-    <View style={{ flex: 1 }}>
-      <Text variant="title" style={{ fontSize: 17 }}>
+    <View accessible accessibilityLabel={`${value} ${label}`} style={styles.grow}>
+      <Text variant="title" numeric>
         {value}
       </Text>
-      <Text variant="caption" muted>
+      <Text variant="caption" color="textSecondary">
         {label}
       </Text>
     </View>
   );
 }
 
-const FINANCE_COLORS = ['#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#3b82f6'];
+/** Category order for the budget bars; each bar takes its colour from a module accent. */
+const FINANCE_BAR_ACCENTS: ModuleKey[] = ['finance', 'time', 'food', 'fashion', 'skincare', 'fitness'];
 
 function FinanceWidget({ data }: { data: FinanceData }) {
-  const color = moduleColors.finance;
+  const { accent } = useTheme();
   const total = data.categories.reduce((sum, c) => sum + c.percentage, 0);
   const money = (value: number) => (data.currency === '₹' ? formatMoney(value) : `${data.currency}${Math.round(value).toLocaleString()}`);
 
   return (
-    <GlassCard glowColor={color} style={styles.card}>
-      <Heading icon="wallet-outline" color={color} title={data.title} subtitle={data.totalIncome ? `Based on ${money(data.totalIncome)}` : undefined} />
-      {data.categories.map((category, index) => (
-        <View key={`${category.name}-${index}`} style={{ gap: spacing.xs }}>
-          <View style={styles.row}>
-            <Text style={{ flex: 1 }} numberOfLines={1}>
-              {category.name}
-            </Text>
-            <Text style={{ fontWeight: '600' }}>
-              {data.totalIncome ? `${money((data.totalIncome * category.percentage) / 100)} · ` : ''}
-              {category.percentage}%
-            </Text>
+    <Card variant="tinted" accent="finance" style={styles.card}>
+      <Heading icon="wallet-outline" module="finance" title={data.title} subtitle={data.totalIncome ? `Based on ${money(data.totalIncome)}` : undefined} />
+      {data.categories.map((category, index) => {
+        const amount = data.totalIncome ? `${money((data.totalIncome * category.percentage) / 100)} · ` : '';
+        return (
+          <View
+            key={`${category.name}-${index}`}
+            accessible
+            accessibilityLabel={`${category.name}, ${amount}${category.percentage} percent${category.description ? `, ${category.description}` : ''}`}
+            style={styles.categoryBlock}>
+            <View style={styles.row}>
+              <Text style={styles.grow} numberOfLines={2}>
+                {category.name}
+              </Text>
+              <Text weight="semiBold" numeric>
+                {amount}
+                {category.percentage}%
+              </Text>
+            </View>
+            <ProgressBar percent={category.percentage} color={accent(FINANCE_BAR_ACCENTS[index % FINANCE_BAR_ACCENTS.length]).solid} height={spacing.sm} />
+            {category.description ? (
+              <Text variant="caption" color="textSecondary">
+                {category.description}
+              </Text>
+            ) : null}
           </View>
-          <ProgressBar percent={category.percentage} color={FINANCE_COLORS[index % FINANCE_COLORS.length]} height={6} />
-          {category.description ? (
-            <Text variant="caption" muted>
-              {category.description}
-            </Text>
-          ) : null}
-        </View>
-      ))}
+        );
+      })}
       {total !== 100 && data.categories.length > 0 ? (
-        <Text variant="caption" muted>
+        <Text variant="caption" color="textSecondary">
           Allocations add up to {total}%.
         </Text>
       ) : null}
       {data.advice ? (
-        <Text variant="caption" muted>
+        <Text variant="caption" color="textSecondary">
           {data.advice}
         </Text>
       ) : null}
-    </GlassCard>
+    </Card>
   );
 }
 
 function FashionWidget({ data }: { data: FashionData }) {
-  const color = moduleColors.fashion;
+  const { colors } = useTheme();
+  const swatches = data.palette.slice(0, 8);
   return (
-    <GlassCard glowColor={color} style={styles.card}>
-      <Heading icon="shirt-outline" color={color} title={data.title} subtitle={[data.vibe, data.occasion].filter(Boolean).join(' · ')} />
-      {data.palette.length > 0 ? (
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          {data.palette.slice(0, 8).map((swatch, index) => (
-            <View key={`${swatch.hex}-${index}`} accessible accessibilityLabel={swatch.name} style={[styles.swatch, { backgroundColor: swatch.hex }]} />
+    <Card variant="tinted" accent="fashion" style={styles.card}>
+      <Heading icon="shirt-outline" module="fashion" title={data.title} subtitle={[data.vibe, data.occasion].filter(Boolean).join(' · ')} />
+      {swatches.length > 0 ? (
+        <View accessible accessibilityLabel={`Palette: ${swatches.map((swatch) => swatch.name).join(', ')}`} style={styles.swatchRow}>
+          {swatches.map((swatch, index) => (
+            // The colour values come from the assistant's reply; the border keeps pale swatches visible.
+            <View key={`${swatch.hex}-${index}`} style={[styles.swatch, { backgroundColor: swatch.hex, borderColor: colors.borderStrong }]} />
           ))}
         </View>
       ) : null}
       {data.items.map((item, index) => (
-        <View key={`${item.name}-${index}`} style={styles.row}>
-          <View style={[styles.swatchSmall, { backgroundColor: item.colorHex || '#94a3b8' }]} />
-          <View style={{ flex: 1 }}>
-            <Text numberOfLines={1}>{item.name}</Text>
-            <Text variant="caption" muted>
+        <View key={`${item.name}-${index}`} accessible accessibilityLabel={`${item.name}, ${item.category}, ${item.color}`} style={styles.row}>
+          <View style={[styles.swatchSmall, { backgroundColor: item.colorHex || colors.cardMuted, borderColor: colors.borderStrong }]} />
+          <View style={styles.grow}>
+            <Text numberOfLines={2}>{item.name}</Text>
+            <Text variant="caption" color="textSecondary">
               {item.category} · {item.color}
             </Text>
           </View>
         </View>
       ))}
       {data.stylingTip ? (
-        <Text variant="caption" muted>
+        <Text variant="caption" color="textSecondary">
           {data.stylingTip}
         </Text>
       ) : null}
-    </GlassCard>
+    </Card>
   );
 }
 
+const SWATCH = spacing.xl + spacing.xs;
+
 const styles = StyleSheet.create({
-  card: { gap: spacing.md, padding: spacing.md + 2, marginVertical: spacing.xs },
+  card: { gap: spacing.md, marginVertical: spacing.xs },
+  grow: { flex: 1 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headingIcon: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  headingIcon: { width: layout.minTouchTarget, height: layout.minTouchTarget, borderRadius: radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, justifyContent: 'space-between' },
+  categoryBlock: { gap: spacing.xs },
   macroRow: { flexDirection: 'row', gap: spacing.md },
-  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
-  swatchSmall: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  swatch: { width: SWATCH, height: SWATCH, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth },
+  swatchSmall: { width: spacing.lg, height: spacing.lg, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth },
 });
