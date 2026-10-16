@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MessageBubble } from '@/components/ai/message-bubble';
 import { APP_BAR_HEIGHT, TopAppBar } from '@/components/ui/app-bar';
+import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconButton } from '@/components/ui/icon-button';
@@ -124,14 +125,17 @@ export default function AskAuraScreen() {
           <ChatSkeleton />
         ) : isEmpty ? (
           <ScrollView contentContainerStyle={styles.emptyContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-            <EmptyState
-              accent="ai"
-              icon="sparkles"
-              title="Ask Aura anything"
-              description="Aura can read your finances, workouts, meals, notes and more, and log things for you after you confirm. Pick a suggestion or write your own."
-              actionTitle="Write a message"
-              onAction={() => inputRef.current?.focus()}
-            />
+            {/* The one soft hero wash on this screen. */}
+            <Card gradient="ai" padding="none">
+              <EmptyState
+                accent="ai"
+                icon="sparkles"
+                title="Ask Aura anything"
+                description="Aura can read your finances, workouts, meals, notes and more, and log things for you after you confirm. Pick a suggestion or write your own."
+                actionTitle="Write a message"
+                onAction={() => inputRef.current?.focus()}
+              />
+            </Card>
           </ScrollView>
         ) : (
           <FlatList

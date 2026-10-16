@@ -8,6 +8,7 @@ import { Chip } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useNow } from '@/features/fitness/session-store';
 import { haptics } from '@/lib/haptics';
@@ -81,7 +82,7 @@ export function RestTimer() {
         </View>
         {/* One short phrase that only changes when the state does, so a screen reader announces it sparingly. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }} accessibilityLiveRegion="polite">
-          {isComplete ? <Ionicons name="checkmark-circle" size={16} color={colors.successText} /> : null}
+          {isComplete ? <SuccessCheck size={spacing.lg + spacing.xs} accessibilityLabel={null} /> : null}
           <Text variant="label" color={isComplete ? 'successText' : 'textSecondary'}>
             {status}
           </Text>

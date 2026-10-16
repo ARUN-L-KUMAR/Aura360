@@ -6,7 +6,6 @@ import Animated from 'react-native-reanimated';
 
 import { LiveRestTimer } from '@/components/fitness/live-rest-timer';
 import { RestTimer } from '@/components/fitness/rest-timer';
-import { useEnter } from '@/components/fitness/section-kit';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
@@ -15,6 +14,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -274,7 +274,7 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
   const notify = useNotify();
   const substitutes = useSubstitutes();
   const [swapOpen, setSwapOpen] = useState(false);
-  const entering = useEnter(index);
+  const motion = useListMotion(index);
 
   function openSwap() {
     setSwapOpen(true);
@@ -294,7 +294,7 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
   const lastText = last?.weight ? `last ${last.weight} kg × ${last.reps ?? '-'}` : null;
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
           <View style={{ flex: 1, gap: 2 }}>
@@ -383,12 +383,13 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
 const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string; index: number; weight: number; reps: number; done: boolean }) {
   const { accent, colors } = useTheme();
   const fitness = accent('fitness');
+  const motion = useListMotion(0);
   // Keep what is being typed as text so "7." or an empty box does not jump while editing.
   const [weightText, setWeightText] = useState(String(weight));
   const [repsText, setRepsText] = useState(String(reps));
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+    <Animated.View {...motion} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
       <Text variant="label" numeric color="textSecondary" style={{ width: spacing.xxl }}>
         {index + 1}
       </Text>
@@ -445,7 +446,7 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
         }}>
         <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={done ? fitness.onSolid : colors.textMuted} />
       </PressableScale>
-    </View>
+    </Animated.View>
   );
 });
 

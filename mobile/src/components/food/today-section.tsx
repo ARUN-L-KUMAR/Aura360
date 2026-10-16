@@ -6,12 +6,13 @@ import Animated from 'react-native-reanimated';
 import { MacroRings } from '@/components/food/macro-rings';
 import { MealRow, openMeal } from '@/components/food/meal-row';
 import { WaterCard } from '@/components/food/water-card';
-import { FAB_CLEARANCE, PeriodStepper, QueryError, useEnter } from '@/components/fitness/section-kit';
+import { FAB_CLEARANCE, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
 import { Card } from '@/components/ui/card';
 import { toIsoDay } from '@/components/ui/date-field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { ListItem } from '@/components/ui/list-item';
+import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
@@ -41,6 +42,8 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
   const meals = useMeals(day, day);
   const { targets } = useTargets();
   const { waterMl, addWater } = useWater(day);
+  const nutritionMotion = useBlockMotion(0);
+  const waterMotion = useBlockMotion(60);
 
   const list = useMemo(() => meals.data ?? [], [meals.data]);
   const totals = useMemo(() => sumMeals(list), [list]);
@@ -68,18 +71,22 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
       {loading ? <SkeletonCard media lines={1} /> : null}
 
       {!loading && !failed ? (
-        <Card style={{ gap: spacing.md }}>
-          <SectionHeader
-            title="Daily nutrition"
-            actionLabel="Edit targets"
-            actionAccessibilityLabel="Edit daily nutrition targets"
-            onActionPress={() => router.push('/food/targets' as never)}
-          />
-          <MacroRings totals={totals} targets={targets} />
-        </Card>
+        <Animated.View {...nutritionMotion}>
+          <Card gradient="food" style={{ gap: spacing.md }}>
+            <SectionHeader
+              title="Daily nutrition"
+              actionLabel="Edit targets"
+              actionAccessibilityLabel="Edit daily nutrition targets"
+              onActionPress={() => router.push('/food/targets' as never)}
+            />
+            <MacroRings totals={totals} targets={targets} />
+          </Card>
+        </Animated.View>
       ) : null}
 
-      <WaterCard waterMl={waterMl} targetMl={targets.waterMl} onAdd={addWater} />
+      <Animated.View {...waterMotion}>
+        <WaterCard key={day} waterMl={waterMl} targetMl={targets.waterMl} onAdd={addWater} />
+      </Animated.View>
 
       {loading ? <SkeletonList count={3} /> : null}
 
@@ -113,7 +120,7 @@ type SlotProps = { slot: (typeof MEAL_TYPES)[number]; items: Meal[]; day: string
 
 function MealSlotCard({ slot, items, day, index }: SlotProps) {
   const router = useRouter();
-  const entering = useEnter(index);
+  const motion = useListMotion(index);
 
   const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
   const sum = (key: 'protein' | 'carbs' | 'fats') => Math.round(items.reduce((total, meal) => total + (meal[key] ? Number(meal[key]) : 0), 0));
@@ -123,7 +130,7 @@ function MealSlotCard({ slot, items, day, index }: SlotProps) {
   const macros = protein > 0 || carbs > 0 || fats > 0 ? ` · P ${protein}g · C ${carbs}g · F ${fats}g` : '';
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card padding="none" style={{ overflow: 'hidden' }}>
         <ListItem
           title={slot.label}
@@ -143,9 +150,17 @@ function MealSlotCard({ slot, items, day, index }: SlotProps) {
           }
         />
         {items.map((meal, i) => (
-          <MealRow key={meal.id} meal={meal} divider={i < items.length - 1} />
+          <MealMotion key={meal.id}>
+            <MealRow meal={meal} divider={i < items.length - 1} />
+          </MealMotion>
         ))}
       </Card>
     </Animated.View>
   );
+}
+
+/** Fades a logged food in when it appears, out when it is deleted, and slides the rows below up to close the gap. */
+function MealMotion({ children }: { children: ReactNode }) {
+  const motion = useListMotion(0);
+  return <Animated.View {...motion}>{children}</Animated.View>;
 }

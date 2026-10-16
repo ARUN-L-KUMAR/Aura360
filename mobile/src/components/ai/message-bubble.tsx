@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, type AccessibilityActionEvent } from 'react-native';
-import Animated, { Easing, FadeIn, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { MessageMarkdown } from '@/components/ai/message-markdown';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import type { AiMessage } from '@/features/ai/types';
 import { haptics } from '@/lib/haptics';
@@ -54,27 +55,29 @@ function Dot({ index, still }: { index: number; still: boolean }) {
   useEffect(() => {
     if (still) {
       cancelAnimation(progress);
-      progress.value = 0.5;
+      progress.set(0.5);
       return;
     }
-    progress.value = 0;
-    progress.value = withDelay(
-      index * duration.fast,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: duration.slow, easing: Easing.bezier(...easing.standard) }),
-          withTiming(0, { duration: duration.slow, easing: Easing.bezier(...easing.standard) }),
+    progress.set(0);
+    progress.set(
+      withDelay(
+        index * duration.fast,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: duration.slow, easing: Easing.bezier(...easing.standard) }),
+            withTiming(0, { duration: duration.slow, easing: Easing.bezier(...easing.standard) }),
+          ),
+          -1,
+          false,
         ),
-        -1,
-        false,
       ),
     );
     return () => cancelAnimation(progress);
   }, [still, index, progress]);
 
   const animated = useAnimatedStyle(() => ({
-    opacity: 0.35 + 0.65 * progress.value,
-    transform: [{ translateY: still ? 0 : -spacing.xs * progress.value }],
+    opacity: 0.35 + 0.65 * progress.get(),
+    transform: [{ translateY: still ? 0 : -spacing.xs * progress.get() }],
   }));
 
   return <Animated.View style={[styles.dot, { backgroundColor: colors.textSecondary }, animated]} />;
@@ -93,7 +96,7 @@ function TypingDots() {
 }
 
 function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActions = false, showTime = false }: Props) {
-  const { colors, accent, reduceMotion } = useTheme();
+  const { colors, accent } = useTheme();
   const notify = useNotify();
   const [revealed, setRevealed] = useState(false);
   // Only a message that has just been created fades in; older ones (scrolled back into view) appear instantly.
@@ -125,7 +128,10 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
 
   const time = formatTime(message.createdAt);
   const timeVisible = !!time && (showTime || revealed) && !message.isStreaming;
-  const entering = fresh && !reduceMotion ? FadeIn.duration(duration.base) : undefined;
+  // Arrival: fade + a small rise, only for a message that has just been created. Entrance only: the exit and layout
+  // parts of the list motion are left out because the inverted list owns positioning and a reply grows while it streams.
+  const motion = useListMotion(0);
+  const entering = fresh && 'entering' in motion ? motion.entering : undefined;
   const timeNode = timeVisible ? (
     <Text variant="caption" color="textMuted" style={message.role === 'user' ? styles.timeEnd : undefined}>
       {time}

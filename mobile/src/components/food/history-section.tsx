@@ -4,10 +4,11 @@ import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { MealRow, openMeal } from '@/components/food/meal-row';
-import { FAB_CLEARANCE, PeriodStepper, QueryError, useEnter } from '@/components/fitness/section-kit';
+import { FAB_CLEARANCE, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -94,7 +95,8 @@ export function HistorySection({ header }: { header: ReactNode }) {
 }
 
 const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: Meal[]; index: number }) {
-  const entering = useEnter(index);
+  // Days are never added or removed from here (meals are edited on their own screen), so only the entrance is used.
+  const { entering } = useListMotion(index);
   const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
 
   return (

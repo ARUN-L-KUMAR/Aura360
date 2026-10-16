@@ -1,28 +1,14 @@
-import { useMemo } from 'react';
 import { View } from 'react-native';
-import { FadeInDown } from 'react-native-reanimated';
 
 import { Card } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { duration, layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
+import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /** Bottom padding for scroll content that has a floating action button (56pt button + 16pt inset + breathing room). */
 export const FAB_CLEARANCE = spacing.xxxl + spacing.xxl;
-
-/**
- * Subtle list-item entrance (fade + 12pt rise). Returns undefined when the user prefers reduced motion, so callers can
- * pass it straight to `entering`. Only the first few rows stagger so long lists do not feel slow.
- */
-export function useEnter(index = 0) {
-  const { reduceMotion } = useTheme();
-  return useMemo(
-    () => (reduceMotion ? undefined : FadeInDown.duration(duration.base).delay(Math.min(index, 6) * 40)),
-    [reduceMotion, index],
-  );
-}
 
 type StepperProps = {
   /** Current period ("Today", "October 2026"). */

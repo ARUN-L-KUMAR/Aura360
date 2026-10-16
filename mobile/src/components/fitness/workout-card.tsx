@@ -4,10 +4,10 @@ import { memo } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { useEnter } from '@/components/fitness/section-kit';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { useDeleteFitnessEntry } from '@/features/fitness/hooks';
 import { workoutTitle, type FitnessEntry } from '@/features/fitness/types';
@@ -23,7 +23,7 @@ export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0 }: Props
   const router = useRouter();
   const notify = useNotify();
   const deleteMutation = useDeleteFitnessEntry();
-  const entering = useEnter(index);
+  const motion = useListMotion(index);
 
   const exercises = entry.exercises ?? [];
   const title = workoutTitle(entry);
@@ -54,7 +54,7 @@ export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0 }: Props
   };
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
           <View style={{ flex: 1, gap: spacing.xs }}>

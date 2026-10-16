@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { FitnessSummary } from '@/components/fitness/fitness-summary';
 import { FAB_CLEARANCE, QueryError } from '@/components/fitness/section-kit';
@@ -8,6 +9,7 @@ import { WorkoutCard } from '@/components/fitness/workout-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useBlockMotion } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -34,6 +36,8 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
   const readiness = useReadiness();
   const { session } = useLiveSession();
   const fitness = accent('fitness');
+  const heroMotion = useBlockMotion(0);
+  const readinessMotion = useBlockMotion(60);
 
   const list = useMemo(() => entries.data ?? [], [entries.data]);
   const workouts = useMemo(() => list.filter(isWorkout), [list]);
@@ -53,51 +57,55 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
     <Screen onRefresh={refresh} refreshing={entries.isRefetching || readiness.isRefetching} contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}>
       {header}
 
-      <Card variant="tinted" accent="fitness" style={{ gap: spacing.md }}>
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="caption" weight="semiBold" style={{ color: fitness.text }}>
-            TODAY
-          </Text>
-          <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
-        </View>
-        <Button title={session ? 'Resume workout' : 'Start workout'} leftIcon={session ? 'play' : 'barbell-outline'} onPress={onOpenTrain} />
-      </Card>
+      <Animated.View {...heroMotion}>
+        <Card variant="tinted" accent="fitness" gradient="fitness" style={{ gap: spacing.md }}>
+          <View style={{ gap: spacing.xs }}>
+            <Text variant="caption" weight="semiBold" style={{ color: fitness.text }}>
+              TODAY
+            </Text>
+            <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
+          </View>
+          <Button title={session ? 'Resume workout' : 'Start workout'} leftIcon={session ? 'play' : 'barbell-outline'} onPress={onOpenTrain} />
+        </Card>
+      </Animated.View>
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="Recovery and readiness" />
-        {readiness.isPending ? (
-          <SkeletonGroup label="Checking readiness" style={{ gap: spacing.sm }}>
-            <Skeleton shape="line" width="30%" height={spacing.xl} />
-            <Skeleton shape="line" height={spacing.sm} />
-            <Skeleton shape="line" width="70%" />
-          </SkeletonGroup>
-        ) : null}
-        {readiness.data ? (
-          <View style={{ gap: spacing.md }}>
-            <View accessible accessibilityLabel={`Readiness ${readiness.data.score} out of 100, ${readiness.data.status}`} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
-              <Text variant="headline" numeric color={tone.text}>
-                {readiness.data.score}
-              </Text>
-              <Ionicons name={tone.icon} size={20} color={colors[tone.text]} />
-              <Text variant="label" color="textSecondary" style={{ flexShrink: 1 }}>
-                {readiness.data.status}
+      <Animated.View {...readinessMotion}>
+        <Card style={{ gap: spacing.md }}>
+          <SectionHeader title="Recovery and readiness" />
+          {readiness.isPending ? (
+            <SkeletonGroup label="Checking readiness" style={{ gap: spacing.sm }}>
+              <Skeleton shape="line" width="30%" height={spacing.xl} />
+              <Skeleton shape="line" height={spacing.sm} />
+              <Skeleton shape="line" width="70%" />
+            </SkeletonGroup>
+          ) : null}
+          {readiness.data ? (
+            <View style={{ gap: spacing.md }}>
+              <View accessible accessibilityLabel={`Readiness ${readiness.data.score} out of 100, ${readiness.data.status}`} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
+                <Text variant="headline" numeric color={tone.text}>
+                  {readiness.data.score}
+                </Text>
+                <Ionicons name={tone.icon} size={20} color={colors[tone.text]} />
+                <Text variant="label" color="textSecondary" style={{ flexShrink: 1 }}>
+                  {readiness.data.status}
+                </Text>
+              </View>
+              <ProgressBar percent={readiness.data.score} color={colors[tone.color]} />
+              <Text variant="caption" color="textSecondary">
+                {readiness.data.recommendation}
               </Text>
             </View>
-            <ProgressBar percent={readiness.data.score} color={colors[tone.color]} />
-            <Text variant="caption" color="textSecondary">
-              {readiness.data.recommendation}
-            </Text>
-          </View>
-        ) : null}
-        {readiness.isError && !readiness.data ? (
-          <View style={{ gap: spacing.sm, alignItems: 'flex-start' }}>
-            <Text variant="body" color="textSecondary">
-              Readiness is unavailable right now.
-            </Text>
-            <Button title="Try again" variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
-          </View>
-        ) : null}
-      </Card>
+          ) : null}
+          {readiness.isError && !readiness.data ? (
+            <View style={{ gap: spacing.sm, alignItems: 'flex-start' }}>
+              <Text variant="body" color="textSecondary">
+                Readiness is unavailable right now.
+              </Text>
+              <Button title="Try again" variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
+            </View>
+          ) : null}
+        </Card>
+      </Animated.View>
 
       {entries.isError ? <QueryError error={entries.error} hasData={!!entries.data} retrying={entries.isFetching} onRetry={() => entries.refetch()} /> : null}
 

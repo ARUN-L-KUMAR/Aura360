@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup, ChipRow } from '@/components/ui/chip';
+import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
@@ -18,7 +20,7 @@ import { COACH_EQUIPMENT, COACH_GOALS, COACH_LEVELS, type CoachDay, type CoachPr
 import { ApiError } from '@/lib/api';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
-import { spacing, useTheme } from '@/theme';
+import { layout, spacing, useTheme } from '@/theme';
 
 const PROGRAM_KEY = 'aura.fitness.program';
 const DAY_OPTIONS = [2, 3, 4, 5, 6].map((value) => ({ value: String(value), label: String(value) }));
@@ -29,6 +31,8 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
   const recent = useRecentFitness();
   const { session } = useLiveSession();
   const generate = useGenerateSplit();
+  const builderMotion = useBlockMotion(0);
+  const planMotion = useListMotion(0);
 
   const [goal, setGoal] = useState(COACH_GOALS[0]);
   const [equipment, setEquipment] = useState(COACH_EQUIPMENT[0]);
@@ -110,41 +114,43 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
     <Screen>
       {header}
 
-      <Card style={{ gap: spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Ionicons name="sparkles" size={20} color={accent('ai').text} />
-          <Text variant="title" accessibilityRole="header">
-            Build my plan
-          </Text>
-        </View>
+      <Animated.View {...builderMotion}>
+        <Card style={{ gap: spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Ionicons name="sparkles" size={20} color={accent('ai').text} />
+            <Text variant="title" accessibilityRole="header">
+              Build my plan
+            </Text>
+          </View>
 
-        <Field label="Goal">
-          <ChipGroup>
-            {COACH_GOALS.map((value) => (
-              <Chip key={value} label={value} selected={goal === value} accent="fitness" onPress={() => setGoal(value)} />
-            ))}
-          </ChipGroup>
-        </Field>
-        <Field label="Equipment">
-          <ChipGroup>
-            {COACH_EQUIPMENT.map((value) => (
-              <Chip key={value} label={value} selected={equipment === value} accent="fitness" onPress={() => setEquipment(value)} />
-            ))}
-          </ChipGroup>
-        </Field>
-        <Field label="Experience">
-          <ChipGroup>
-            {COACH_LEVELS.map((value) => (
-              <Chip key={value} label={value} selected={level === value} accent="fitness" onPress={() => setLevel(value)} />
-            ))}
-          </ChipGroup>
-        </Field>
-        <Field label="Days per week">
-          <Segmented options={DAY_OPTIONS} value={String(days)} onChange={(value) => setDays(Number(value))} accessibilityLabel="Days per week" />
-        </Field>
+          <Field label="Goal">
+            <ChipGroup>
+              {COACH_GOALS.map((value) => (
+                <Chip key={value} label={value} selected={goal === value} accent="fitness" onPress={() => setGoal(value)} />
+              ))}
+            </ChipGroup>
+          </Field>
+          <Field label="Equipment">
+            <ChipGroup>
+              {COACH_EQUIPMENT.map((value) => (
+                <Chip key={value} label={value} selected={equipment === value} accent="fitness" onPress={() => setEquipment(value)} />
+              ))}
+            </ChipGroup>
+          </Field>
+          <Field label="Experience">
+            <ChipGroup>
+              {COACH_LEVELS.map((value) => (
+                <Chip key={value} label={value} selected={level === value} accent="fitness" onPress={() => setLevel(value)} />
+              ))}
+            </ChipGroup>
+          </Field>
+          <Field label="Days per week">
+            <Segmented options={DAY_OPTIONS} value={String(days)} onChange={(value) => setDays(Number(value))} accessibilityLabel="Days per week" />
+          </Field>
 
-        <Button title={program ? 'Build a new plan' : 'Build my plan'} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
-      </Card>
+          <Button title={program ? 'Build a new plan' : 'Build my plan'} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
+        </Card>
+      </Animated.View>
 
       {generate.isPending ? (
         <View style={{ gap: spacing.sm }}>
@@ -155,85 +161,88 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
         </View>
       ) : null}
 
-      {program && day ? (
-        <>
-          <Card variant="tinted" accent="fitness" style={{ gap: spacing.sm }}>
-            <Text variant="title" accessibilityRole="header">
-              {program.programName}
-            </Text>
-            <Text variant="caption" color="textSecondary">
-              {[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ')}
-            </Text>
-            {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
-            {program.progressiveOverloadTip ? (
-              <Text variant="caption" color="textSecondary">
-                Progression: {program.progressiveOverloadTip}
-              </Text>
-            ) : null}
-            {program.recoveryStrategy ? (
-              <Text variant="caption" color="textSecondary">
-                Recovery: {program.recoveryStrategy}
-              </Text>
-            ) : null}
-          </Card>
-
-          <ChipRow>
-            {program.days.map((item, index) => (
-              <Chip
-                key={item.dayNumber}
-                label={item.isRestDay ? `Day ${item.dayNumber} · rest` : `Day ${item.dayNumber}`}
-                selected={index === dayIndex}
-                accent="fitness"
-                onPress={() => setDayIndex(index)}
-              />
-            ))}
-          </ChipRow>
-
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader
-              title={day.name}
-              subtitle={`${day.focus}${day.targetDurationMinutes ? ` · about ${day.targetDurationMinutes} min` : ''}`}
-            />
-
-            {day.isRestDay || day.exercises.length === 0 ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
-                <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
-                  Rest and recovery day. Walk, stretch and sleep well.
+      {program ? (
+        <Animated.View {...planMotion} style={{ gap: layout.sectionGap }}>
+          {day ? (
+            <>
+              <Card variant="tinted" accent="fitness" style={{ gap: spacing.sm }}>
+                <Text variant="title" accessibilityRole="header">
+                  {program.programName}
                 </Text>
-              </View>
-            ) : (
-              <>
-                {day.exercises.map((exercise) => (
-                  <View key={exercise.name} accessible style={{ gap: 2 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
-                      <Text variant="body" weight="semiBold" style={{ flex: 1 }}>
-                        {exercise.name}
-                      </Text>
-                      <Text variant="body" numeric color="textSecondary">
-                        {exercise.sets ?? 3} × {exercise.reps ?? 10}
-                      </Text>
-                    </View>
-                    <Text variant="caption" color="textSecondary">
-                      {[exercise.category, exercise.restSeconds ? `${exercise.restSeconds}s rest` : null, exercise.rpe ? `RPE ${exercise.rpe}` : null]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </Text>
-                    {exercise.notes ? (
-                      <Text variant="caption" color="textMuted">
-                        {exercise.notes}
-                      </Text>
-                    ) : null}
-                  </View>
-                ))}
-                <Button title="Start this workout" leftIcon="play" haptic={false} onPress={() => startDay(day)} />
-              </>
-            )}
-          </Card>
-        </>
-      ) : null}
+                <Text variant="caption" color="textSecondary">
+                  {[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ')}
+                </Text>
+                {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
+                {program.progressiveOverloadTip ? (
+                  <Text variant="caption" color="textSecondary">
+                    Progression: {program.progressiveOverloadTip}
+                  </Text>
+                ) : null}
+                {program.recoveryStrategy ? (
+                  <Text variant="caption" color="textSecondary">
+                    Recovery: {program.recoveryStrategy}
+                  </Text>
+                ) : null}
+              </Card>
 
-      {program ? <Button title="Clear saved plan" variant="ghost" size="sm" fullWidth={false} onPress={clearPlan} style={{ alignSelf: 'center' }} /> : null}
+              <ChipRow>
+                {program.days.map((item, index) => (
+                  <Chip
+                    key={item.dayNumber}
+                    label={item.isRestDay ? `Day ${item.dayNumber} · rest` : `Day ${item.dayNumber}`}
+                    selected={index === dayIndex}
+                    accent="fitness"
+                    onPress={() => setDayIndex(index)}
+                  />
+                ))}
+              </ChipRow>
+
+              <Card style={{ gap: spacing.md }}>
+                <SectionHeader
+                  title={day.name}
+                  subtitle={`${day.focus}${day.targetDurationMinutes ? ` · about ${day.targetDurationMinutes} min` : ''}`}
+                />
+
+                {day.isRestDay || day.exercises.length === 0 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
+                    <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
+                      Rest and recovery day. Walk, stretch and sleep well.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {day.exercises.map((exercise) => (
+                      <View key={exercise.name} accessible style={{ gap: 2 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
+                          <Text variant="body" weight="semiBold" style={{ flex: 1 }}>
+                            {exercise.name}
+                          </Text>
+                          <Text variant="body" numeric color="textSecondary">
+                            {exercise.sets ?? 3} × {exercise.reps ?? 10}
+                          </Text>
+                        </View>
+                        <Text variant="caption" color="textSecondary">
+                          {[exercise.category, exercise.restSeconds ? `${exercise.restSeconds}s rest` : null, exercise.rpe ? `RPE ${exercise.rpe}` : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                        {exercise.notes ? (
+                          <Text variant="caption" color="textMuted">
+                            {exercise.notes}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ))}
+                    <Button title="Start this workout" leftIcon="play" haptic={false} onPress={() => startDay(day)} />
+                  </>
+                )}
+              </Card>
+            </>
+          ) : null}
+          <Button title="Clear saved plan" variant="ghost" size="sm" fullWidth={false} onPress={clearPlan} style={{ alignSelf: 'center' }} />
+        </Animated.View>
+      ) : null}
     </Screen>
   );
 }
