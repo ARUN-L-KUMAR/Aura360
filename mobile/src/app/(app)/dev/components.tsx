@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,10 @@ import { Screen } from '@/components/ui/screen';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
+import { SuccessCheck } from '@/components/ui/success-check';
+import { Toggle } from '@/components/ui/toggle';
+import { useBlockMotion, useListMotion } from '@/components/ui/motion';
+import { haptics } from '@/lib/haptics';
 import { Skeleton, SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs } from '@/components/ui/tabs';
@@ -376,6 +381,94 @@ function Categories() {
   );
 }
 
+function MotionRow({ index, label, onRemove }: { index: number; label: string; onRemove: () => void }) {
+  const motion = useListMotion(index);
+  return (
+    <Animated.View {...motion}>
+      <ListItem title={label} subtitle="Tap to remove: the row fades out and the list closes the gap" icon="albums-outline" onPress={onRemove} />
+    </Animated.View>
+  );
+}
+
+function Motion() {
+  const [on, setOn] = useState(false);
+  const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [rows, setRows] = useState([1, 2, 3, 4]);
+  const [picked, setPicked] = useState(false);
+  const hero = useBlockMotion();
+  return (
+    <View style={{ gap: spacing.md }}>
+      <Text variant="label">Toggle (slides on a spring, cross-fades the track)</Text>
+      <Wrap>
+        <Toggle value={on} onValueChange={setOn} accessibilityLabel="Demo switch" />
+        <Toggle value={!on} onValueChange={(v) => setOn(!v)} accent="fitness" accessibilityLabel="Fitness switch" />
+        <Toggle value disabled onValueChange={() => {}} accessibilityLabel="Disabled switch" />
+      </Wrap>
+      <Text variant="label">Success check</Text>
+      <Wrap>
+        <SuccessCheck visible={done} />
+        <SuccessCheck visible={done} accent="food" size={32} />
+        <Button
+          title={done ? 'Reset' : 'Complete'}
+          size="sm"
+          variant="secondary"
+          onPress={() => {
+            if (!done) haptics.success();
+            setDone(!done);
+          }}
+        />
+      </Wrap>
+      <Text variant="label">Button success state</Text>
+      <Button
+        title="Save changes"
+        loading={saving}
+        success={saved}
+        onPress={() => {
+          setSaving(true);
+          setTimeout(() => {
+            setSaving(false);
+            setSaved(true);
+            haptics.success();
+            setTimeout(() => setSaved(false), 1400);
+          }, 900);
+        }}
+      />
+      <Text variant="label">Chip pop</Text>
+      <Wrap>
+        <Chip label="Select me" selected={picked} onPress={() => setPicked(!picked)} />
+      </Wrap>
+      <Text variant="label">List enter, exit and reflow</Text>
+      <Card padding="none">
+        {rows.map((row, index) => (
+          <MotionRow key={row} index={index} label={`Row ${row}`} onRemove={() => setRows((list) => list.filter((r) => r !== row))} />
+        ))}
+      </Card>
+      <Button title="Reset rows" size="sm" variant="tertiary" onPress={() => setRows([1, 2, 3, 4])} />
+      <Text variant="label">Hero gradient and elevation</Text>
+      <Animated.View {...hero}>
+        <Card gradient="finance" variant="outlined">
+          <Text variant="title">Money on hand</Text>
+          <Text variant="headline" numeric>
+            ₹48,250
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            Soft accent wash fading into the surface. One per screen.
+          </Text>
+        </Card>
+      </Animated.View>
+      <Wrap>
+        {([1, 2, 3, 4] as const).map((level) => (
+          <Card key={level} padding="sm" variant="elevated" style={{ minWidth: 72 }}>
+            <Text variant="caption">Level {level}</Text>
+          </Card>
+        ))}
+      </Wrap>
+    </View>
+  );
+}
+
 function Navigation() {
   const [tab, setTab] = useState('all');
   const [view, setView] = useState('grid');
@@ -460,6 +553,9 @@ export default function ComponentGallery() {
         </Section>
         <Section title="Overlays and notifications">
           <Overlays />
+        </Section>
+        <Section title="Motion" note="Turn on Reduce Motion in the phone's accessibility settings to see everything switch to instant or fade-only.">
+          <Motion />
         </Section>
         <Section title="Category template">
           <Categories />

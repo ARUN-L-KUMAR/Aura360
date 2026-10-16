@@ -76,13 +76,35 @@ One family, Inter, weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/the
 [`motion.ts`](src/theme/motion.ts): `duration` fast 150 / base 250 / slow 400 ms; `easing` standard / decelerate /
 accelerate (cubic-bezier points for `Easing.bezier`); `spring` gentle / bouncy; `pressScale` 0.97.
 
-Rules: animate only `transform` and `opacity`; read `useTheme().reduceMotion` (or `useReducedMotion()`) and replace
-movement with an instant or fade-only change when it is on; use skeleton shimmer, not spinners, for content loading.
+**Rules:** animate only `transform` and `opacity`, on the UI thread (Reanimated); never animate width, height, position or
+colour (layer two views and cross-fade, or scale a full-size view instead). Honour `useTheme().reduceMotion` (or
+`useReducedMotion()`): replace movement with an instant or fade-only change. Use skeleton shimmer, not spinners, for
+content loading. Shadows come only from `useTheme().elevation(level)`.
+
+**Shared motion kit** ([`components/ui/motion.ts`](src/components/ui/motion.ts) and friends), use these instead of writing
+new `FadeInDown` code:
+
+| Piece | Use |
+|---|---|
+| `useListMotion(index)` | Spread `{...useListMotion(i)}` on an `Animated.View` row: staggered fade-and-rise for the first 8 rows, quick fade-out when removed, and the rows below close the gap. Single-column lists only. In a FlatList the cell moves, not the row, so use the list's `itemLayoutAnimation` for reflow. In grids use the `exiting` fade only. |
+| `useBlockMotion(delay)` | One block (a summary card, an empty state) fades in once. |
+| `usePop(active)` | A small scale pop when a control becomes selected or deselected (chips, tab icons). |
+| `SuccessCheck` | Disc pops in, tick fades in. Trigger on a state change only, and pair it with `haptics.success()` unless a success toast already fires one. |
+| `Toggle` | The app switch (spring thumb, cross-fading track, selection haptic, 44pt hit area). Replaces the native `Switch`. |
+| `Button success` | Optional prop that swaps the label for a check briefly. |
+| `Gradient` / `Card gradient="module"` | A soft accent wash for one hero card per screen. Never on rows, buttons or behind long text. |
+
+**Page transitions** are set in the layouts: pushes use the platform default, modals slide up from the bottom (Android) or
+use the iOS sheet, tabs cross-fade, and the signed-in / signed-out switch fades. All become a fade or nothing with reduce
+motion. Shared-element transitions are not used: they are experimental in this Reanimated version.
 
 ## Glass
 
-Blur + translucent `glass` + `glassBorder` is for overlays only: tab bar, sheets, the floating widget, headers. Fall back
-to `glassSolid` when blur is unavailable or `useTheme().reduceTransparency` is true. Never use it on content cards.
+Blur + translucent `glass` + `glassBorder` is for overlays only: tab bar, top app bar, sheets and dialogs (opt-in `glass`), the
+floating widget. It renders the system glass effect on iOS 26+ (`useGlassSupported()`); Android and older iOS get the opaque
+`glassSolid` surface with the same hairline border, as does any device with "Reduce transparency" on. Real blur on those
+platforms would need `expo-blur` (a native module, so a rebuild). Contrast is checked against `glassSolid`. Never use glass on
+content cards.
 
 ## Components
 
@@ -151,5 +173,5 @@ as a `header` prop and render it inside their own list, so the header scrolls wi
 | 1. Tokens | Done: colour, type, spacing, radius, elevation, motion, reduced-motion / transparency, contrast + token checks |
 | 2. Components | Done (built, typechecked and bundled; not yet exercised on a device) |
 | 3. Screens | Done: every screen migrated; 0 hard-coded colours / fonts / off-scale spacing (baseline is empty), no `Alert.alert` left |
-| 4. Motion and glass | Not started |
+| 4. Motion and glass | Done (kit, transitions, per-screen motion, audit); shared-element transitions skipped; needs a device pass |
 | 5. Quality | Not started |
