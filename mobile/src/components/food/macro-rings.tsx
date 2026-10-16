@@ -1,36 +1,42 @@
 import { View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 
+import { withAlpha } from '@/components/ui/card';
+import { Tag } from '@/components/ui/chip';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import { Text } from '@/components/ui/text';
 import type { MacroTargets, MealTotals } from '@/features/food/types';
 import { radius, spacing, useTheme } from '@/theme';
 
-const SIZE = 190;
-const STROKE = 13;
-const GAP = 5;
+const SIZE = 208;
+const STROKE = 10;
+const GAP = 4;
 
 type Ring = { key: string; label: string; color: string; current: number; target: number; unit: string };
 
+/** Four concentric rings (calories outermost) plus a tile per macro. Colours come from the theme, never literals. */
 export function MacroRings({ totals, targets }: { totals: MealTotals; targets: MacroTargets }) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { colors, accent } = useTheme();
 
   const rings: Ring[] = [
-    { key: 'calories', label: 'Calories', color: '#f97316', current: totals.calories, target: targets.calories, unit: 'kcal' },
-    { key: 'protein', label: 'Protein', color: '#3b82f6', current: totals.protein, target: targets.protein, unit: 'g' },
-    { key: 'carbs', label: 'Carbs', color: '#eab308', current: totals.carbs, target: targets.carbs, unit: 'g' },
-    { key: 'fats', label: 'Fats', color: '#ec4899', current: totals.fats, target: targets.fats, unit: 'g' },
+    { key: 'calories', label: 'Calories', color: accent('food').solid, current: totals.calories, target: targets.calories, unit: 'kcal' },
+    { key: 'protein', label: 'Protein', color: colors.secondary, current: totals.protein, target: targets.protein, unit: 'g' },
+    { key: 'carbs', label: 'Carbs', color: colors.success, current: totals.carbs, target: targets.carbs, unit: 'g' },
+    { key: 'fats', label: 'Fats', color: colors.tertiary, current: totals.fats, target: targets.fats, unit: 'g' },
   ];
 
   const remaining = Math.round(targets.calories - totals.calories);
+  const over = remaining < 0;
   const calPercent = targets.calories > 0 ? Math.round((totals.calories / targets.calories) * 100) : 0;
 
   return (
     <View style={{ gap: spacing.lg }}>
       <View
-        style={{ alignItems: 'center', justifyContent: 'center' }}
+        style={{ alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}
         accessible
-        accessibilityLabel={rings.map((r) => `${r.label} ${Math.round(r.current)} of ${r.target} ${r.unit}`).join(', ')}>
+        accessibilityLabel={`${over ? `${Math.abs(remaining)} kilocalories over` : `${remaining} kilocalories remaining`}. ${rings
+          .map((r) => `${r.label} ${Math.round(r.current)} of ${r.target} ${r.unit === 'g' ? 'grams' : 'kilocalories'}`)
+          .join(', ')}`}>
         <View style={{ transform: [{ rotate: '-90deg' }] }}>
           <Svg width={SIZE} height={SIZE}>
             {rings.map((ring, index) => {
@@ -39,15 +45,7 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
               const progress = ring.target > 0 ? Math.min(1, ring.current / ring.target) : 0;
               return (
                 <G key={ring.key}>
-                  <Circle
-                    cx={SIZE / 2}
-                    cy={SIZE / 2}
-                    r={ringRadius}
-                    stroke={ring.color}
-                    strokeOpacity={isDark ? 0.16 : 0.12}
-                    strokeWidth={STROKE}
-                    fill="none"
-                  />
+                  <Circle cx={SIZE / 2} cy={SIZE / 2} r={ringRadius} stroke={withAlpha(ring.color, 0.2)} strokeWidth={STROKE} fill="none" />
                   <Circle
                     cx={SIZE / 2}
                     cy={SIZE / 2}
@@ -65,78 +63,51 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
           </Svg>
         </View>
 
-        <View style={{ position: 'absolute', alignItems: 'center', gap: 2 }}>
-          <Text variant="display" color={remaining < 0 ? 'danger' : 'text'} style={{ fontSize: 28, lineHeight: 32 }}>
+        {/* Centre text sits inside the innermost ring (about 100pt across). */}
+        <View style={{ position: 'absolute', alignItems: 'center', maxWidth: 96 }}>
+          <Text variant="headline" numeric color={over ? 'errorText' : 'text'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             {Math.abs(remaining).toLocaleString()}
           </Text>
-          <Text variant="caption" muted style={{ fontWeight: '500' }}>
-            {remaining < 0 ? 'kcal over' : 'kcal remaining'}
+          <Text variant="caption" color="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
+            {over ? 'kcal over' : 'kcal left'}
           </Text>
-          <View
-            style={{
-              marginTop: 4,
-              paddingHorizontal: 8,
-              paddingVertical: 2,
-              borderRadius: radius.pill,
-              backgroundColor: `${rings[0].color}20`,
-            }}>
-            <Text variant="caption" style={{ color: rings[0].color, fontWeight: '700', fontSize: 11 }}>
-              {calPercent}% goal
-            </Text>
-          </View>
         </View>
       </View>
 
-      {/* Macro Pills Grid */}
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <View style={{ alignSelf: 'center' }}>
+        <Tag label={`${calPercent}% of calorie goal`} accent="food" size="md" />
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {rings.map((ring) => {
           const pct = ring.target > 0 ? Math.min(100, Math.round((ring.current / ring.target) * 100)) : 0;
           return (
             <View
               key={ring.key}
+              accessible
+              accessibilityLabel={`${ring.label}: ${Math.round(ring.current)} of ${ring.target} ${ring.unit === 'g' ? 'grams' : 'kilocalories'}, ${pct} percent`}
               style={{
-                flex: 1,
-                alignItems: 'center',
-                paddingVertical: spacing.sm,
-                paddingHorizontal: 4,
+                flexGrow: 1,
+                flexBasis: 72,
+                gap: spacing.xs,
+                padding: spacing.sm,
                 borderRadius: radius.md,
-                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                borderWidth: 1,
-                borderColor: `${ring.color}25`,
+                backgroundColor: colors.cardMuted,
               }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ring.color }} />
-                <Text variant="caption" muted style={{ fontSize: 11, fontWeight: '600' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                <View style={{ width: spacing.sm, height: spacing.sm, borderRadius: radius.pill, backgroundColor: ring.color }} />
+                <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1} style={{ flexShrink: 1 }}>
                   {ring.label}
                 </Text>
               </View>
-              <Text variant="label" style={{ fontWeight: '700', fontSize: 13 }}>
+              <Text variant="label" weight="semiBold" numeric numberOfLines={1}>
                 {Math.round(ring.current)}
-                <Text variant="caption" color={colors.textMuted} style={{ fontSize: 10 }}>
-                  {ring.unit === 'g' ? 'g' : ''}
-                </Text>
+                {ring.unit === 'g' ? 'g' : ''}
               </Text>
-              {/* Mini progress bar */}
-              <View
-                style={{
-                  width: '80%',
-                  height: 3,
-                  borderRadius: 1.5,
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                  marginTop: 4,
-                  overflow: 'hidden',
-                }}>
-                <View
-                  style={{
-                    width: `${pct}%`,
-                    height: '100%',
-                    borderRadius: 1.5,
-                    backgroundColor: ring.color,
-                  }}
-                />
-              </View>
-              <Text variant="caption" muted style={{ fontSize: 10, marginTop: 2 }}>
-                /{ring.target}
+              <ProgressBar percent={pct} color={ring.color} height={4} />
+              <Text variant="caption" numeric color="textSecondary" numberOfLines={1}>
+                of {ring.target}
+                {ring.unit === 'g' ? 'g' : ''}
               </Text>
             </View>
           );
@@ -145,4 +116,3 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
     </View>
   );
 }
-

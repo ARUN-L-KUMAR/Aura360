@@ -1,33 +1,38 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { sessionActions } from '@/features/fitness/session-store';
 import { formatDuration } from '@/features/fitness/stats';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 const SIZE = 120;
 const STROKE = 10;
+/** The only point, besides starting and ending, where the live region changes its message. */
+const HEADS_UP_SECONDS = 10;
 
 /** Countdown ring shown during a live workout; driven by the session store (see session-store.ts). */
 export function LiveRestTimer({ remaining, total }: { remaining: number; total: number }) {
-  const { colors } = useTheme();
+  const { accent } = useTheme();
+  const fitness = accent('fitness');
   const radiusPx = (SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radiusPx;
   const progress = total > 0 ? Math.min(1, remaining / total) : 0;
+  const almostDone = remaining <= HEADS_UP_SECONDS;
 
   return (
-    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+    <Card variant="tinted" accent="fitness" style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg }}>
       <View style={{ alignItems: 'center', justifyContent: 'center' }} accessible accessibilityLabel={`Rest, ${remaining} seconds left`}>
         <View style={{ transform: [{ rotate: '-90deg' }] }}>
           <Svg width={SIZE} height={SIZE}>
-            <Circle cx={SIZE / 2} cy={SIZE / 2} r={radiusPx} stroke={moduleColors.fitness} strokeOpacity={0.18} strokeWidth={STROKE} fill="none" />
+            <Circle cx={SIZE / 2} cy={SIZE / 2} r={radiusPx} stroke={fitness.border} strokeWidth={STROKE} fill="none" />
             <Circle
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={radiusPx}
-              stroke={moduleColors.fitness}
+              stroke={fitness.solid}
               strokeWidth={STROKE}
               strokeLinecap="round"
               fill="none"
@@ -37,55 +42,26 @@ export function LiveRestTimer({ remaining, total }: { remaining: number; total: 
           </Svg>
         </View>
         <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text variant="title">{formatDuration(remaining)}</Text>
-          <Text variant="caption" muted>
+          <Text variant="title" numeric>
+            {formatDuration(remaining)}
+          </Text>
+          <Text variant="caption" color="textSecondary">
             rest
           </Text>
         </View>
       </View>
 
-      <View style={{ flex: 1, gap: spacing.sm }}>
+      <View style={{ flex: 1, flexBasis: 160, gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <RestButton label="-15s" onPress={() => sessionActions.adjustRest(-15)} />
-          <RestButton label="+15s" onPress={() => sessionActions.adjustRest(15)} />
+          <Button title="-15s" variant="tertiary" accessibilityLabel="Subtract 15 seconds" style={{ flex: 1 }} onPress={() => sessionActions.adjustRest(-15)} />
+          <Button title="+15s" variant="tertiary" accessibilityLabel="Add 15 seconds" style={{ flex: 1 }} onPress={() => sessionActions.adjustRest(15)} />
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => sessionActions.skipRest()}
-          style={({ pressed }) => ({
-            alignItems: 'center',
-            paddingVertical: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: moduleColors.fitness,
-            opacity: pressed ? 0.85 : 1,
-          })}>
-          <Text variant="label" style={{ color: '#ffffff', fontWeight: '600' }}>
-            Skip rest
-          </Text>
-        </Pressable>
-        <Text variant="caption" color={colors.textMuted}>
-          Next set when you are ready.
+        <Button title="Skip rest" onPress={() => sessionActions.skipRest()} />
+        {/* Polite live region: spoken when the rest starts and once more when it is nearly over, never every second. */}
+        <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
+          {almostDone ? 'Almost done. Get ready for your next set.' : 'Next set when you are ready.'}
         </Text>
       </View>
     </Card>
-  );
-}
-
-function RestButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const { colors } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: spacing.md,
-        borderRadius: radius.md,
-        backgroundColor: colors.cardMuted,
-        opacity: pressed ? 0.7 : 1,
-      })}>
-      <Text variant="label">{label}</Text>
-    </Pressable>
   );
 }

@@ -1,19 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useDeleteMeal, useSaveMeal } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type Meal, type MealInput, type MealType } from '@/features/food/types';
 import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 
 function parseMeal(raw?: string): Meal | null {
   try {
@@ -32,10 +34,12 @@ function toOptionalNumber(text: string): number | undefined | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+type NumberKey = 'quantity' | 'calories' | 'protein' | 'carbs' | 'fats' | 'fiber' | 'sugar';
+type Errors = Partial<Record<NumberKey | 'foodName', string>>;
+
 export default function MealScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
   const params = useLocalSearchParams<{ meal?: string; mealType?: string; date?: string }>();
   const existing = useMemo(() => parseMeal(params.meal), [params.meal]);
 
@@ -55,15 +59,22 @@ export default function MealScreen() {
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [date, setDate] = useState(existing?.date.slice(0, 10) ?? params.date ?? toIsoDay(new Date()));
   const [showMore, setShowMore] = useState(!!(existing && (existing.fiber || existing.sugar)));
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Errors>({});
 
   const save = useSaveMeal();
   const remove = useDeleteMeal();
 
-  async function submit() {
-    if (!foodName.trim()) return setError('What did you eat?');
+  /** Edits a field and clears that field's error. */
+  const edit = (key: keyof Errors, set: (value: string) => void) => (value: string) => {
+    set(value);
+    if (errors[key]) setErrors((current) => ({ ...current, [key]: undefined }));
+  };
 
-    const numbers = {
+  async function submit() {
+    const found: Errors = {};
+    if (!foodName.trim()) found.foodName = 'Enter what you ate.';
+
+    const numbers: Record<NumberKey, number | undefined | null> = {
       quantity: toOptionalNumber(quantity),
       calories: toOptionalNumber(calories),
       protein: toOptionalNumber(protein),
@@ -72,7 +83,15 @@ export default function MealScreen() {
       fiber: toOptionalNumber(fiber),
       sugar: toOptionalNumber(sugar),
     };
-    if (Object.values(numbers).some((value) => value === null)) return setError('Numbers must be 0 or more.');
+    for (const key of Object.keys(numbers) as NumberKey[]) {
+      if (numbers[key] === null) found[key] = 'Enter 0 or more.';
+    }
+
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      haptics.warning();
+      return;
+    }
 
     const input: MealInput = {
       date,
@@ -81,7 +100,7 @@ export default function MealScreen() {
       unit: unit.trim() || undefined,
       notes: notes.trim() || undefined,
       quantity: numbers.quantity ?? undefined,
-      calories: numbers.calories === undefined ? undefined : Math.round(numbers.calories as number),
+      calories: numbers.calories == null ? undefined : Math.round(numbers.calories),
       protein: numbers.protein ?? undefined,
       carbs: numbers.carbs ?? undefined,
       fats: numbers.fats ?? undefined,
@@ -89,198 +108,113 @@ export default function MealScreen() {
       sugar: numbers.sugar ?? undefined,
     };
 
-    setError(null);
     try {
       await save.mutateAsync({ id: existing?.id, input });
+      notify.success(existing ? 'Changes saved' : `${foodName.trim()} logged`);
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      notify.error(e instanceof ApiError ? e.message : 'Could not save. Try again.');
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete this entry?', existing.foodName, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remove.mutateAsync(existing.id);
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({
+      title: 'Delete this entry?',
+      message: `${existing.foodName} will be removed from your log.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(existing.id);
+      notify.success('Entry deleted');
+      router.back();
+    } catch (e) {
+      notify.error(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
+    }
   }
+
+  const macroField = { flexGrow: 1, flexBasis: 96 } as const;
 
   return (
     <Screen topInset={false}>
       <Stack.Screen options={{ title: existing ? 'Edit food' : 'Log food' }} />
 
-      {/* Meal Slot Chips */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="time-outline" size={16} color={moduleColors.food} />
-          <Text variant="label" muted>
-            Meal Slot
-          </Text>
-        </View>
+      <Card style={{ gap: spacing.md }}>
+        <SectionHeader title="Meal" />
         <ChipGroup>
           {MEAL_TYPES.map((slot) => (
-            <Chip
-              key={slot.value}
-              label={slot.label}
-              selected={mealType === slot.value}
-              color={moduleColors.food}
-              onPress={() => setMealType(slot.value)}
-            />
+            <Chip key={slot.value} label={slot.label} icon={slot.icon} selected={mealType === slot.value} accent="food" onPress={() => setMealType(slot.value)} />
           ))}
         </ChipGroup>
-      </GlassCard>
+      </Card>
 
-      {/* Hero Calories & Food Name Card */}
-      <GlassCard
-        glowColor={moduleColors.food}
-        style={{
-          padding: spacing.lg,
-          gap: spacing.md,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
+      <Card style={{ gap: spacing.md }}>
         <Input
-          label="Food Name"
+          label="Food"
           value={foodName}
-          onChangeText={setFoodName}
-          placeholder="e.g. Grilled Chicken Salad, Oats Bowl"
+          onChangeText={edit('foodName', setFoodName)}
+          placeholder="For example, grilled chicken salad"
           autoFocus={!existing}
-          style={{ fontSize: 18, fontWeight: '600' }}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          error={errors.foodName}
         />
-
-        <View style={{ alignItems: 'center', paddingVertical: spacing.xs }}>
-          <Text variant="caption" muted style={{ fontWeight: '700', letterSpacing: 0.8 }}>
-            CALORIES (KCAL)
-          </Text>
-          <TextInput
-            value={calories}
-            onChangeText={setCalories}
-            keyboardType="number-pad"
-            placeholder="0"
-            placeholderTextColor={colors.textMuted}
-            style={{
-              fontSize: 38,
-              fontWeight: '800',
-              color: moduleColors.food,
-              textAlign: 'center',
-              fontVariant: ['tabular-nums'],
-              minWidth: 120,
-              paddingVertical: 0,
-            }}
-          />
+        <Input
+          label="Calories"
+          value={calories}
+          onChangeText={edit('calories', setCalories)}
+          keyboardType="number-pad"
+          placeholder="0"
+          error={errors.calories}
+          rightAdornment={
+            <Text variant="label" color="textSecondary">
+              kcal
+            </Text>
+          }
+        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+          <Input containerStyle={macroField} label="Quantity" value={quantity} onChangeText={edit('quantity', setQuantity)} keyboardType="decimal-pad" placeholder="1" error={errors.quantity} />
+          <Input containerStyle={macroField} label="Unit" value={unit} onChangeText={setUnit} placeholder="serving, g, bowl" autoCapitalize="none" returnKeyType="done" />
         </View>
+      </Card>
 
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <View style={{ flex: 1 }}>
-            <Input label="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="decimal-pad" placeholder="1" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Input label="Unit" value={unit} onChangeText={setUnit} placeholder="serving, g, bowl…" />
-          </View>
-        </View>
-      </GlassCard>
-
-      {/* Macros Split */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="pie-chart-outline" size={16} color={colors.textMuted} />
-          <Text variant="label" muted>
-            Macronutrients
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <View style={{ flex: 1 }}>
-            <Input
-              label="Protein (g)"
-              value={protein}
-              onChangeText={setProtein}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              style={{ fontWeight: '700' }}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Input
-              label="Carbs (g)"
-              value={carbs}
-              onChangeText={setCarbs}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              style={{ fontWeight: '700' }}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Input
-              label="Fats (g)"
-              value={fats}
-              onChangeText={setFats}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              style={{ fontWeight: '700' }}
-            />
-          </View>
+      <Card style={{ gap: spacing.md }}>
+        <SectionHeader title="Macronutrients" subtitle="All optional" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+          <Input containerStyle={macroField} label="Protein (g)" value={protein} onChangeText={edit('protein', setProtein)} keyboardType="decimal-pad" placeholder="0" error={errors.protein} />
+          <Input containerStyle={macroField} label="Carbs (g)" value={carbs} onChangeText={edit('carbs', setCarbs)} keyboardType="decimal-pad" placeholder="0" error={errors.carbs} />
+          <Input containerStyle={macroField} label="Fats (g)" value={fats} onChangeText={edit('fats', setFats)} keyboardType="decimal-pad" placeholder="0" error={errors.fats} />
         </View>
 
         {showMore ? (
-          <View style={{ flexDirection: 'row', gap: spacing.md, paddingTop: spacing.xs }}>
-            <View style={{ flex: 1 }}>
-              <Input label="Fiber (g)" value={fiber} onChangeText={setFiber} keyboardType="decimal-pad" placeholder="0" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input label="Sugar (g)" value={sugar} onChangeText={setSugar} keyboardType="decimal-pad" placeholder="0" />
-            </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+            <Input containerStyle={macroField} label="Fiber (g)" value={fiber} onChangeText={edit('fiber', setFiber)} keyboardType="decimal-pad" placeholder="0" error={errors.fiber} />
+            <Input containerStyle={macroField} label="Sugar (g)" value={sugar} onChangeText={edit('sugar', setSugar)} keyboardType="decimal-pad" placeholder="0" error={errors.sugar} />
           </View>
         ) : (
-          <Pressable accessibilityRole="button" onPress={() => setShowMore(true)} hitSlop={8}>
-            <Text variant="label" style={{ fontWeight: '600', color: moduleColors.food }}>
-              + Add Fiber & Sugar
-            </Text>
-          </Pressable>
+          <Button title="Add fiber and sugar" variant="tertiary" size="sm" leftIcon="add" fullWidth={false} onPress={() => setShowMore(true)} />
         )}
-      </GlassCard>
+      </Card>
 
-      {/* Date & Notes */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
+      <Card style={{ gap: spacing.md }}>
         <DateField label="Date" value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
         <Input
           label="Notes (optional)"
           value={notes}
           onChangeText={setNotes}
           multiline
-          placeholder="Cooking method, restaurant, ingredients…"
-          style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: spacing.md }}
+          placeholder="Cooking method, restaurant, ingredients"
+          autoCapitalize="sentences"
+          style={{ minHeight: 64 }}
         />
-      </GlassCard>
+      </Card>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <Button title={existing ? 'Save changes' : 'Log food'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete entry" variant="ghost" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <View style={{ gap: spacing.sm }}>
+        <Button title={existing ? 'Save changes' : 'Log food'} leftIcon="checkmark" onPress={submit} loading={save.isPending} />
+        {existing ? <Button title="Delete entry" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      </View>
     </Screen>
   );
 }

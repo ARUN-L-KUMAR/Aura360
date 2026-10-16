@@ -1,13 +1,12 @@
 import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { memo } from 'react';
 
-import { Text } from '@/components/ui/text';
+import { ListItem } from '@/components/ui/list-item';
 import type { Meal, MealType } from '@/features/food/types';
-import { spacing } from '@/theme';
 
 export function openMeal(router: ReturnType<typeof useRouter>, options: { meal?: Meal; mealType?: MealType; date?: string } = {}) {
   router.push({
-    pathname: '/food/meal' as any,
+    pathname: '/food/meal' as never,
     params: {
       ...(options.meal ? { meal: JSON.stringify(options.meal) } : {}),
       ...(options.mealType ? { mealType: options.mealType } : {}),
@@ -23,7 +22,8 @@ function portion(meal: Meal) {
   return `${quantity}${meal.unit ? ` ${meal.unit}` : ''}`;
 }
 
-export function MealRow({ meal }: { meal: Meal }) {
+/** One logged food as a tappable list row (opens the meal form). */
+export const MealRow = memo(function MealRow({ meal, divider }: { meal: Meal; divider?: boolean }) {
   const router = useRouter();
   const macros = [
     meal.protein ? `P ${Math.round(Number(meal.protein))}g` : null,
@@ -32,20 +32,17 @@ export function MealRow({ meal }: { meal: Meal }) {
   ]
     .filter(Boolean)
     .join(' · ');
+  const detail = [portion(meal), macros].filter(Boolean).join(' · ');
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${meal.foodName}, ${meal.calories ?? 0} calories`}
+    <ListItem
+      title={meal.foodName}
+      subtitle={detail || undefined}
+      meta={`${meal.calories ?? 0} kcal`}
+      divider={divider}
+      accessibilityLabel={`${meal.foodName}, ${meal.calories ?? 0} calories${detail ? `, ${detail}` : ''}`}
+      accessibilityHint="Opens the entry to edit"
       onPress={() => openMeal(router, { meal })}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, opacity: pressed ? 0.7 : 1 })}>
-      <View style={{ flex: 1 }}>
-        <Text numberOfLines={1}>{meal.foodName}</Text>
-        <Text variant="caption" muted numberOfLines={1}>
-          {[portion(meal), macros].filter(Boolean).join(' · ')}
-        </Text>
-      </View>
-      <Text style={{ fontWeight: '600' }}>{meal.calories ?? 0} kcal</Text>
-    </Pressable>
+    />
   );
-}
+});

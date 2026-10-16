@@ -1,236 +1,136 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { memo } from 'react';
+import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { GlassCard } from '@/components/ui/glass-card';
+import { useEnter } from '@/components/fitness/section-kit';
+import { Card } from '@/components/ui/card';
+import { Tag } from '@/components/ui/chip';
+import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
 import { useDeleteFitnessEntry } from '@/features/fitness/hooks';
 import { workoutTitle, type FitnessEntry } from '@/features/fitness/types';
-import { modules } from '@/features/modules';
 import { formatDay } from '@/lib/format';
+import { useNotify } from '@/providers/notify';
 import { radius, spacing, useTheme } from '@/theme';
 
-export function WorkoutCard({ entry }: { entry: FitnessEntry }) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+type Props = { entry: FitnessEntry; /** Position in the list, used to stagger the entrance animation. */ index?: number };
+
+/** A logged workout: type and intensity tags, metrics, exercise list, notes, and edit / delete actions. */
+export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0 }: Props) {
+  const { colors } = useTheme();
   const router = useRouter();
+  const notify = useNotify();
   const deleteMutation = useDeleteFitnessEntry();
-  const fitnessColor = modules.fitness.color;
+  const entering = useEnter(index);
 
   const exercises = entry.exercises ?? [];
   const title = workoutTitle(entry);
+  const intensity = entry.intensity ? String(entry.intensity) : null;
+  const kind = entry.workoutType || entry.type;
 
-  const confirmDelete = () => {
-    Alert.alert('Delete Workout', 'Are you sure you want to delete this workout entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteMutation.mutate(entry.id),
-      },
-    ]);
+  const confirmDelete = async () => {
+    const ok = await notify.confirm({
+      title: 'Delete this workout?',
+      message: `${title} on ${formatDay(entry.date)} will be removed. This can't be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteMutation.mutateAsync(entry.id);
+      notify.success('Workout deleted');
+    } catch (e) {
+      notify.error(e instanceof Error ? e : "Couldn't delete the workout. Try again.");
+    }
   };
 
   const openEdit = () => {
     router.push({
-      pathname: '/fitness/workout' as any,
+      pathname: '/fitness/workout' as never,
       params: { entry: JSON.stringify(entry) },
     });
   };
 
   return (
-    <GlassCard style={styles.card}>
-      {/* Top Header */}
-      <View style={styles.topRow}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <View style={styles.badgeRow}>
-            <View
-              style={[
-                styles.typeBadge,
-                { backgroundColor: `${fitnessColor}18` },
-              ]}>
-              <Ionicons name="barbell-outline" size={13} color={fitnessColor} />
-              <Text variant="caption" style={{ color: fitnessColor, fontWeight: '700' }}>
-                {(entry.workoutType || entry.type).toUpperCase()}
-              </Text>
+    <Animated.View entering={entering}>
+      <Card style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
+              <Tag label={kind[0].toUpperCase() + kind.slice(1)} icon="barbell-outline" accent="fitness" />
+              {intensity ? (
+                <Tag
+                  label={`${intensity[0].toUpperCase()}${intensity.slice(1)} intensity`}
+                  icon={intensity === 'high' || intensity === 'extreme' ? 'flame' : undefined}
+                  tone={intensity === 'high' || intensity === 'extreme' ? 'accent' : 'neutral'}
+                  accent={intensity === 'high' || intensity === 'extreme' ? 'fitness' : undefined}
+                />
+              ) : null}
             </View>
-
-            {entry.intensity && (
-              <View
-                style={[
-                  styles.intensityBadge,
-                  {
-                    backgroundColor:
-                      entry.intensity === 'high' || entry.intensity === 'extreme'
-                        ? `${colors.danger}18`
-                        : `${colors.accent}`,
-                  },
-                ]}>
-                <Text
-                  variant="caption"
-                  style={{
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color:
-                      entry.intensity === 'high' || entry.intensity === 'extreme'
-                        ? colors.danger
-                        : colors.textMuted,
-                  }}>
-                  {String(entry.intensity).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <Text variant="title" style={{ fontSize: 17, fontWeight: '700' }}>
-            {title}
-          </Text>
-          <Text variant="caption" muted>
-            {formatDay(entry.date)}
-          </Text>
-        </View>
-
-        {/* Action icons */}
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Edit workout"
-            onPress={openEdit}
-            hitSlop={8}
-            style={styles.iconBtn}>
-            <Ionicons name="pencil-outline" size={17} color={colors.textMuted} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Delete workout"
-            onPress={confirmDelete}
-            hitSlop={8}
-            style={styles.iconBtn}>
-            <Ionicons name="trash-outline" size={17} color={colors.danger} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Metrics Row */}
-      <View style={styles.metricsRow}>
-        {entry.duration ? (
-          <View style={styles.metricItem}>
-            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              {entry.duration} mins
+            <Text variant="title" accessibilityRole="header">
+              {title}
+            </Text>
+            <Text variant="caption" color="textSecondary">
+              {formatDay(entry.date)}
             </Text>
           </View>
-        ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <IconButton icon="pencil-outline" size="sm" accessibilityLabel={`Edit ${title}`} onPress={openEdit} />
+            <IconButton
+              icon="trash-outline"
+              size="sm"
+              destructive
+              accessibilityLabel={`Delete ${title}`}
+              onPress={confirmDelete}
+              disabled={deleteMutation.isPending}
+            />
+          </View>
+        </View>
 
-        {entry.caloriesBurned ? (
-          <View style={styles.metricItem}>
-            <Ionicons name="flame-outline" size={14} color={colors.warning} />
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              {entry.caloriesBurned} kcal
-            </Text>
+        {entry.duration || entry.caloriesBurned || exercises.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: spacing.lg, rowGap: spacing.xs }}>
+            {entry.duration ? <Metric icon="time-outline" text={`${entry.duration} min`} /> : null}
+            {entry.caloriesBurned ? <Metric icon="flame-outline" text={`${entry.caloriesBurned} kcal`} /> : null}
+            {exercises.length > 0 ? <Metric icon="list-outline" text={`${exercises.length} ${exercises.length === 1 ? 'exercise' : 'exercises'}`} /> : null}
           </View>
         ) : null}
 
         {exercises.length > 0 ? (
-          <View style={styles.metricItem}>
-            <Ionicons name="list-outline" size={14} color={modules.time.color} />
-            <Text variant="caption" style={{ fontWeight: '600' }}>
-              {exercises.length} {exercises.length === 1 ? 'Exercise' : 'Exercises'}
-            </Text>
+          <View style={{ backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: spacing.md, gap: spacing.sm }}>
+            {exercises.map((ex, idx) => (
+              <View key={`${ex.name}-${idx}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+                <Text variant="label" numberOfLines={2} style={{ flex: 1 }}>
+                  {ex.name}
+                </Text>
+                <Text variant="caption" numeric color="textSecondary" style={{ flexShrink: 1, textAlign: 'right' }}>
+                  {[ex.sets ? `${ex.sets} sets` : null, ex.reps ? `${ex.reps} reps` : null].filter(Boolean).join(' × ')}
+                  {ex.weight ? ` @ ${ex.weight} kg` : ''}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : null}
-      </View>
 
-      {/* Exercises List */}
-      {exercises.length > 0 && (
-        <View style={[styles.exercisesBox, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)' }]}>
-          {exercises.map((ex, idx) => (
-            <View key={idx} style={styles.exerciseRow}>
-              <View style={[styles.exBullet, { backgroundColor: fitnessColor }]} />
-              <Text style={{ flex: 1, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
-                {ex.name}
-              </Text>
-              <Text variant="caption" muted style={{ fontWeight: '600' }}>
-                {ex.sets ? `${ex.sets} sets` : ''}
-                {ex.reps ? ` × ${ex.reps} reps` : ''}
-                {ex.weight ? ` @ ${ex.weight}kg` : ''}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+        {entry.notes ? (
+          <Text variant="caption" color="textSecondary">
+            {`"${entry.notes}"`}
+          </Text>
+        ) : null}
+      </Card>
+    </Animated.View>
+  );
+});
 
-      {/* Notes */}
-      {entry.notes && (
-        <Text variant="caption" muted style={{ fontStyle: 'italic', fontSize: 12 }}>
-          {`"${entry.notes}"`}
-        </Text>
-      )}
-    </GlassCard>
+function Metric({ icon, text }: { icon: 'time-outline' | 'flame-outline' | 'list-outline'; text: string }) {
+  const { colors } = useTheme();
+  return (
+    <View accessible accessibilityLabel={text} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+      <Ionicons name={icon} size={16} color={colors.textSecondary} />
+      <Text variant="caption" weight="semiBold" numeric>
+        {text}
+      </Text>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    gap: spacing.md,
-    padding: spacing.md + 2,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  intensityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  iconBtn: {
-    padding: 6,
-    borderRadius: radius.pill,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  metricItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  exercisesBox: {
-    borderRadius: radius.md,
-    padding: spacing.sm + 2,
-    gap: 6,
-  },
-  exerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  exBullet: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-});

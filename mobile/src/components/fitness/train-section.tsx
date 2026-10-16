@@ -1,18 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useKeepAwake } from 'expo-keep-awake';
-import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { LiveRestTimer } from '@/components/fitness/live-rest-timer';
 import { RestTimer } from '@/components/fitness/rest-timer';
+import { useEnter } from '@/components/fitness/section-kit';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Chip, ChipGroup } from '@/components/ui/chip';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
+import { ErrorState } from '@/components/ui/error-state';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
-import { SectionLabel } from '@/components/fitness/section-label';
+import { ListItem } from '@/components/ui/list-item';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useRecentFitness, useSaveFitness, useSubstitutes } from '@/features/fitness/hooks';
 import {
@@ -30,7 +36,9 @@ import {
 import { formatDuration, isWorkout, lastPerformanceByExercise } from '@/features/fitness/stats';
 import { COMMON_EXERCISES, type Exercise } from '@/features/fitness/types';
 import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 export function TrainSection({ header, onFinished }: { header: ReactNode; onFinished: () => void }) {
   const { hydrated, session } = useLiveSession();
@@ -39,7 +47,8 @@ export function TrainSection({ header, onFinished }: { header: ReactNode; onFini
     return (
       <Screen>
         {header}
-        <ActivityIndicator />
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={3} />
       </Screen>
     );
   }
@@ -55,8 +64,14 @@ function StartWorkout({ header }: { header: ReactNode }) {
 
   const lastWorkout = useMemo(() => (recent.data ?? []).find((entry) => isWorkout(entry) && (entry.exercises?.length ?? 0) > 0), [recent.data]);
 
+  function startEmpty() {
+    haptics.tap();
+    sessionActions.start(title.trim() || 'Workout');
+  }
+
   function repeatLast() {
     if (!lastWorkout?.exercises) return;
+    haptics.tap();
     sessionActions.start(
       title.trim() || 'Workout',
       lastWorkout.exercises.map((ex) => buildExercise({ name: ex.name, sets: ex.sets, reps: ex.reps }, ex)),
@@ -64,29 +79,39 @@ function StartWorkout({ header }: { header: ReactNode }) {
   }
 
   return (
-    <Screen>
+    <Screen onRefresh={() => recent.refetch()} refreshing={recent.isRefetching}>
       {header}
 
-      <GlassCard style={{ gap: spacing.md }}>
-        <Text variant="title">Start a workout</Text>
-        <Input label="Name" value={title} onChangeText={setTitle} placeholder="e.g. Push day" />
-        <Button title="Start empty workout" onPress={() => sessionActions.start(title.trim() || 'Workout')} />
-      </GlassCard>
+      <Card style={{ gap: spacing.md }}>
+        <SectionHeader title="Start a workout" subtitle="Name it, then add exercises as you go." />
+        <Input
+          label="Workout name"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="For example, Push day"
+          autoCapitalize="sentences"
+          returnKeyType="done"
+          onSubmitEditing={startEmpty}
+        />
+        <Button title="Start empty workout" leftIcon="play" haptic={false} onPress={startEmpty} />
+      </Card>
 
       {lastWorkout?.exercises ? (
-        <GlassCard style={{ gap: spacing.sm }}>
-          <SectionLabel>Repeat your last workout</SectionLabel>
-          <Text numberOfLines={3}>{lastWorkout.exercises.map((ex) => ex.name).join(' · ')}</Text>
-          <Text variant="caption" muted>
+        <Card style={{ gap: spacing.sm }}>
+          <SectionHeader title="Repeat your last workout" />
+          <Text variant="body" numberOfLines={3}>
+            {lastWorkout.exercises.map((ex) => ex.name).join(' · ')}
+          </Text>
+          <Text variant="caption" color="textSecondary">
             Weights and reps are filled in from last time.
           </Text>
-          <Button title="Repeat last workout" variant="secondary" onPress={repeatLast} />
-        </GlassCard>
+          <Button title="Repeat last workout" variant="secondary" leftIcon="repeat" haptic={false} onPress={repeatLast} />
+        </Card>
       ) : null}
 
       <RestTimer />
 
-      <Text variant="caption" muted style={{ textAlign: 'center' }}>
+      <Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>
         Or open the Coach tab to build a plan and start any day of it here.
       </Text>
     </Screen>
@@ -97,241 +122,278 @@ function StartWorkout({ header }: { header: ReactNode }) {
 
 function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; session: LiveSession; onFinished: () => void }) {
   useKeepAwake();
-  const { colors } = useTheme();
+  const notify = useNotify();
   const save = useSaveFitness();
   const recent = useRecentFitness();
-  const [error, setError] = useState<string | null>(null);
 
-  const now = useNow(true);
-  const seconds = elapsedSeconds(session, now);
-  const rest = restRemainingSeconds(session, now);
-  const { doneSets, totalSets, volume } = sessionTotals(session);
   const lastByName = useMemo(() => lastPerformanceByExercise(recent.data ?? []), [recent.data]);
   const knownNames = useMemo(
     () => [...new Set([...(recent.data ?? []).flatMap((entry) => entry.exercises?.map((ex) => ex.name) ?? []), ...COMMON_EXERCISES])],
     [recent.data],
   );
 
-  // Rest finished: buzz once and clear the timer.
-  useEffect(() => {
-    if (rest === 0) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      sessionActions.skipRest();
-    }
-  }, [rest]);
-
-  function finish() {
+  async function finish() {
+    const { doneSets, volume } = sessionTotals(session);
     if (doneSets === 0) {
-      Alert.alert('No sets completed', 'Tick off at least one set to save a workout. Discard it instead?', [
-        { text: 'Keep going', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => sessionActions.discard() },
-      ]);
+      const discardIt = await notify.confirm({
+        title: 'No sets completed',
+        message: 'Tick off at least one set to save a workout. Discard it instead?',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep going',
+        destructive: true,
+      });
+      if (discardIt) sessionActions.discard();
       return;
     }
-    Alert.alert('Finish workout?', `${doneSets} sets · ${Math.round(volume).toLocaleString()} kg · ${formatDuration(seconds)}`, [
-      { text: 'Not yet', style: 'cancel' },
-      {
-        text: 'Finish & save',
-        onPress: async () => {
-          setError(null);
-          try {
-            await save.mutateAsync({ input: buildWorkoutPayload(session, Date.now(), toIsoDay(new Date())) });
-            sessionActions.discard();
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onFinished();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not save. Your workout is still here, try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({
+      title: 'Finish workout?',
+      message: `${doneSets} sets · ${Math.round(volume).toLocaleString()} kg · ${formatDuration(elapsedSeconds(session, Date.now()))}`,
+      confirmLabel: 'Finish and save',
+      cancelLabel: 'Not yet',
+    });
+    if (!ok) return;
+    try {
+      await save.mutateAsync({ input: buildWorkoutPayload(session, Date.now(), toIsoDay(new Date())) });
+      sessionActions.discard();
+      notify.success('Workout saved');
+      onFinished();
+    } catch (e) {
+      notify.error(e instanceof ApiError ? e.message : 'Could not save. Your workout is still here, try again.');
+    }
   }
 
-  function discard() {
-    Alert.alert('Discard workout?', 'Everything logged in this session will be lost.', [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => sessionActions.discard() },
-    ]);
+  async function discard() {
+    const ok = await notify.confirm({
+      title: 'Discard workout?',
+      message: 'Everything logged in this session will be lost.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep',
+      destructive: true,
+    });
+    if (ok) sessionActions.discard();
   }
 
   return (
     <Screen>
       {header}
 
-      <GlassCard style={{ gap: spacing.md }}>
-        <TextInput
-          value={session.title}
-          onChangeText={sessionActions.setTitle}
-          accessibilityLabel="Workout name"
-          style={{ color: colors.text, fontSize: 18, fontWeight: '600', padding: 0 }}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text variant="headline" style={{ fontVariant: ['tabular-nums'] }}>
-            {formatDuration(seconds)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={session.pausedAt ? 'Resume workout' : 'Pause workout'}
-            onPress={() => sessionActions.togglePause()}
-            style={{ width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name={session.pausedAt ? 'play' : 'pause'} size={22} color={colors.text} />
-          </Pressable>
-        </View>
-        <View style={{ flexDirection: 'row', gap: spacing.lg }}>
-          <Metric label="Sets" value={`${doneSets}/${totalSets}`} />
-          <Metric label="Volume" value={`${Math.round(volume).toLocaleString()} kg`} />
-          <Metric label="Burn ≈" value={`${Math.round((seconds / 60) * 7.5 + doneSets * 4)} kcal`} />
-        </View>
-      </GlassCard>
+      <Card style={{ gap: spacing.md }}>
+        <Input label="Workout name" value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
+        <LiveSummary session={session} />
+      </Card>
 
-      {rest !== null && rest > 0 ? <LiveRestTimer remaining={rest} total={session.restTotalSec} /> : null}
+      <LiveRest session={session} />
 
       {session.exercises.length === 0 ? (
-        <Text muted style={{ textAlign: 'center' }}>
+        <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
           Add your first exercise below.
         </Text>
       ) : null}
 
-      {session.exercises.map((exercise) => (
-        <ExerciseCard key={exercise.id} exercise={exercise} last={lastByName.get(exercise.name.trim().toLowerCase())} />
+      {session.exercises.map((exercise, index) => (
+        <ExerciseCard key={exercise.id} index={index} exercise={exercise} last={lastByName.get(exercise.name.trim().toLowerCase())} />
       ))}
 
       <AddExercise names={knownNames} lastByName={lastByName} />
 
-      {error ? <Text color="danger">{error}</Text> : null}
-
-      <Button title="Finish workout" onPress={finish} loading={save.isPending} />
-      <Button title="Discard workout" variant="ghost" onPress={discard} />
+      <View style={{ gap: spacing.sm }}>
+        <Button title="Finish workout" leftIcon="checkmark" onPress={finish} loading={save.isPending} />
+        <Button title="Discard workout" variant="ghost" onPress={discard} disabled={save.isPending} />
+      </View>
     </Screen>
   );
 }
 
+/** Elapsed time, pause control and running totals. Owns the one-second clock so the exercise list does not re-render. */
+function LiveSummary({ session }: { session: LiveSession }) {
+  const now = useNow(true);
+  const seconds = elapsedSeconds(session, now);
+  const { doneSets, totalSets, volume } = sessionTotals(session);
+  const paused = !!session.pausedAt;
+
+  return (
+    <View style={{ gap: spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+        <View style={{ flexShrink: 1, gap: spacing.xs }}>
+          <Text variant="display" numeric accessibilityLabel={`Elapsed time ${formatDuration(seconds)}`}>
+            {formatDuration(seconds)}
+          </Text>
+          {paused ? <Tag label="Paused" icon="pause" tone="neutral" /> : null}
+        </View>
+        <IconButton
+          icon={paused ? 'play' : 'pause'}
+          variant="tonal"
+          size="lg"
+          accessibilityLabel={paused ? 'Resume workout' : 'Pause workout'}
+          onPress={() => sessionActions.togglePause()}
+        />
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.sm }}>
+        <Metric label="Sets" value={`${doneSets}/${totalSets}`} />
+        <Metric label="Volume" value={`${Math.round(volume).toLocaleString()} kg`} />
+        <Metric label="Burn, estimated" value={`${Math.round((seconds / 60) * 7.5 + doneSets * 4)} kcal`} />
+      </View>
+    </View>
+  );
+}
+
+/** Shows the rest countdown when one is running; buzzes and announces once when it ends. */
+function LiveRest({ session }: { session: LiveSession }) {
+  const now = useNow(true);
+  const rest = restRemainingSeconds(session, now);
+
+  // Rest finished: buzz once, tell screen readers, and clear the timer.
+  useEffect(() => {
+    if (rest === 0) {
+      haptics.success();
+      AccessibilityInfo.announceForAccessibility('Rest over. Next set when you are ready.');
+      sessionActions.skipRest();
+    }
+  }, [rest]);
+
+  return rest !== null && rest > 0 ? <LiveRestTimer remaining={rest} total={session.restTotalSec} /> : null;
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flex: 1 }}>
-      <Text variant="caption" muted>
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flexGrow: 1, flexBasis: 88, gap: 2 }}>
+      <Text variant="caption" color="textSecondary">
         {label}
       </Text>
-      <Text variant="label" numberOfLines={1} adjustsFontSizeToFit>
+      <Text variant="label" weight="semiBold" numeric>
         {value}
       </Text>
     </View>
   );
 }
 
-function ExerciseCard({ exercise, last }: { exercise: LiveExercise; last?: Exercise }) {
-  const { colors } = useTheme();
+/** Same height as an Input, so a set row lines up. */
+const SET_BUTTON = layout.minTouchTarget + spacing.xs;
+
+const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exercise: LiveExercise; last?: Exercise; index: number }) {
+  const notify = useNotify();
   const substitutes = useSubstitutes();
   const [swapOpen, setSwapOpen] = useState(false);
+  const entering = useEnter(index);
 
-  function openMenu() {
-    Alert.alert(exercise.name, undefined, [
-      {
-        text: 'Swap exercise',
-        onPress: () => {
-          setSwapOpen(true);
-          substitutes.mutate({ exerciseName: exercise.name, targetMuscle: exercise.category });
-        },
-      },
-      { text: 'Remove exercise', style: 'destructive', onPress: () => sessionActions.removeExercise(exercise.id) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  function openSwap() {
+    setSwapOpen(true);
+    substitutes.mutate({ exerciseName: exercise.name, targetMuscle: exercise.category });
   }
 
+  async function removeExercise() {
+    const ok = await notify.confirm({
+      title: `Remove ${exercise.name}?`,
+      message: 'Its sets in this session will be removed too.',
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (ok) sessionActions.removeExercise(exercise.id);
+  }
+
+  const lastText = last?.weight ? `last ${last.weight} kg × ${last.reps ?? '-'}` : null;
+
   return (
-    <GlassCard style={{ gap: spacing.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-        <View style={{ flex: 1 }}>
-          <Text variant="title" numberOfLines={2}>
-            {exercise.name}
-          </Text>
-          <Text variant="caption" muted>
-            {exercise.category} · {exercise.restSeconds}s rest
-            {last?.weight ? ` · last ${last.weight} kg × ${last.reps ?? '-'}` : ''}
-          </Text>
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Options for ${exercise.name}`} onPress={openMenu} hitSlop={10}>
-          <Ionicons name="ellipsis-horizontal" size={22} color={colors.textMuted} />
-        </Pressable>
-      </View>
-
-      {swapOpen ? (
-        <View style={{ gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.cardMuted }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="label">Swap with…</Text>
-            <Pressable onPress={() => setSwapOpen(false)} hitSlop={8}>
-              <SectionLabel>Close</SectionLabel>
-            </Pressable>
+    <Animated.View entering={entering}>
+      <Card style={{ gap: spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="title" numberOfLines={2} accessibilityRole="header">
+              {exercise.name}
+            </Text>
+            <Text variant="caption" color="textSecondary">
+              {[exercise.category, `${exercise.restSeconds}s rest`, lastText].filter(Boolean).join(' · ')}
+            </Text>
           </View>
-          {substitutes.isPending ? <ActivityIndicator /> : null}
-          {substitutes.isError ? <Text color="danger">Could not get suggestions.</Text> : null}
-          {(substitutes.data ?? []).map((option) => (
-            <Pressable
-              key={option.name}
-              accessibilityRole="button"
-              onPress={() => {
-                sessionActions.replaceExercise(exercise.id, option.name);
-                setSwapOpen(false);
-              }}
-              style={({ pressed }) => ({ paddingVertical: spacing.xs, opacity: pressed ? 0.6 : 1 })}>
-              <Text style={{ fontWeight: '600' }}>{option.name}</Text>
-              <Text variant="caption" muted>
-                {option.equipment} · {option.whyItWorks}
-              </Text>
-            </Pressable>
-          ))}
+          <IconButton icon="swap-horizontal" size="sm" accessibilityLabel={`Swap ${exercise.name}`} onPress={openSwap} />
+          <IconButton icon="trash-outline" size="sm" destructive accessibilityLabel={`Remove ${exercise.name}`} onPress={removeExercise} />
         </View>
-      ) : null}
 
-      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.xs }}>
-        <Text variant="caption" muted style={{ width: 28 }}>
-          SET
-        </Text>
-        <Text variant="caption" muted style={{ flex: 1, textAlign: 'center' }}>
-          KG
-        </Text>
-        <Text variant="caption" muted style={{ flex: 1, textAlign: 'center' }}>
-          REPS
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+        {swapOpen ? (
+          <Card variant="flat" padding="sm" style={{ gap: spacing.xs }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text variant="label" weight="semiBold">
+                Swap with
+              </Text>
+              <IconButton icon="close" size="sm" accessibilityLabel="Close suggestions" onPress={() => setSwapOpen(false)} />
+            </View>
+            {substitutes.isPending ? <SkeletonList count={2} avatar={false} /> : null}
+            {substitutes.isError ? (
+              <ErrorState
+                size="inline"
+                title="Couldn't get suggestions"
+                message="Check your connection and try again."
+                onRetry={() => substitutes.mutate({ exerciseName: exercise.name, targetMuscle: exercise.category })}
+              />
+            ) : null}
+            {substitutes.isSuccess && substitutes.data.length === 0 ? (
+              <Text variant="body" color="textSecondary">
+                No swaps found for this exercise.
+              </Text>
+            ) : null}
+            {(substitutes.data ?? []).map((option) => (
+              <ListItem
+                key={option.name}
+                title={option.name}
+                subtitle={`${option.equipment} · ${option.whyItWorks}`}
+                accessibilityHint="Replaces this exercise"
+                onPress={() => {
+                  sessionActions.replaceExercise(exercise.id, option.name);
+                  setSwapOpen(false);
+                }}
+              />
+            ))}
+          </Card>
+        ) : null}
 
-      {exercise.sets.map((set, index) => (
-        <SetRow key={set.id} exerciseId={exercise.id} index={index} weight={set.weight} reps={set.reps} done={set.done} />
-      ))}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ width: spacing.xxl }}>
+            SET
+          </Text>
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center' }}>
+            KG
+          </Text>
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center' }}>
+            REPS
+          </Text>
+          <View style={{ width: SET_BUTTON }} />
+        </View>
 
-      <Pressable accessibilityRole="button" onPress={() => sessionActions.addSet(exercise.id)} hitSlop={8} style={{ paddingVertical: spacing.xs }}>
-        <Text variant="label" style={{ fontWeight: '600', color: moduleColors.fitness }}>
-          + Add set
-        </Text>
-      </Pressable>
-    </GlassCard>
+        {exercise.sets.map((set, setIndex) => (
+          <SetRow key={set.id} exerciseId={exercise.id} index={setIndex} weight={set.weight} reps={set.reps} done={set.done} />
+        ))}
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.xs }}>
+          <Button title="Add set" variant="secondary" size="sm" leftIcon="add" fullWidth={false} onPress={() => sessionActions.addSet(exercise.id)} />
+          {exercise.sets.length > 1 ? (
+            <Button
+              title="Remove last set"
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              onPress={() => sessionActions.removeSet(exercise.id, exercise.sets.length - 1)}
+            />
+          ) : null}
+        </View>
+      </Card>
+    </Animated.View>
   );
-}
+});
 
-function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string; index: number; weight: number; reps: number; done: boolean }) {
-  const { colors } = useTheme();
+const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string; index: number; weight: number; reps: number; done: boolean }) {
+  const { accent, colors } = useTheme();
+  const fitness = accent('fitness');
   // Keep what is being typed as text so "7." or an empty box does not jump while editing.
   const [weightText, setWeightText] = useState(String(weight));
   const [repsText, setRepsText] = useState(String(reps));
 
-  const inputStyle = {
-    flex: 1,
-    minHeight: 44,
-    textAlign: 'center' as const,
-    borderRadius: radius.md,
-    backgroundColor: done ? `${moduleColors.fitness}22` : colors.cardMuted,
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600' as const,
-  };
-
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-      <Text variant="label" muted style={{ width: 28 }}>
+      <Text variant="label" numeric color="textSecondary" style={{ width: spacing.xxl }}>
         {index + 1}
       </Text>
-      <TextInput
+      <Input
+        containerStyle={{ flex: 1 }}
         value={weightText}
         onChangeText={(text) => {
           setWeightText(text);
@@ -341,9 +403,10 @@ function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string;
         keyboardType="decimal-pad"
         selectTextOnFocus
         accessibilityLabel={`Set ${index + 1} weight in kilograms`}
-        style={inputStyle}
+        style={{ textAlign: 'center' }}
       />
-      <TextInput
+      <Input
+        containerStyle={{ flex: 1 }}
         value={repsText}
         onChangeText={(text) => {
           setRepsText(text);
@@ -353,29 +416,38 @@ function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string;
         keyboardType="number-pad"
         selectTextOnFocus
         accessibilityLabel={`Set ${index + 1} reps`}
-        style={inputStyle}
+        style={{ textAlign: 'center' }}
       />
-      <Pressable
+      <PressableScale
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
         accessibilityLabel={`Set ${index + 1} done`}
+        accessibilityHint="Starts the rest timer when checked"
+        accessibilityActions={[{ name: 'delete', label: 'Remove set' }]}
+        onAccessibilityAction={(e) => {
+          if (e.nativeEvent.actionName === 'delete') sessionActions.removeSet(exerciseId, index);
+        }}
+        haptic={false}
+        ringRadius={radius.md}
         onPress={() => {
-          if (sessionActions.toggleSet(exerciseId, index)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (sessionActions.toggleSet(exerciseId, index)) haptics.impact();
         }}
         onLongPress={() => sessionActions.removeSet(exerciseId, index)}
         style={{
-          width: 44,
-          height: 44,
+          width: SET_BUTTON,
+          height: SET_BUTTON,
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: done ? moduleColors.fitness : colors.cardMuted,
+          backgroundColor: done ? fitness.solid : colors.cardMuted,
+          borderWidth: 1,
+          borderColor: done ? fitness.solid : colors.borderStrong,
         }}>
-        <Ionicons name="checkmark" size={22} color={done ? '#ffffff' : colors.textMuted} />
-      </Pressable>
+        <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={done ? fitness.onSolid : colors.textMuted} />
+      </PressableScale>
     </View>
   );
-}
+});
 
 function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<string, Exercise> }) {
   const [text, setText] = useState('');
@@ -388,20 +460,32 @@ function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<s
   function add(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
+    haptics.tap();
     sessionActions.addExercise(buildExercise({ name: trimmed }, lastByName.get(trimmed.toLowerCase())));
     setText('');
   }
 
+  const canAddCustom = !!text.trim() && !names.some((name) => name.toLowerCase() === text.trim().toLowerCase());
+
   return (
-    <GlassCard style={{ gap: spacing.md }}>
-      <SectionLabel>Add exercise</SectionLabel>
-      <Input value={text} onChangeText={setText} placeholder="Search or type a name" returnKeyType="done" onSubmitEditing={() => add(text)} />
+    <Card style={{ gap: spacing.md }}>
+      <SectionHeader title="Add exercise" />
+      <Input
+        value={text}
+        onChangeText={setText}
+        placeholder="Search or type a name"
+        accessibilityLabel="Exercise name"
+        autoCapitalize="words"
+        returnKeyType="done"
+        onSubmitEditing={() => add(text)}
+        clearable
+      />
       <ChipGroup>
         {suggestions.map((name) => (
-          <Chip key={name} label={name} onPress={() => add(name)} />
+          <Chip key={name} label={name} accent="fitness" selectable={false} icon="add" onPress={() => add(name)} />
         ))}
       </ChipGroup>
-      {text.trim() && !names.some((name) => name.toLowerCase() === text.trim().toLowerCase()) ? <Button title={`Add “${text.trim()}”`} variant="secondary" onPress={() => add(text)} /> : null}
-    </GlassCard>
+      {canAddCustom ? <Button title={`Add “${text.trim()}”`} variant="secondary" leftIcon="add" haptic={false} onPress={() => add(text)} /> : null}
+    </Card>
   );
 }

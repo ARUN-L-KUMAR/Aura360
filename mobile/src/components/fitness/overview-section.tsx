@@ -1,28 +1,39 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMemo, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { FitnessSummary } from '@/components/fitness/fitness-summary';
-import { SectionLabel } from '@/components/fitness/section-label';
+import { FAB_CLEARANCE, QueryError } from '@/components/fitness/section-kit';
 import { WorkoutCard } from '@/components/fitness/workout-card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useReadiness, useRecentFitness } from '@/features/fitness/hooks';
 import { useLiveSession } from '@/features/fitness/session-store';
 import { isWorkout, weekCompletion } from '@/features/fitness/stats';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { formatDay } from '@/lib/format';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DAY_SIZE = layout.minTouchTarget - spacing.sm; // 36
+
+function readinessTone(score: number) {
+  if (score >= 85) return { color: 'success', text: 'successText', icon: 'checkmark-circle' } as const;
+  if (score >= 75) return { color: 'warning', text: 'warningText', icon: 'alert-circle' } as const;
+  return { color: 'error', text: 'errorText', icon: 'warning' } as const;
+}
 
 export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header: ReactNode; onOpenTrain: () => void; onLogWorkout: () => void }) {
-  const { colors } = useTheme();
+  const { colors, accent } = useTheme();
   const entries = useRecentFitness();
   const readiness = useReadiness();
   const { session } = useLiveSession();
-  const fitnessColor = moduleColors.fitness;
+  const fitness = accent('fitness');
 
   const list = useMemo(() => entries.data ?? [], [entries.data]);
   const workouts = useMemo(() => list.filter(isWorkout), [list]);
@@ -31,94 +42,125 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
   const doneThisWeek = week.filter((day) => day.done).length;
 
   const score = readiness.data?.score ?? 0;
-  const scoreColor = score >= 85 ? colors.success : score >= 75 ? colors.warning : colors.danger;
+  // Status is also spelled out in text and with an icon, so the colour is never the only signal.
+  const tone = readinessTone(score);
+
+  const refresh = () => Promise.all([entries.refetch(), readiness.refetch()]);
+  const loading = entries.isPending;
+  const failed = entries.isError && !entries.data;
 
   return (
-    <Screen onRefresh={() => Promise.all([entries.refetch(), readiness.refetch()])} refreshing={entries.isRefetching || readiness.isRefetching}>
+    <Screen onRefresh={refresh} refreshing={entries.isRefetching || readiness.isRefetching} contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}>
       {header}
 
-      <GlassCard glowColor={fitnessColor} style={{ gap: spacing.sm }}>
-        <SectionLabel>Today</SectionLabel>
-        <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
-        <Button title={session ? 'Resume workout' : 'Start workout'} onPress={onOpenTrain} />
-      </GlassCard>
+      <Card variant="tinted" accent="fitness" style={{ gap: spacing.md }}>
+        <View style={{ gap: spacing.xs }}>
+          <Text variant="caption" weight="semiBold" style={{ color: fitness.text }}>
+            TODAY
+          </Text>
+          <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
+        </View>
+        <Button title={session ? 'Resume workout' : 'Start workout'} leftIcon={session ? 'play' : 'barbell-outline'} onPress={onOpenTrain} />
+      </Card>
 
-      <GlassCard glowColor={readiness.data ? scoreColor : undefined} style={{ gap: spacing.md }}>
-        <SectionLabel>Recovery & readiness</SectionLabel>
-        {readiness.isPending ? <Text muted>Checking…</Text> : null}
+      <Card style={{ gap: spacing.md }}>
+        <SectionHeader title="Recovery and readiness" />
+        {readiness.isPending ? (
+          <SkeletonGroup label="Checking readiness" style={{ gap: spacing.sm }}>
+            <Skeleton shape="line" width="30%" height={spacing.xl} />
+            <Skeleton shape="line" height={spacing.sm} />
+            <Skeleton shape="line" width="70%" />
+          </SkeletonGroup>
+        ) : null}
         {readiness.data ? (
-          <>
-            <View style={styles.scoreRow}>
-              <Text variant="headline" style={{ color: scoreColor }}>
+          <View style={{ gap: spacing.md }}>
+            <View accessible accessibilityLabel={`Readiness ${readiness.data.score} out of 100, ${readiness.data.status}`} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
+              <Text variant="headline" numeric color={tone.text}>
                 {readiness.data.score}
               </Text>
-              <Text muted>{readiness.data.status}</Text>
-            </View>
-            <ProgressBar percent={readiness.data.score} color={scoreColor} />
-            <Text variant="caption" muted>
-              {readiness.data.recommendation}
-            </Text>
-          </>
-        ) : null}
-        {readiness.isError ? <Text muted>Readiness is unavailable right now.</Text> : null}
-      </GlassCard>
-
-      <GlassCard style={{ gap: spacing.md }}>
-        <View style={styles.weekHeader}>
-          <SectionLabel>This week</SectionLabel>
-          <Text variant="caption" style={{ color: fitnessColor, fontWeight: '600' }}>
-            {doneThisWeek} {doneThisWeek === 1 ? 'workout' : 'workouts'}
-          </Text>
-        </View>
-        <View style={styles.weekRow}>
-          {week.map((day, index) => (
-            <View
-              key={day.iso}
-              accessible
-              accessibilityLabel={`${day.iso} ${day.done ? 'trained' : 'no workout'}`}
-              style={[
-                styles.dayDot,
-                {
-                  backgroundColor: day.done ? fitnessColor : colors.cardMuted,
-                  borderWidth: day.isToday ? 2 : 0,
-                  borderColor: colors.text,
-                  opacity: day.isFuture ? 0.5 : 1,
-                },
-              ]}>
-              <Text variant="label" style={{ color: day.done ? '#ffffff' : colors.textMuted }}>
-                {DAY_LABELS[index]}
+              <Ionicons name={tone.icon} size={20} color={colors[tone.text]} />
+              <Text variant="label" color="textSecondary" style={{ flexShrink: 1 }}>
+                {readiness.data.status}
               </Text>
             </View>
-          ))}
-        </View>
-      </GlassCard>
-
-      <FitnessSummary entries={workouts} />
-
-      <View style={{ gap: spacing.sm }}>
-        <SectionLabel>Recent workouts</SectionLabel>
-        {entries.isPending ? <Text muted>Loading…</Text> : null}
-        {!entries.isPending && recentWorkouts.length === 0 ? (
-          <EmptyState
-            icon="barbell-outline"
-            title="No workouts logged yet"
-            description="Start a live workout, or log one you already did."
-            actionTitle="Log a workout"
-            onAction={onLogWorkout}
-            color={fitnessColor}
-          />
+            <ProgressBar percent={readiness.data.score} color={colors[tone.color]} />
+            <Text variant="caption" color="textSecondary">
+              {readiness.data.recommendation}
+            </Text>
+          </View>
         ) : null}
-        {recentWorkouts.map((entry) => (
-          <WorkoutCard key={entry.id} entry={entry} />
-        ))}
-      </View>
+        {readiness.isError && !readiness.data ? (
+          <View style={{ gap: spacing.sm, alignItems: 'flex-start' }}>
+            <Text variant="body" color="textSecondary">
+              Readiness is unavailable right now.
+            </Text>
+            <Button title="Try again" variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
+          </View>
+        ) : null}
+      </Card>
+
+      {entries.isError ? <QueryError error={entries.error} hasData={!!entries.data} retrying={entries.isFetching} onRetry={() => entries.refetch()} /> : null}
+
+      {loading ? (
+        <>
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={3} />
+        </>
+      ) : null}
+
+      {!loading && !failed ? (
+        <>
+          <Card style={{ gap: spacing.md }}>
+            <SectionHeader title="This week" subtitle={`${doneThisWeek} ${doneThisWeek === 1 ? 'workout' : 'workouts'}`} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              {week.map((day, index) => (
+                <View
+                  key={day.iso}
+                  accessible
+                  accessibilityLabel={`${formatDay(day.iso)}${day.isToday ? ', today' : ''}: ${day.done ? 'workout done' : day.isFuture ? 'upcoming' : 'no workout'}`}
+                  style={{ alignItems: 'center', gap: spacing.xs, opacity: day.isFuture ? 0.6 : 1 }}>
+                  <View
+                    style={{
+                      width: DAY_SIZE,
+                      height: DAY_SIZE,
+                      borderRadius: radius.pill,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: day.done ? fitness.solid : colors.cardMuted,
+                      borderWidth: day.isToday ? 2 : 0,
+                      borderColor: day.done ? fitness.text : colors.borderStrong,
+                    }}>
+                    {day.done ? <Ionicons name="checkmark" size={20} color={fitness.onSolid} /> : null}
+                  </View>
+                  <Text variant="caption" weight={day.isToday ? 'bold' : 'medium'} color={day.isToday ? 'text' : 'textSecondary'}>
+                    {DAY_LABELS[index]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+
+          <FitnessSummary entries={workouts} />
+
+          <View style={{ gap: spacing.md }}>
+            <SectionHeader title="Recent workouts" />
+            {recentWorkouts.length === 0 ? (
+              <EmptyState
+                accent="fitness"
+                icon="barbell-outline"
+                title="No workouts logged yet"
+                description="Start a live workout, or log one you already did."
+                actionTitle="Log a workout"
+                onAction={onLogWorkout}
+                secondaryActionTitle="Start a live workout"
+                onSecondaryAction={onOpenTrain}
+              />
+            ) : (
+              recentWorkouts.map((entry, index) => <WorkoutCard key={entry.id} entry={entry} index={index} />)
+            )}
+          </View>
+        </>
+      ) : null}
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  scoreRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  weekHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  dayDot: { width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-});
