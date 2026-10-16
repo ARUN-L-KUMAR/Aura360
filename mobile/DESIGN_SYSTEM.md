@@ -84,19 +84,60 @@ movement with an instant or fade-only change when it is on; use skeleton shimmer
 Blur + translucent `glass` + `glassBorder` is for overlays only: tab bar, sheets, the floating widget, headers. Fall back
 to `glassSolid` when blur is unavailable or `useTheme().reduceTransparency` is true. Never use it on content cards.
 
+## Components
+
+All live in [`src/components/ui/`](src/components/ui/) and are built on tokens. Import each from its own file
+(`@/components/ui/button`). **Open the gallery to review every component, state and theme in one place:** in a dev build
+go to `aura360://dev/components` (route `src/app/(app)/dev/components.tsx`, development builds only).
+
+| Group | Components | Notes |
+|---|---|---|
+| Base | `Text`, `PressableScale`, `GlassSurface` | `PressableScale` is the base touchable (scale + opacity feedback on the UI thread, focus ring, optional haptic, reduce-motion aware). `GlassSurface` is for overlays only and falls back to a solid surface when blur is unavailable or "reduce transparency" is on. |
+| Actions | `Button` (primary, secondary, tertiary, ghost, destructive; sm / md / lg; icons; loading), `IconButton` (label required) | Legacy `outline` maps to `tertiary` and `danger` to `destructive`. |
+| Inputs | `Input` (label, helper, error, adornments, clear, count), `PasswordField`, `SearchBar` (optional debounce), `OtpInput` | Errors are announced and carry an icon. Inputs pass keyboard, autofill and `textContentType` props straight through. |
+| Content | `Card` (flat, outlined, elevated, tinted, pressable), `ListItem`, `Chip` / `Tag` / `ChipRow`, `Badge`, `Avatar`, `ProgressBar`, `StatCard`, `SectionHeader`, `Divider` | Pass `accent="fitness"` (a module key) instead of a colour. `GlassCard` is deprecated: use `Card`. |
+| Loading and state | `Skeleton` (+ `SkeletonText`, `SkeletonCard`, `SkeletonListItem`, `SkeletonList`), `EmptyState` (empty, noResults, offline), `ErrorState` (generic, network, timeout, sessionExpired, notFound; `errorKindFromError`) | Use skeletons, not spinners, for content. Every data screen needs loading, empty, error and offline states. |
+| Overlays | `BottomSheet` (snap points, drag to dismiss, keyboard aware), `Dialog`, `Toast`, `Banner` | Do not render these directly for app messages; use `useNotify()`. |
+| Navigation | bottom nav (`AppTabs`, all 10 tabs), `TopAppBar` (collapsing large title), `Tabs`, `Segmented`, `Screen`, `PullToRefresh`, `FloatingAction` | Give `Screen` a `title` to get the collapsing app bar. |
+| Assistant | `FloatingAiWidget` | Draggable, snaps to a side edge, stays above the tab bar, hides under the keyboard and on the Ask Aura tab. Has accessibility move actions as an alternative to dragging. |
+
+### Notifications (one system)
+
+`useNotify()` from `@/providers/notify`: `toast`, `info`, `success`, `warning`, `error`, `banner` / `dismissBanner`,
+`confirm` (returns `Promise<boolean>`, the replacement for `Alert.alert` confirmations), `alert` and `critical`.
+Severity decides the surface ([`src/lib/notify.ts`](src/lib/notify.ts)):
+
+| Severity | Surface | Stays | Haptic |
+|---|---|---|---|
+| info | toast | 4 s | none |
+| success | toast | 3 s | success |
+| warning | toast or banner | 5.5 s | warning |
+| error | toast or banner | 7 s | error |
+| critical | banner or dialog | until dismissed | error |
+
+A toast with an action (for example Undo) stays at least 6 s. Push notifications and the server-driven inbox map onto the
+same severity model (see the comment at the top of `notify.ts`).
+
+### Writing a new component
+
+1. Take colours from `useTheme().colors` / `accent(...)`, sizes from `spacing`, `radius`, `layout`; text via `<Text>`.
+2. Build touchables on `PressableScale`; make the target at least 44x44.
+3. Handle default, pressed, focused, disabled, loading and error states, and set the accessibility role, label and state.
+4. Animate with Reanimated, `transform` / `opacity` only, and honour `reduceMotion`.
+5. Add it to the gallery and run `npm run check:contrast`, `npm run lint:tokens` and `npx tsc --noEmit`.
+
 ## Rules of thumb
 
 - A new colour, size or spacing value means a new token, added in `src/theme/` with its contrast check, not a literal.
 - Touch targets are at least 44x44 (`layout.minTouchTarget`), using `hitSlop` when the visual is smaller.
 - Every data screen has loading (skeleton), empty, error and offline states.
-- Components and screens are documented here as they are built; see the roadmap below.
 
 ## Status
 
 | Phase | State |
 |---|---|
 | 1. Tokens | Done: colour, type, spacing, radius, elevation, motion, reduced-motion / transparency, contrast + token checks |
-| 2. Components | Not started |
+| 2. Components | Done (built, typechecked and bundled; not yet exercised on a device) |
 | 3. Screens | Not started (hard-coded value debt is tracked in `scripts/design-tokens-baseline.json`) |
 | 4. Motion and glass | Not started |
 | 5. Quality | Not started |
