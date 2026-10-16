@@ -1,187 +1,155 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { FlatList, View } from 'react-native';
 
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { SearchBar } from '@/components/ui/search-bar';
 import { Text } from '@/components/ui/text';
 import { CATEGORIES, type FashionItem } from '@/features/fashion/types';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import {
+  GRID_COLUMNS,
+  HeaderStack,
+  RowSeparator,
+  SpacerCell,
+  gridColumnStyle,
+  isSpacer,
+  itemsGate,
+  useListPadding,
+  withSpacer,
+  type GridEntry,
+  type ItemsState,
+} from './shared';
 
 interface WardrobeSectionProps {
   items: FashionItem[];
-  header?: React.ReactNode;
+  state: ItemsState;
+  header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
 }
 
-export function WardrobeSection({
-  items,
-  header,
-  onSelectItem,
-  onAddNew,
-}: WardrobeSectionProps) {
-  const { colors } = useTheme();
+type LaundryFilter = 'all' | 'clean' | 'needs_wash';
+
+const keyExtractor = (entry: GridEntry) => entry.id;
+
+export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }: WardrobeSectionProps) {
+  const padding = useListPadding();
+  const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [conditionFilter, setConditionFilter] = useState<'all' | 'clean' | 'needs_wash'>('all');
+  const [laundryFilter, setLaundryFilter] = useState<LaundryFilter>('all');
 
-  const wardrobeItems = useMemo(
-    () => items.filter((i) => i.status === 'wardrobe'),
-    [items]
-  );
+  const wardrobeItems = useMemo(() => items.filter((i) => i.status === 'wardrobe'), [items]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of wardrobeItems) {
+      const key = item.category.toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [wardrobeItems]);
+
+  const needsWashCount = useMemo(() => wardrobeItems.filter((i) => i.condition === 'needs_wash').length, [wardrobeItems]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return wardrobeItems.filter((item) => {
-      if (selectedCategory !== 'All' && item.category.toLowerCase() !== selectedCategory.toLowerCase()) {
-        return false;
-      }
-
-      if (conditionFilter === 'needs_wash' && item.condition !== 'needs_wash') {
-        return false;
-      }
-      if (conditionFilter === 'clean' && item.condition === 'needs_wash') {
-        return false;
-      }
-
+      if (selectedCategory !== 'All' && item.category.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+      if (laundryFilter === 'needs_wash' && item.condition !== 'needs_wash') return false;
+      if (laundryFilter === 'clean' && item.condition === 'needs_wash') return false;
       if (!q) return true;
-      const haystack = [item.name, item.brand, item.category, item.color, ...(item.tags || [])]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+      const haystack = [item.name, item.brand, item.category, item.color, ...(item.tags || [])].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [wardrobeItems, selectedCategory, conditionFilter, search]);
+  }, [wardrobeItems, selectedCategory, laundryFilter, search]);
+
+  const entries = useMemo(() => withSpacer(filteredItems), [filteredItems]);
+
+  const filtersActive = search.trim() !== '' || selectedCategory !== 'All' || laundryFilter !== 'all';
+  const clearFilters = useCallback(() => {
+    setSearch('');
+    setSelectedCategory('All');
+    setLaundryFilter('all');
+  }, []);
+
+  const gate = itemsGate(state);
+  const hasWardrobe = wardrobeItems.length > 0;
+
+  const renderItem = useCallback(
+    ({ item }: { item: GridEntry }) => (isSpacer(item) ? <SpacerCell /> : <FashionCard item={item} onPress={onSelectItem} />),
+    [onSelectItem],
+  );
+
+  const empty = gate ?? (
+    filtersActive && hasWardrobe ? (
+      <EmptyState variant="noResults" accent="fashion" description="Nothing in your wardrobe matches. Try another search or clear the filters." onClearFilters={clearFilters} />
+    ) : (
+      <EmptyState
+        icon="shirt-outline"
+        accent="fashion"
+        title="Your wardrobe is empty"
+        description="Add shirts, jeans, sneakers and accessories to track what you own and how often you wear it."
+        actionTitle="Add an item"
+        onAction={onAddNew}
+      />
+    )
+  );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header ? header : null}
+    <FlatList
+      data={gate || !hasWardrobe ? [] : entries}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      numColumns={GRID_COLUMNS}
+      columnWrapperStyle={gridColumnStyle}
+      ItemSeparatorComponent={RowSeparator}
+      contentContainerStyle={padding}
+      refreshControl={refreshControl}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={8}
+      windowSize={7}
+      ListHeaderComponent={
+        <HeaderStack>
+          {header}
+          {!gate && hasWardrobe ? (
+            <View style={{ gap: spacing.md }}>
+              <SearchBar value={search} onChangeText={setSearch} debounceMs={200} placeholder="Search by name, brand or colour" accessibilityLabel="Search wardrobe" returnKeyType="search" autoCorrect={false} />
 
-      {/* Search Input */}
-      <View
-        style={[
-          styles.searchBox,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-          },
-        ]}>
-        <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search wardrobe by name, brand, color..."
-          placeholderTextColor={colors.textMuted}
-          returnKeyType="search"
-          autoCorrect={false}
-          style={[styles.searchInput, { color: colors.text }]}
-        />
-        {search ? (
-          <Ionicons
-            name="close-circle"
-            size={18}
-            color={colors.textMuted}
-            onPress={() => setSearch('')}
-          />
-        ) : null}
-      </View>
+              <ChipRow>
+                {CATEGORIES.map((cat) => (
+                  <Chip
+                    key={cat}
+                    label={cat}
+                    accent="fashion"
+                    selected={selectedCategory === cat}
+                    count={cat === 'All' ? wardrobeItems.length : (categoryCounts.get(cat.toLowerCase()) ?? 0)}
+                    onPress={() => setSelectedCategory(cat)}
+                  />
+                ))}
+              </ChipRow>
 
-      {/* Categories Chip Row */}
-      <ChipRow>
-        {CATEGORIES.map((cat) => (
-          <Chip
-            key={cat}
-            label={cat}
-            selected={selectedCategory === cat}
-            color={moduleColors.fashion}
-            onPress={() => setSelectedCategory(cat)}
-          />
-        ))}
-      </ChipRow>
+              <ChipRow>
+                <Chip label="All" accent="fashion" selected={laundryFilter === 'all'} onPress={() => setLaundryFilter('all')} />
+                <Chip label="Clean" accent="fashion" selected={laundryFilter === 'clean'} count={wardrobeItems.length - needsWashCount} onPress={() => setLaundryFilter('clean')} />
+                <Chip label="Needs wash" accent="fashion" selected={laundryFilter === 'needs_wash'} count={needsWashCount} onPress={() => setLaundryFilter('needs_wash')} />
+              </ChipRow>
 
-      {/* Quick Condition Filters */}
-      <View style={styles.quickFilterRow}>
-        <Chip
-          label="All Rotation"
-          selected={conditionFilter === 'all'}
-          color={moduleColors.fashion}
-          onPress={() => setConditionFilter('all')}
-        />
-        <Chip
-          label="Clean Only"
-          selected={conditionFilter === 'clean'}
-          color="#10b981"
-          onPress={() => setConditionFilter('clean')}
-        />
-        <Chip
-          label="Needs Wash (Laundry)"
-          selected={conditionFilter === 'needs_wash'}
-          color="#ef4444"
-          onPress={() => setConditionFilter('needs_wash')}
-        />
-      </View>
-
-      {/* Result Count */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text variant="caption" muted style={{ fontWeight: '700' }}>
-          {filteredItems.length} {filteredItems.length === 1 ? 'PIECE' : 'PIECES'} IN ROTATION
-        </Text>
-      </View>
-
-      {/* Empty State */}
-      {filteredItems.length === 0 ? (
-        <EmptyState
-          icon="shirt-outline"
-          title={search ? 'No Matches Found' : 'Wardrobe is Empty'}
-          description={
-            search
-              ? 'Try modifying your search or clearing category filters.'
-              : 'Add your shirts, jeans, sneakers, and accessories to catalog wear count.'
-          }
-          actionTitle={!search ? '+ Add Clothing Item' : undefined}
-          onAction={!search ? onAddNew : undefined}
-        />
-      ) : (
-        <View style={styles.itemsGrid}>
-          {filteredItems.map((item) => (
-            <FashionCard key={item.id} item={item} onPress={() => onSelectItem(item)} />
-          ))}
-        </View>
-      )}
-    </ScrollView>
+              <Text variant="caption" weight="medium" color="textSecondary" accessibilityLiveRegion="polite">
+                {filteredItems.length} {filteredItems.length === 1 ? 'piece' : 'pieces'}
+                {filtersActive ? ' match your filters' : ' in your wardrobe'}
+              </Text>
+            </View>
+          ) : null}
+        </HeaderStack>
+      }
+      ListEmptyComponent={empty}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: 88,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    minHeight: 46,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-  },
-  quickFilterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-});

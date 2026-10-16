@@ -1,167 +1,153 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useMemo, type ReactNode } from 'react';
+import { FlatList, View } from 'react-native';
 
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useUpdateItemStatus } from '@/features/fashion/hooks';
 import type { FashionItem } from '@/features/fashion/types';
 import { formatMoney } from '@/lib/format';
-import { radius, spacing, useTheme } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import {
+  GRID_COLUMNS,
+  HeaderStack,
+  RowSeparator,
+  SpacerCell,
+  gridColumnStyle,
+  isSpacer,
+  itemsGate,
+  useListPadding,
+  withSpacer,
+  type GridEntry,
+  type ItemsState,
+} from './shared';
 
 interface WishlistSectionProps {
   items: FashionItem[];
-  header?: React.ReactNode;
+  state: ItemsState;
+  header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
 }
 
-export function WishlistSection({
-  items,
-  header,
-  onSelectItem,
-  onAddNew,
-}: WishlistSectionProps) {
-  const { colors } = useTheme();
-  const updateStatus = useUpdateItemStatus();
+const keyExtractor = (entry: GridEntry) => entry.id;
 
-  const wishlistItems = useMemo(
-    () => items.filter((i) => i.status === 'wishlist'),
-    [items]
+type CellProps = { item: FashionItem; busy: boolean; onSelect: (item: FashionItem) => void; onBought: (item: FashionItem) => void };
+
+const WishlistCell = memo(function WishlistCell({ item, busy, onSelect, onBought }: CellProps) {
+  return (
+    <View style={{ flex: 1, gap: spacing.sm }}>
+      <FashionCard item={item} onPress={onSelect} />
+      <Button
+        title="I bought this"
+        variant="secondary"
+        size="sm"
+        leftIcon="bag-check-outline"
+        loading={busy}
+        accessibilityLabel={`I bought ${item.name}`}
+        onPress={() => onBought(item)}
+      />
+    </View>
   );
+});
+
+export function WishlistSection({ items, state, header, onSelectItem, onAddNew }: WishlistSectionProps) {
+  const notify = useNotify();
+  const padding = useListPadding();
+  const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
+  const updateStatus = useUpdateItemStatus();
+  const { mutate } = updateStatus;
+  const busyId = updateStatus.isPending ? updateStatus.variables?.id : undefined;
+
+  const wishlistItems = useMemo(() => items.filter((i) => i.status === 'wishlist'), [items]);
+  const entries = useMemo(() => withSpacer(wishlistItems), [wishlistItems]);
 
   const totalBudget = useMemo(
-    () =>
-      wishlistItems.reduce(
-        (sum, item) => sum + (Number(item.price) || Number(item.metadata?.expectedBudget) || 0),
-        0
-      ),
-    [wishlistItems]
+    () => wishlistItems.reduce((sum, item) => sum + (Number(item.price) || Number(item.metadata?.expectedBudget) || 0), 0),
+    [wishlistItems],
   );
 
-  const handleMoveToWardrobe = (item: FashionItem) => {
-    updateStatus.mutate(
-      { id: item.id, status: 'wardrobe' },
-      {
-        onSuccess: () => {
-          Alert.alert('Purchased!', `"${item.name}" moved to your active wardrobe.`);
+  const handleBought = useCallback(
+    (item: FashionItem) => {
+      mutate(
+        { id: item.id, status: 'wardrobe' },
+        {
+          onSuccess: () => {
+            notify.toast({
+              message: `"${item.name}" moved to your wardrobe`,
+              severity: 'success',
+              action: { label: 'Undo', onPress: () => mutate({ id: item.id, status: 'wishlist' }) },
+            });
+          },
+          onError: (err) => notify.error(err),
         },
-      }
+      );
+    },
+    [mutate, notify],
+  );
+
+  const gate = itemsGate(state);
+
+  const renderItem = useCallback(
+    ({ item }: { item: GridEntry }) =>
+      isSpacer(item) ? <SpacerCell /> : <WishlistCell item={item} busy={busyId === item.id} onSelect={onSelectItem} onBought={handleBought} />,
+    [busyId, onSelectItem, handleBought],
+  );
+
+  const empty =
+    gate ?? (
+      <EmptyState
+        icon="heart-outline"
+        accent="fashion"
+        title="Your wishlist is empty"
+        description="Save pieces you plan to buy. Add a price and a store link to keep track of them."
+        actionTitle="Add to wishlist"
+        onAction={onAddNew}
+      />
     );
-  };
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header ? header : null}
-
-      {/* Target Budget Card */}
-      <GlassCard glowColor="#3b82f6" style={styles.budgetCard}>
-        <View style={styles.budgetHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="cart-outline" size={18} color="#3b82f6" />
-            <Text variant="caption" muted style={styles.budgetLabel}>
-              TARGET WISHLIST BUDGET
-            </Text>
-          </View>
-          <View style={[styles.pill, { backgroundColor: '#3b82f620' }]}>
-            <Text style={{ color: '#3b82f6', fontWeight: '800', fontSize: 11 }}>
-              {wishlistItems.length} ITEMS
-            </Text>
-          </View>
-        </View>
-
-        <Text variant="display" style={[styles.budgetAmount, { color: '#3b82f6' }]}>
-          {formatMoney(totalBudget)}
-        </Text>
-        <Text variant="caption" muted>
-          Total estimated capital needed to acquire your saved wishlist pieces
-        </Text>
-      </GlassCard>
-
-      {/* Wishlist Items List / Grid */}
-      {wishlistItems.length === 0 ? (
-        <EmptyState
-          icon="cart-outline"
-          title="Wishlist is Empty"
-          description="Save clothing items, jackets, or shoes you plan to buy. Include price and shopping links to track your wishlist."
-          actionTitle="+ Add to Wishlist"
-          onAction={onAddNew}
-        />
-      ) : (
-        <View style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="caption" muted style={{ fontWeight: '800', letterSpacing: 0.8 }}>
-              WISHLIST PIECES
-            </Text>
-          </View>
-
-          <View style={styles.itemsGrid}>
-            {wishlistItems.map((item) => (
-              <View key={item.id} style={{ width: '48%', marginBottom: spacing.md }}>
-                <FashionCard item={item} onPress={() => onSelectItem(item)} />
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => handleMoveToWardrobe(item)}
-                  style={[styles.quickMoveBtn, { backgroundColor: '#10b98118', borderColor: '#10b98140' }]}>
-                  <Ionicons name="bag-check-outline" size={14} color="#10b981" />
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#10b981' }}>
-                    I Bought This
-                  </Text>
-                </Pressable>
+    <FlatList
+      data={gate ? [] : entries}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      numColumns={GRID_COLUMNS}
+      columnWrapperStyle={gridColumnStyle}
+      ItemSeparatorComponent={RowSeparator}
+      contentContainerStyle={padding}
+      refreshControl={refreshControl}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={8}
+      windowSize={7}
+      ListHeaderComponent={
+        <HeaderStack>
+          {header}
+          {!gate && wishlistItems.length > 0 ? (
+            <Card variant="tinted" accent="fashion" style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+                <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
+                  Wishlist budget
+                </Text>
+                <Tag label={`${wishlistItems.length} ${wishlistItems.length === 1 ? 'item' : 'items'}`} accent="fashion" />
               </View>
-            ))}
-          </View>
-        </View>
-      )}
-    </ScrollView>
+              <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={`Wishlist budget ${formatMoney(totalBudget)}`}>
+                {formatMoney(totalBudget)}
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                Estimated cost to buy everything you have saved.
+              </Text>
+            </Card>
+          ) : null}
+          {!gate && wishlistItems.length > 0 ? <SectionHeader title="Saved pieces" count={wishlistItems.length} /> : null}
+        </HeaderStack>
+      }
+      ListEmptyComponent={empty}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: 88,
-  },
-  budgetCard: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  budgetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  budgetLabel: {
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    fontSize: 10,
-  },
-  pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  budgetAmount: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '800',
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickMoveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    marginTop: -4,
-  },
-});

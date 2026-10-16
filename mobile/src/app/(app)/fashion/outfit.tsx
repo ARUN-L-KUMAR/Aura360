@@ -1,57 +1,122 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, View, type TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassCard } from '@/components/ui/glass-card';
+import { FashionImage, SpacerCell, isSpacer, itemsGate, type GridEntry } from '@/components/fashion/shared';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipRow } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
+import { Input } from '@/components/ui/input';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useFashionItems, useSaveOutfit } from '@/features/fashion/hooks';
-import type { FashionItem } from '@/features/fashion/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { OCCASIONS, type FashionItem } from '@/features/fashion/types';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme } from '@/theme';
+
+const COLUMNS = 3;
+const keyExtractor = (entry: GridEntry) => entry.id;
+const columnStyle = { gap: spacing.sm } as const;
+
+function RowGap() {
+  return <View style={{ height: spacing.sm }} />;
+}
+
+/** Pads the last row so a lone tile keeps column width. */
+function padRows(items: FashionItem[]): GridEntry[] {
+  const missing = (COLUMNS - (items.length % COLUMNS)) % COLUMNS;
+  return missing === 0 ? items : [...items, ...Array.from({ length: missing }, (_, i) => ({ id: `__spacer_${i}`, spacer: true as const }))];
+}
+
+type TileProps = { item: FashionItem; selected: boolean; onToggle: (id: string) => void };
+
+const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProps) {
+  const { colors, accent } = useTheme();
+  const a = accent('fashion');
+  return (
+    <PressableScale
+      accessibilityRole="checkbox"
+      accessibilityLabel={`${item.name}, ${item.category}`}
+      accessibilityState={{ checked: selected }}
+      haptic="select"
+      onPress={() => onToggle(item.id)}
+      style={{
+        flex: 1,
+        overflow: 'hidden',
+        borderRadius: radius.md,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? a.solid : colors.border,
+        backgroundColor: colors.card,
+      }}>
+      <View style={{ aspectRatio: 1 }}>
+        <FashionImage uri={item.imageUrl} style={{ flex: 1 }} iconSize={24} />
+        <View
+          style={{
+            position: 'absolute',
+            top: spacing.xs,
+            right: spacing.xs,
+            width: spacing.xl,
+            height: spacing.xl,
+            borderRadius: radius.pill,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.card,
+          }}>
+          <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? a.text : colors.textSecondary} />
+        </View>
+      </View>
+      <View style={{ padding: spacing.xs + spacing.xs / 2, gap: 2 }}>
+        <Text variant="caption" weight="semiBold" numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text variant="caption" color="textSecondary" numberOfLines={1}>
+          {item.category}
+        </Text>
+      </View>
+    </PressableScale>
+  );
+});
 
 export default function FashionOutfitModal() {
   const router = useRouter();
+  const notify = useNotify();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const { data: allItems = [] } = useFashionItems();
+  const itemsQuery = useFashionItems();
+  const { data: allItems, isPending, fetchStatus, isError, error, isRefetching, refetch } = itemsQuery;
   const saveOutfit = useSaveOutfit();
 
-  const wardrobeItems = useMemo(
-    () => allItems.filter((i) => i.status === 'wardrobe'),
-    [allItems]
-  );
+  const wardrobeItems = useMemo(() => (allItems ?? []).filter((i) => i.status === 'wardrobe'), [allItems]);
+  const entries = useMemo(() => padRows(wardrobeItems), [wardrobeItems]);
 
   const [name, setName] = useState('');
   const [occasion, setOccasion] = useState('');
   const [vibe, setVibe] = useState('');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const toggleItem = (id: string) => {
-    setSelectedItemIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+  const occasionRef = useRef<TextInput>(null);
+  const vibeRef = useRef<TextInput>(null);
+
+  const selectedSet = useMemo(() => new Set(selectedItemIds), [selectedItemIds]);
+  const toggleItem = useCallback((id: string) => {
+    setSelectedItemIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  }, []);
+
+  const nameError = submitted && !name.trim() ? 'Give this look a name' : undefined;
+  const piecesError = submitted && selectedItemIds.length === 0;
 
   const handleSave = () => {
-    if (!name.trim()) {
-      Alert.alert('Missing Name', 'Please give this outfit combination a name.');
-      return;
-    }
-    if (selectedItemIds.length === 0) {
-      Alert.alert('No Items Selected', 'Select at least one clothing piece for this outfit look.');
-      return;
-    }
+    setSubmitted(true);
+    setSaveError(null);
+    if (!name.trim() || selectedItemIds.length === 0) return;
 
     saveOutfit.mutate(
       {
@@ -62,189 +127,137 @@ export default function FashionOutfitModal() {
       },
       {
         onSuccess: () => {
+          notify.success('Look saved');
           router.back();
         },
         onError: (err) => {
-          Alert.alert('Error', err instanceof Error ? err.message : 'Could not create outfit.');
+          setSaveError(err instanceof Error && err.message ? err.message : 'Could not save this look.');
+          notify.error(err);
         },
-      }
+      },
     );
   };
 
+  const gate = itemsGate({
+    loading: isPending && fetchStatus !== 'paused',
+    offline: isPending && fetchStatus === 'paused',
+    error: isError && !allItems ? error : null,
+    refreshing: isRefetching,
+    refetch: () => void refetch(),
+  });
+
+  const renderItem = useCallback(
+    ({ item }: { item: GridEntry }) => (isSpacer(item) ? <SpacerCell /> : <PieceTile item={item} selected={selectedSet.has(item.id)} onToggle={toggleItem} />),
+    [selectedSet, toggleItem],
+  );
+
+  const count = selectedItemIds.length;
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-        {/* Basic Info Card */}
-        <GlassCard style={{ gap: spacing.md, padding: spacing.lg }}>
-          <View style={{ gap: 4 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>LOOK NAME *</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Summer Date Night, Casual Friday"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-            />
-          </View>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior="padding">
+      <Stack.Screen options={{ title: 'New look' }} />
+      <FlatList
+        data={gate ? [] : entries}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        extraData={selectedSet}
+        numColumns={COLUMNS}
+        columnWrapperStyle={columnStyle}
+        ItemSeparatorComponent={RowGap}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={12}
+        windowSize={7}
+        contentContainerStyle={{ padding: layout.screenPadding, paddingBottom: layout.sectionGap }}
+        ListHeaderComponent={
+          <View style={{ gap: layout.sectionGap, marginBottom: layout.itemGap }}>
+            {saveError ? <ErrorState size="inline" title="Couldn't save" message={saveError} /> : null}
 
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="caption" muted style={styles.fieldLabel}>OCCASION</Text>
-              <TextInput
-                value={occasion}
-                onChangeText={setOccasion}
-                placeholder="e.g. Casual, Party"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+            <Card style={{ gap: spacing.lg }}>
+              <Input
+                label="Look name"
+                placeholder="Summer date night"
+                value={name}
+                onChangeText={setName}
+                error={nameError}
+                autoCapitalize="sentences"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => occasionRef.current?.focus()}
               />
-            </View>
-
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="caption" muted style={styles.fieldLabel}>STYLE VIBE</Text>
-              <TextInput
+              <View style={{ gap: spacing.sm }}>
+                <Input
+                  ref={occasionRef}
+                  label="Occasion"
+                  placeholder="Casual, party"
+                  value={occasion}
+                  onChangeText={setOccasion}
+                  autoCapitalize="sentences"
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => vibeRef.current?.focus()}
+                />
+                <ChipRow>
+                  {OCCASIONS.map((occ) => (
+                    <Chip key={occ} size="sm" label={occ} accent="fashion" selected={occasion.trim().toLowerCase() === occ.toLowerCase()} onPress={() => setOccasion(occ)} />
+                  ))}
+                </ChipRow>
+              </View>
+              <Input
+                ref={vibeRef}
+                label="Style or vibe"
+                placeholder="Minimalist, cosy"
                 value={vibe}
                 onChangeText={setVibe}
-                placeholder="e.g. Minimalist, Cozy"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                autoCapitalize="sentences"
+                returnKeyType="done"
               />
+            </Card>
+
+            <View style={{ gap: spacing.sm }}>
+              <SectionHeader title="Pick your pieces" subtitle="Choose from the items in your wardrobe." count={count} />
+              {piecesError ? (
+                <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Ionicons name="alert-circle" size={16} color={colors.errorText} />
+                  <Text variant="caption" style={{ color: colors.errorText }}>
+                    Select at least one piece
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
-        </GlassCard>
+        }
+        ListEmptyComponent={
+          gate ?? (
+            <EmptyState
+              icon="shirt-outline"
+              accent="fashion"
+              title="No pieces to pick from"
+              description="Add clothing to your wardrobe first, then come back to put a look together."
+              actionTitle="Add an item"
+              onAction={() => router.push({ pathname: '/fashion/add', params: { defaultStatus: 'wardrobe' } })}
+            />
+          )
+        }
+      />
 
-        {/* Item Selector Grid */}
-        <View style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="title" style={{ fontSize: 16, fontWeight: '700' }}>
-              Select Pieces from Wardrobe
-            </Text>
-            <Text variant="caption" style={{ color: '#8b5cf6', fontWeight: '800' }}>
-              {selectedItemIds.length} SELECTED
-            </Text>
-          </View>
-
-          <View style={styles.itemsGrid}>
-            {wardrobeItems.map((item) => {
-              const isSelected = selectedItemIds.includes(item.id);
-
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => toggleItem(item.id)}
-                  style={[
-                    styles.itemCard,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: isSelected ? '#8b5cf6' : colors.border,
-                      borderWidth: isSelected ? 2 : 1,
-                    },
-                  ]}>
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.thumb, { backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }]}>
-                      <Ionicons name="shirt-outline" size={24} color={colors.textMuted} />
-                    </View>
-                  )}
-
-                  {/* Selected check circle */}
-                  <View
-                    style={[
-                      styles.checkCircle,
-                      {
-                        backgroundColor: isSelected ? '#8b5cf6' : 'rgba(0,0,0,0.3)',
-                      },
-                    ]}>
-                    <Ionicons name="checkmark" size={14} color="#ffffff" />
-                  </View>
-
-                  <View style={{ padding: 6, gap: 2 }}>
-                    <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: '700' }}>
-                      {item.name}
-                    </Text>
-                    <Text variant="caption" muted numberOfLines={1} style={{ fontSize: 10 }}>
-                      {item.category}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Save Button */}
-        <Pressable
-          accessibilityRole="button"
+      <View
+        style={{
+          paddingHorizontal: layout.screenPadding,
+          paddingTop: spacing.md,
+          paddingBottom: insets.bottom + spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+        }}>
+        <Button
+          title={count > 0 ? `Save look · ${count} ${count === 1 ? 'piece' : 'pieces'}` : 'Save look'}
+          leftIcon="sparkles"
+          loading={saveOutfit.isPending}
           onPress={handleSave}
-          disabled={saveOutfit.isPending}
-          style={[styles.saveBtn, { backgroundColor: '#8b5cf6' }]}>
-          {saveOutfit.isPending ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <>
-              <Ionicons name="sparkles" size={18} color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>
-                Assemble Look ({selectedItemIds.length} pieces)
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </ScrollView>
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-    paddingBottom: spacing.xxl + 20,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 9,
-    fontSize: 14,
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  itemCard: {
-    width: '31%',
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  thumb: {
-    width: '100%',
-    height: 90,
-  },
-  checkCircle: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: radius.md,
-  },
-});

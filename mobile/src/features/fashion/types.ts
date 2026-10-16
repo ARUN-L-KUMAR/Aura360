@@ -1,3 +1,5 @@
+import { error, info, success, warning } from '@/theme';
+
 export type FashionStatus = 'wardrobe' | 'wishlist' | 'sold' | 'donated';
 export type FashionCondition = 'new' | 'good' | 'fair' | 'needs_repair' | 'needs_wash';
 
@@ -117,11 +119,11 @@ export interface ScrapedProduct {
 
 export const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Shoes', 'Outerwear', 'Accessories'] as const;
 export const CONDITIONS = [
-  { value: 'new', label: 'Brand New', color: '#10b981' },
-  { value: 'good', label: 'Good Condition', color: '#3b82f6' },
-  { value: 'fair', label: 'Fair / Well Worn', color: '#f59e0b' },
-  { value: 'needs_repair', label: 'Needs Repair', color: '#f97316' },
-  { value: 'needs_wash', label: 'Needs Wash (Laundry)', color: '#ef4444' },
+  { value: 'new', label: 'Brand New', color: success[500] },
+  { value: 'good', label: 'Good Condition', color: info[500] },
+  { value: 'fair', label: 'Fair / Well Worn', color: warning[500] },
+  { value: 'needs_repair', label: 'Needs Repair', color: warning[700] },
+  { value: 'needs_wash', label: 'Needs Wash (Laundry)', color: error[500] },
 ] as const;
 
 export const OCCASIONS = ['Casual', 'Work', 'College', 'Party', 'Formal', 'Sports', 'Trip', 'Date'] as const;

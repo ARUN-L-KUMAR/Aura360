@@ -1,176 +1,198 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { FlatList, View } from 'react-native';
 
-import { Chip, ChipRow } from '@/components/ui/chip';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipRow, Tag } from '@/components/ui/chip';
+import { Divider } from '@/components/ui/divider';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
+import { ListItem } from '@/components/ui/list-item';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useSaveFashionItem } from '@/features/fashion/hooks';
 import { SEASONS, type FashionItem } from '@/features/fashion/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import {
+  GRID_COLUMNS,
+  HeaderStack,
+  RowSeparator,
+  SpacerCell,
+  gridColumnStyle,
+  isSpacer,
+  itemsGate,
+  useListPadding,
+  withSpacer,
+  type GridEntry,
+  type ItemsState,
+} from './shared';
 
 interface PlannerSectionProps {
   items: FashionItem[];
-  header?: React.ReactNode;
+  state: ItemsState;
+  header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
+  onAddNew: () => void;
 }
 
-export function PlannerSection({ items, header, onSelectItem }: PlannerSectionProps) {
-  const { colors } = useTheme();
+const keyExtractor = (entry: GridEntry) => entry.id;
+
+export function PlannerSection({ items, state, header, onSelectItem, onAddNew }: PlannerSectionProps) {
+  const notify = useNotify();
+  const padding = useListPadding();
+  const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
   const [activeSeason, setActiveSeason] = useState<string>('All');
   const saveItem = useSaveFashionItem();
+  const { mutate } = saveItem;
+  const busyId = saveItem.isPending ? saveItem.variables?.id : undefined;
 
   const wardrobeItems = useMemo(() => items.filter((i) => i.status === 'wardrobe'), [items]);
   const laundryItems = useMemo(() => items.filter((i) => i.condition === 'needs_wash'), [items]);
+
+  const seasonCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const season of SEASONS) {
+      const key = season.toLowerCase();
+      counts.set(season, season === 'All' ? wardrobeItems.length : wardrobeItems.filter((i) => (i.season || []).some((s) => s.toLowerCase() === key)).length);
+    }
+    return counts;
+  }, [wardrobeItems]);
 
   const filteredSeasonal = useMemo(() => {
     if (activeSeason === 'All') return wardrobeItems;
     return wardrobeItems.filter((i) => (i.season || []).map((s) => s.toLowerCase()).includes(activeSeason.toLowerCase()));
   }, [wardrobeItems, activeSeason]);
 
-  const handleMarkClean = (item: FashionItem) => {
-    saveItem.mutate({ id: item.id, condition: 'good' }, {
-      onSuccess: () => {
-        Alert.alert('Cleaned!', `"${item.name}" marked as clean and ready to wear.`);
-      },
-    });
-  };
+  const entries = useMemo(() => withSpacer(filteredSeasonal), [filteredSeasonal]);
+
+  const handleMarkClean = useCallback(
+    (item: FashionItem) => {
+      mutate(
+        { id: item.id, condition: 'good' },
+        {
+          onSuccess: () => {
+            notify.toast({
+              message: `"${item.name}" is clean and ready to wear`,
+              severity: 'success',
+              action: { label: 'Undo', onPress: () => mutate({ id: item.id, condition: 'needs_wash' }) },
+            });
+          },
+          onError: (err) => notify.error(err),
+        },
+      );
+    },
+    [mutate, notify],
+  );
+
+  const gate = itemsGate(state);
+
+  const renderItem = useCallback(
+    ({ item }: { item: GridEntry }) => (isSpacer(item) ? <SpacerCell /> : <FashionCard item={item} onPress={onSelectItem} />),
+    [onSelectItem],
+  );
+
+  const empty =
+    gate ??
+    (wardrobeItems.length === 0 ? (
+      <EmptyState
+        icon="calendar-outline"
+        accent="fashion"
+        title="Nothing to plan yet"
+        description="Add pieces to your wardrobe, tag them by season and they will show up here."
+        actionTitle="Add an item"
+        onAction={onAddNew}
+      />
+    ) : (
+      <EmptyState
+        variant="noResults"
+        accent="fashion"
+        title={`Nothing tagged for ${activeSeason.toLowerCase()}`}
+        description="Edit your items to give them seasonal tags."
+        onClearFilters={() => setActiveSeason('All')}
+        clearFiltersLabel="Show all seasons"
+      />
+    ));
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header ? header : null}
+    <FlatList
+      data={gate ? [] : entries}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      numColumns={GRID_COLUMNS}
+      columnWrapperStyle={gridColumnStyle}
+      ItemSeparatorComponent={RowSeparator}
+      contentContainerStyle={padding}
+      refreshControl={refreshControl}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={8}
+      windowSize={7}
+      ListHeaderComponent={
+        <HeaderStack>
+          {header}
 
-      {/* Laundry Room Section */}
-      <GlassCard glowColor="#ef4444" style={styles.laundryRoomCard}>
-        <View style={styles.laundryHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="water-outline" size={18} color="#ef4444" />
-            <Text variant="caption" style={{ color: '#ef4444', fontWeight: '800', letterSpacing: 0.8 }}>
-              LAUNDRY ROOM
-            </Text>
-          </View>
-          <View style={[styles.laundryPill, { backgroundColor: '#ef444420' }]}>
-            <Text style={{ color: '#ef4444', fontWeight: '800', fontSize: 10 }}>
-              {laundryItems.length} NEEDS WASH
-            </Text>
-          </View>
-        </View>
-
-        {laundryItems.length === 0 ? (
-          <View style={{ paddingVertical: spacing.sm }}>
-            <Text variant="caption" muted>
-              ✨ All your clothes are clean and ready in your wardrobe!
-            </Text>
-          </View>
-        ) : (
-          <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-            {laundryItems.map((item) => (
-              <View key={item.id} style={[styles.laundryRow, { borderColor: colors.border }]}>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text numberOfLines={1} style={{ fontWeight: '700', fontSize: 14 }}>
-                    {item.name}
-                  </Text>
-                  <Text variant="caption" muted numberOfLines={1}>
-                    {item.category} · {item.color || 'No color'}
-                  </Text>
-                </View>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => handleMarkClean(item)}
-                  style={[styles.cleanBtn, { backgroundColor: '#10b981' }]}>
-                  <Ionicons name="checkmark" size={14} color="#ffffff" />
-                  <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 11 }}>
-                    Mark Clean
-                  </Text>
-                </Pressable>
+          {!gate ? (
+            <Card variant="outlined" padding="sm" style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+                <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
+                  Laundry
+                </Text>
+                <Tag
+                  label={laundryItems.length === 0 ? 'All clean' : `${laundryItems.length} to wash`}
+                  icon={laundryItems.length === 0 ? 'checkmark-circle' : 'water-outline'}
+                  accent="fashion"
+                />
               </View>
-            ))}
-          </View>
-        )}
-      </GlassCard>
 
-      {/* Seasonal Wardrobe Rotation Header */}
-      <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-        <Text variant="title" style={{ fontSize: 18, fontWeight: '700' }}>
-          Seasonal Capsules
-        </Text>
-        <Text variant="caption" muted>
-          Filter items tagged for specific seasons and climate rotations
-        </Text>
+              {laundryItems.length === 0 ? (
+                <Text variant="body" color="textSecondary">
+                  Everything is clean and ready to wear.
+                </Text>
+              ) : (
+                <View>
+                  {laundryItems.map((item, index) => (
+                    <View key={item.id}>
+                      {index > 0 ? <Divider /> : null}
+                      <ListItem
+                        title={item.name}
+                        subtitle={`${item.category} · ${item.color || 'No colour'}`}
+                        icon="water-outline"
+                        accent="fashion"
+                        accessible={false}
+                        trailing={
+                          <Button
+                            title="Mark clean"
+                            size="sm"
+                            variant="secondary"
+                            leftIcon="checkmark"
+                            fullWidth={false}
+                            loading={busyId === item.id}
+                            accessibilityLabel={`Mark ${item.name} as clean`}
+                            onPress={() => handleMarkClean(item)}
+                          />
+                        }
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Card>
+          ) : null}
 
-        <ChipRow>
-          {SEASONS.map((season) => (
-            <Chip
-              key={season}
-              label={season}
-              selected={activeSeason === season}
-              color="#38bdf8"
-              onPress={() => setActiveSeason(season)}
-            />
-          ))}
-        </ChipRow>
-
-        {filteredSeasonal.length === 0 ? (
-          <EmptyState
-            icon="calendar-outline"
-            title={`No ${activeSeason} Items`}
-            description={`You haven't tagged any clothing pieces for ${activeSeason}. Edit your items to assign seasonal tags.`}
-          />
-        ) : (
-          <View style={styles.itemsGrid}>
-            {filteredSeasonal.map((item) => (
-              <FashionCard key={item.id} item={item} onPress={() => onSelectItem(item)} />
-            ))}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+          {!gate && wardrobeItems.length > 0 ? (
+            <View style={{ gap: spacing.md }}>
+              <SectionHeader title="Seasonal capsules" subtitle="Filter your wardrobe by the season each piece is tagged for." />
+              <ChipRow>
+                {SEASONS.map((season) => (
+                  <Chip key={season} label={season} accent="fashion" selected={activeSeason === season} count={seasonCounts.get(season) ?? 0} onPress={() => setActiveSeason(season)} />
+                ))}
+              </ChipRow>
+            </View>
+          ) : null}
+        </HeaderStack>
+      }
+      ListEmptyComponent={empty}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.md,
-    gap: spacing.md,
-    paddingBottom: 88,
-  },
-  laundryRoomCard: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderColor: '#ef444430',
-  },
-  laundryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  laundryPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  laundryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs + 2,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  cleanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-  },
-});
