@@ -386,7 +386,7 @@ function SaveStatus({ existing, saving, failed, dirty, problem }: { existing: bo
     color = 'textSecondary';
   } else if (failed === 'offline') {
     icon = 'cloud-offline-outline';
-    text = 'Offline - will sync';
+    text = 'Offline - changes not saved yet. Keep this screen open and we will retry.';
     color = 'warningText';
   } else if (failed === 'error') {
     icon = 'alert-circle-outline';
