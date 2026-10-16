@@ -1,24 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { memo, useMemo, useState } from 'react';
+import { FlatList, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
+import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { MonthSwitcher } from '@/components/finance/month-switcher';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Chip, ChipGroup } from '@/components/ui/chip';
+import { Card, withAlpha } from '@/components/ui/card';
+import { CategoryFab, CategoryFrame, CategoryHeader } from '@/components/ui/category-template';
+import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
+import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
+import { ListItem } from '@/components/ui/list-item';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { Screen } from '@/components/ui/screen';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { useScreenPadding } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/stat-card';
 import { Text } from '@/components/ui/text';
 import { useRunningTimer, useSaveTimeLog, useTimeLogs } from '@/features/time/hooks';
 import { TIME_CATEGORIES, byCategory, categoryColor, formatMinutes, totalMinutes, type TimeLog } from '@/features/time/types';
 import { ApiError } from '@/lib/api';
-import { formatDay, monthKey, monthLabel, shiftMonth } from '@/lib/format';
+import { formatDay, monthKey, monthLabel, weekdayShort } from '@/lib/format';
+import { haptics } from '@/lib/haptics';
 import { useNow } from '@/lib/use-now';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 function lastDayOf(month: string) {
   const [year, m] = month.split('-').map(Number);
@@ -38,12 +49,13 @@ export function openTimeLog(router: ReturnType<typeof useRouter>, log?: TimeLog)
   router.push({ pathname: '/time/log', params: log ? { log: JSON.stringify(log) } : {} });
 }
 
+type Day = { day: string; items: TimeLog[] };
+
 export default function TimeScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { colors } = useTheme();
+  const padding = useScreenPadding();
   const [month, setMonth] = useState(monthKey());
-  const isCurrent = month === monthKey();
 
   const monthLogs = useTimeLogs(`${month}-01`, lastDayOf(month));
   const today = toIsoDay(new Date());
@@ -54,6 +66,11 @@ export default function TimeScreen() {
   }, []);
   const weekLogs = useTimeLogs(weekStart, today);
 
+  const refreshControl = useRefreshControl({
+    onRefresh: () => Promise.all([monthLogs.refetch(), weekLogs.refetch()]),
+    refreshing: monthLogs.isRefetching || weekLogs.isRefetching,
+  });
+
   const logs = useMemo(() => monthLogs.data ?? [], [monthLogs.data]);
   const todayMinutes = totalMinutes((weekLogs.data ?? []).filter((log) => log.date.slice(0, 10) === today));
   const weekMinutes = totalMinutes(weekLogs.data ?? []);
@@ -61,259 +78,180 @@ export default function TimeScreen() {
   const breakdown = useMemo(() => byCategory(logs), [logs]);
   const monthTotal = totalMinutes(logs);
 
-  const days = useMemo(() => {
+  const days = useMemo<Day[]>(() => {
     const byDay = new Map<string, TimeLog[]>();
     for (const log of logs) {
       const key = log.date.slice(0, 10);
-      byDay.set(key, [...(byDay.get(key) ?? []), log]);
+      const list = byDay.get(key);
+      if (list) list.push(log);
+      else byDay.set(key, [log]);
     }
-    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, items]) => ({ day, items }));
   }, [logs]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Screen onRefresh={() => Promise.all([monthLogs.refetch(), weekLogs.refetch()])} refreshing={monthLogs.isRefetching || weekLogs.isRefetching}>
-        <Text variant="headline">Time</Text>
+  const listHeader = (
+    <View style={{ gap: layout.sectionGap, paddingBottom: spacing.md }}>
+      <CategoryHeader module="time" />
 
-        {/* KPI Summary Cards */}
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <GlassCard style={{ flex: 1, gap: spacing.xs }} glowColor={moduleColors.time}>
-            <Text variant="caption" muted style={{ fontWeight: '600' }}>
-              Today Tracked
-            </Text>
-            <Text variant="display" style={{ fontSize: 26, lineHeight: 30, color: moduleColors.time }}>
-              {formatMinutes(todayMinutes)}
-            </Text>
-          </GlassCard>
-          <GlassCard style={{ flex: 1, gap: spacing.xs }}>
-            <Text variant="caption" muted style={{ fontWeight: '600' }}>
-              Last 7 Days
-            </Text>
-            <Text variant="display" style={{ fontSize: 26, lineHeight: 30 }}>
-              {formatMinutes(weekMinutes)}
-            </Text>
-          </GlassCard>
-        </View>
-
-        {/* Live Timer or Timer Starter */}
-        <TimerCard />
-
-        {/* Month Navigator */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: spacing.xs,
-            paddingHorizontal: spacing.sm,
-            borderRadius: radius.md,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            onPress={() => setMonth(shiftMonth(month, -1))}
-            hitSlop={12}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: radius.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: pressed ? colors.cardMuted : 'transparent',
-            })}>
-            <Ionicons name="chevron-back" size={20} color={colors.text} />
-          </Pressable>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="calendar-outline" size={16} color={moduleColors.time} />
-            <Text variant="title" style={{ fontSize: 16 }}>
-              {monthLabel(month)}
-            </Text>
+      {weekLogs.isPending ? (
+        <SkeletonCard lines={1} />
+      ) : (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <StatCard label="Tracked today" value={formatMinutes(todayMinutes)} icon="today-outline" accent="time" />
           </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            onPress={() => setMonth(shiftMonth(month, 1))}
-            disabled={isCurrent}
-            hitSlop={12}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: radius.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: isCurrent ? 0.3 : 1,
-              backgroundColor: pressed ? colors.cardMuted : 'transparent',
-            })}>
-            <Ionicons name="chevron-forward" size={20} color={colors.text} />
-          </Pressable>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <StatCard label="Last 7 days" value={formatMinutes(weekMinutes)} icon="calendar-outline" accent="time" />
+          </View>
         </View>
+      )}
 
-        {monthLogs.isPending ? (
-          <Card>
-            <Text muted>Loading…</Text>
-          </Card>
-        ) : null}
-        {monthLogs.isError ? (
-          <Card>
-            <Text muted>{monthLogs.error instanceof Error ? monthLogs.error.message : "Couldn't load time logs."}</Text>
-          </Card>
-        ) : null}
+      <TimerCard />
 
-        {/* Category Breakdown */}
-        {breakdown.length > 0 ? (
-          <GlassCard style={{ gap: spacing.md }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text variant="title" style={{ fontSize: 16 }}>
-                Time Distribution
-              </Text>
-              <Text variant="caption" muted style={{ fontWeight: '600' }}>
-                {formatMinutes(monthTotal)} total
-              </Text>
-            </View>
-            {breakdown.map((item) => (
+      <MonthSwitcher month={month} onChange={setMonth} accent="time" />
+
+      {breakdown.length > 0 ? (
+        <Card style={{ gap: spacing.md }}>
+          <SectionHeader title="Time distribution" subtitle={`${formatMinutes(monthTotal)} logged in ${monthLabel(month)}`} />
+          {breakdown.map((item) => {
+            const percent = monthTotal > 0 ? (item.minutes / monthTotal) * 100 : 0;
+            return (
               <View key={item.category} style={{ gap: spacing.xs }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text variant="label" style={{ fontWeight: '600' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
+                  <Text variant="label" numberOfLines={1} style={{ flex: 1 }}>
                     {item.category}
                   </Text>
-                  <Text variant="caption" muted>
-                    {formatMinutes(item.minutes)} ({Math.round((item.minutes / monthTotal) * 100)}%)
+                  <Text variant="caption" numeric color="textSecondary">
+                    {formatMinutes(item.minutes)} ({Math.round(percent)}%)
                   </Text>
                 </View>
-                <ProgressBar percent={(item.minutes / monthTotal) * 100} color={categoryColor(item.category)} />
+                <ProgressBar percent={percent} color={categoryColor(item.category)} />
               </View>
-            ))}
-          </GlassCard>
-        ) : null}
-
-        {!monthLogs.isPending && !monthLogs.isError && days.length === 0 ? (
-          <EmptyState
-            icon="time-outline"
-            title={`No Time Logged in ${monthLabel(month)}`}
-            description="Start the live stopwatch above or manually log hours spent on activities."
-          />
-        ) : null}
-
-        {/* History Days */}
-        {days.map(([day, items]) => (
-          <GlassCard key={day} style={{ gap: spacing.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="label" style={{ fontWeight: '700' }}>
-                {formatDay(day)}
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: 2,
-                  borderRadius: radius.pill,
-                  backgroundColor: `${moduleColors.time}20`,
-                }}>
-                <Text variant="caption" style={{ color: moduleColors.time, fontWeight: '700' }}>
-                  {formatMinutes(totalMinutes(items))}
-                </Text>
-              </View>
-            </View>
-            {items.map((log) => (
-              <LogRow key={log.id} log={log} />
-            ))}
-          </GlassCard>
-        ))}
-      </Screen>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add time log"
-        onPress={() => openTimeLog(router)}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          right: spacing.lg,
-          bottom: spacing.lg,
-          width: 56,
-          height: 56,
-          borderRadius: radius.pill,
-          backgroundColor: moduleColors.time,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.85 : 1,
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOpacity: 0.25,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 3 },
-        })}>
-        <Ionicons name="add" size={30} color="#ffffff" />
-      </Pressable>
+            );
+          })}
+        </Card>
+      ) : null}
     </View>
+  );
+
+  return (
+    <CategoryFrame>
+      <FlatList<Day>
+        data={days}
+        keyExtractor={(d) => d.day}
+        renderItem={({ item, index }) => <DayCard day={item.day} items={item.items} index={index} />}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          monthLogs.isPending ? (
+            <SkeletonList count={4} trailing />
+          ) : monthLogs.isError ? (
+            <ErrorState error={monthLogs.error} title="Couldn't load time logs" onRetry={() => monthLogs.refetch()} retrying={monthLogs.isRefetching} />
+          ) : (
+            <EmptyState
+              accent="time"
+              icon="time-outline"
+              title={`No time logged in ${monthLabel(month)}`}
+              description="Start the stopwatch above, or add the hours you spent on an activity."
+              actionTitle="Add time log"
+              onAction={() => openTimeLog(router)}
+            />
+          )
+        }
+        refreshControl={refreshControl}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={[padding, { gap: spacing.md, paddingBottom: FAB_CLEARANCE }]}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      />
+      <CategoryFab module="time" label="Add time log" onPress={() => openTimeLog(router)} />
+    </CategoryFrame>
   );
 }
 
-function LogRow({ log }: { log: TimeLog }) {
+const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: TimeLog[]; index: number }) {
+  const entering = useEntering(index);
+  return (
+    <Animated.View entering={entering}>
+      <Card padding="none" style={{ overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <Text variant="label" weight="semiBold" accessibilityRole="header" style={{ flex: 1 }}>
+            {weekdayShort(day)}, {formatDay(day)}
+          </Text>
+          <Tag label={formatMinutes(totalMinutes(items))} icon="time-outline" accent="time" />
+        </View>
+        {items.map((log, i) => (
+          <LogRow key={log.id} log={log} divider={i < items.length - 1} />
+        ))}
+      </Card>
+    </Animated.View>
+  );
+});
+
+function LogRow({ log, divider }: { log: TimeLog; divider: boolean }) {
   const router = useRouter();
   const color = categoryColor(log.category);
+  const duration = formatMinutes(log.duration);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${log.activity}, ${formatMinutes(log.duration)}`}
+    <ListItem
+      leading={
+        <View
+          style={{
+            width: layout.minTouchTarget - spacing.xs,
+            height: layout.minTouchTarget - spacing.xs,
+            borderRadius: radius.md,
+            backgroundColor: withAlpha(color, 0.16),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <Ionicons name="time-outline" size={22} color={color} />
+        </View>
+      }
+      title={log.activity}
+      subtitle={[log.category, log.description].filter(Boolean).join(' · ') || undefined}
+      meta={
+        <Text variant="label" weight="bold" numeric numberOfLines={1}>
+          {duration}
+        </Text>
+      }
+      divider={divider}
+      chevron={false}
       onPress={() => openTimeLog(router, log)}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        paddingVertical: spacing.sm,
-        opacity: pressed ? 0.7 : 1,
-      })}>
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: radius.sm,
-          backgroundColor: `${color}20`,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Ionicons name="time-outline" size={16} color={color} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text numberOfLines={1} style={{ fontWeight: '500' }}>
-          {log.activity}
-        </Text>
-        <Text variant="caption" muted numberOfLines={1}>
-          {[log.category, log.description].filter(Boolean).join(' · ')}
-        </Text>
-      </View>
-      <Text style={{ fontWeight: '700' }}>{formatMinutes(log.duration)}</Text>
-    </Pressable>
+      accessibilityLabel={`${log.activity}, ${duration}${log.category ? `, ${log.category}` : ''}`}
+      accessibilityHint="Opens this time log"
+    />
   );
 }
 
 function TimerCard() {
+  const notify = useNotify();
   const { timer, loaded, start, clear } = useRunningTimer();
   const save = useSaveTimeLog();
   const [activity, setActivity] = useState('');
   const [category, setCategory] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const now = useNow(!!timer);
 
-  if (!loaded) return null;
+  if (!loaded) return <SkeletonCard lines={2} />;
+
+  const activityError = submitted && !activity.trim() ? 'What are you working on?' : null;
 
   function begin() {
-    if (!activity.trim()) return setError('What are you working on?');
-    setError(null);
+    setSubmitted(true);
+    if (!activity.trim()) {
+      haptics.warning();
+      return;
+    }
     start(activity.trim(), category);
+    haptics.success();
     setActivity('');
+    setSubmitted(false);
   }
 
   async function stop() {
     if (!timer) return;
     const endedAt = Date.now();
     const minutes = Math.max(1, Math.round((endedAt - timer.startedAt) / 60000));
-    setError(null);
     try {
       await save.mutateAsync({
         input: {
@@ -326,84 +264,70 @@ function TimerCard() {
         },
       });
       clear();
+      notify.success(`Saved ${formatMinutes(minutes)} for ${timer.activity}`);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. The timer is still running, try again.');
+      notify.error(e instanceof ApiError ? e.message : 'Could not save. The timer is still running, try again.');
     }
   }
 
-  function discard() {
-    Alert.alert('Discard this timer?', 'The time will not be saved.', [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: clear },
-    ]);
+  async function discard() {
+    const ok = await notify.confirm({
+      title: 'Discard this timer?',
+      message: 'The time will not be saved.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep',
+      destructive: true,
+    });
+    if (!ok) return;
+    clear();
+    notify.info('Timer discarded');
   }
 
   if (timer) {
     const seconds = Math.max(0, Math.floor((now - timer.startedAt) / 1000));
     const activeColor = categoryColor(timer.category);
+    const clock = formatClock(seconds);
     return (
-      <GlassCard glowColor={activeColor} style={{ gap: spacing.md }}>
+      <Card variant="tinted" accent="time" style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: activeColor }} />
-          <Text variant="title" style={{ flex: 1, fontSize: 16 }} numberOfLines={1}>
+          <Ionicons name="radio-button-on" size={16} color={activeColor} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text variant="title" numberOfLines={1} style={{ flex: 1 }}>
             {timer.activity}
           </Text>
-          {timer.category ? (
-            <View
-              style={{
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: radius.pill,
-                backgroundColor: `${activeColor}20`,
-              }}>
-              <Text variant="caption" style={{ color: activeColor, fontWeight: '700' }}>
-                {timer.category}
-              </Text>
-            </View>
-          ) : null}
+          {timer.category ? <Tag label={timer.category} color={activeColor} /> : null}
         </View>
 
-        <Text
-          variant="display"
-          style={{
-            fontSize: 44,
-            lineHeight: 48,
-            fontVariant: ['tabular-nums'],
-            color: activeColor,
-            textAlign: 'center',
-            marginVertical: spacing.xs,
-          }}>
-          {formatClock(seconds)}
+        <Text variant="display" numeric accessibilityRole="timer" accessibilityLabel={`Elapsed time ${clock}`} style={{ textAlign: 'center' }}>
+          {clock}
         </Text>
 
-        {error ? <Text color="danger">{error}</Text> : null}
-
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <View style={{ flex: 1 }}>
-            <Button title="Stop & Save" onPress={stop} loading={save.isPending} />
-          </View>
-          <Button title="Discard" variant="ghost" onPress={discard} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <Button title="Stop and save" leftIcon="stop" onPress={stop} loading={save.isPending} style={{ flex: 1, minWidth: 150 }} />
+          <Button title="Discard" variant="tertiary" leftIcon="trash-outline" onPress={discard} disabled={save.isPending} style={{ flex: 1, minWidth: 120 }} />
         </View>
-      </GlassCard>
+      </Card>
     );
   }
 
   return (
-    <GlassCard glowColor={moduleColors.time} style={{ gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-        <Ionicons name="stopwatch-outline" size={18} color={moduleColors.time} />
-        <Text variant="title" style={{ fontSize: 16 }}>
-          Live Stopwatch
-        </Text>
-      </View>
-      <Input value={activity} onChangeText={setActivity} placeholder="e.g. Deep Work, Workout, Coding" returnKeyType="go" onSubmitEditing={begin} />
+    <Card style={{ gap: spacing.md }}>
+      <SectionHeader title="Live stopwatch" subtitle="Track an activity as you do it." />
+      <Input
+        label="What are you working on?"
+        value={activity}
+        onChangeText={setActivity}
+        placeholder="e.g. Deep work, workout, coding"
+        autoCapitalize="sentences"
+        returnKeyType="go"
+        error={activityError}
+        onSubmitEditing={begin}
+      />
       <ChipGroup>
         {TIME_CATEGORIES.map((name) => (
           <Chip key={name} label={name} selected={category === name} color={categoryColor(name)} onPress={() => setCategory(category === name ? null : name)} />
         ))}
       </ChipGroup>
-      {error ? <Text color="danger">{error}</Text> : null}
-      <Button title="▶ Start Timer" onPress={begin} />
-    </GlassCard>
+      <Button title="Start timer" leftIcon="play" onPress={begin} />
+    </Card>
   );
 }

@@ -1,201 +1,134 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { memo, useState, type ReactNode } from 'react';
+import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
+import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { MonthSwitcher } from '@/components/finance/month-switcher';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
+import { ErrorState } from '@/components/ui/error-state';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useBudgets } from '@/features/finance/hooks';
 import { OVERALL_BUDGET, type Budget } from '@/features/finance/types';
-import { formatMoney, monthKey, monthLabel, shiftMonth } from '@/lib/format';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { formatMoney, monthKey } from '@/lib/format';
+import { spacing } from '@/theme';
 
 export function openBudget(router: ReturnType<typeof useRouter>, month: string, budget?: Budget) {
   router.push({ pathname: '/finance/budget', params: { month, ...(budget ? { budget: JSON.stringify(budget) } : {}) } });
 }
 
+function BudgetStatus({ budget }: { budget: Pick<Budget, 'isOverBudget' | 'isNearLimit'> }) {
+  if (budget.isOverBudget) return <Badge severity="error" label="Over budget" size="sm" />;
+  if (budget.isNearLimit) return <Badge severity="warning" label="Near limit" size="sm" />;
+  return null;
+}
+
+const BudgetCard = memo(function BudgetCard({ budget, month, index }: { budget: Budget; month: string; index: number }) {
+  const router = useRouter();
+  const entering = useEntering(index);
+  const status = budget.isOverBudget ? ', over budget' : budget.isNearLimit ? ', near limit' : '';
+
+  return (
+    <Animated.View entering={entering}>
+      <Card
+        onPress={() => openBudget(router, month, budget)}
+        accessibilityLabel={`${budget.category} budget, ${formatMoney(budget.spent)} spent of ${formatMoney(budget.amount)}, ${budget.percentage} percent${status}`}
+        accessibilityHint="Opens this budget"
+        style={{ gap: spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+          <Text variant="body" weight="semiBold" numberOfLines={1} style={{ flex: 1 }}>
+            {budget.category}
+          </Text>
+          <BudgetStatus budget={budget} />
+        </View>
+        <ProgressBar percent={budget.percentage} autoThresholdColor showLabel />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
+          <Text variant="caption" numeric color="textSecondary">
+            {formatMoney(budget.spent)} spent
+          </Text>
+          <Text variant="caption" numeric color="textSecondary">
+            {formatMoney(budget.amount)} limit
+          </Text>
+        </View>
+      </Card>
+    </Animated.View>
+  );
+});
+
 export function BudgetsSection({ header }: { header: ReactNode }) {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
   const [month, setMonth] = useState(monthKey());
   const { data, isPending, isError, error, refetch, isRefetching } = useBudgets(month);
 
   const categories = (data?.data ?? []).filter((b) => b.category !== OVERALL_BUDGET);
   const overall = (data?.data ?? []).find((b) => b.category === OVERALL_BUDGET);
   const summary = data?.summary;
-  const isCurrent = month === monthKey();
-
-  const statusColor = (b: { isOverBudget: boolean; isNearLimit: boolean }) =>
-    b.isOverBudget ? colors.danger : b.isNearLimit ? colors.warning : colors.success;
 
   return (
-    <Screen onRefresh={() => refetch()} refreshing={isRefetching}>
+    <Screen onRefresh={() => refetch()} refreshing={isRefetching} contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}>
       {header}
 
-      {/* Month Navigator */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingVertical: spacing.xs,
-          paddingHorizontal: spacing.sm,
-          borderRadius: radius.md,
-          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous month"
-          onPress={() => setMonth(shiftMonth(month, -1))}
-          hitSlop={12}
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: pressed ? colors.cardMuted : 'transparent',
-          })}>
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
-        </Pressable>
+      <MonthSwitcher month={month} onChange={setMonth} />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="calendar-outline" size={16} color={moduleColors.finance} />
-          <Text variant="title" style={{ fontSize: 16 }}>
-            {monthLabel(month)}
-          </Text>
+      {isPending ? (
+        <View style={{ gap: spacing.md }}>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={1} />
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next month"
-          onPress={() => setMonth(shiftMonth(month, 1))}
-          disabled={isCurrent}
-          hitSlop={12}
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: isCurrent ? 0.3 : 1,
-            backgroundColor: pressed ? colors.cardMuted : 'transparent',
-          })}>
-          <Ionicons name="chevron-forward" size={20} color={colors.text} />
-        </Pressable>
-      </View>
-
-      {isError ? (
-        <Card>
-          <Text muted>{error instanceof Error ? error.message : "Couldn't load budgets."}</Text>
-        </Card>
-      ) : null}
-
-      {summary ? (
-        <GlassCard
-          glowColor={summary.isOverBudget ? colors.danger : moduleColors.finance}
-          style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="title" style={{ fontSize: 16 }}>
-              {summary.hasOverallBudget ? 'Overall Monthly Budget' : 'Total Monthly Budget'}
-            </Text>
-            <View
-              style={{
-                paddingHorizontal: spacing.sm,
-                paddingVertical: 2,
-                borderRadius: radius.pill,
-                backgroundColor: summary.isOverBudget ? `${colors.danger}25` : `${moduleColors.finance}25`,
-              }}>
-              <Text
-                variant="caption"
-                style={{
-                  color: summary.isOverBudget ? colors.danger : moduleColors.finance,
-                  fontWeight: '700',
-                }}>
-                {summary.percentage}% used
-              </Text>
-            </View>
-          </View>
-
-          <Text variant="display" color={summary.isOverBudget ? 'danger' : 'text'} style={{ fontSize: 32, lineHeight: 36 }}>
-            {formatMoney(summary.totalSpent)}
-          </Text>
-
-          <ProgressBar percent={summary.percentage} color={summary.isOverBudget ? colors.danger : colors.success} />
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs }}>
-            <Text variant="caption" muted>
-              {summary.overallCap > 0
-                ? `${formatMoney(summary.remaining)} remaining of ${formatMoney(summary.overallCap)}`
-                : 'No budgets configured for this month yet.'}
-            </Text>
-            {overall ? (
-              <Pressable onPress={() => openBudget(router, month, overall)} hitSlop={8}>
-                <Text variant="caption" style={{ color: moduleColors.finance, fontWeight: '700' }}>
-                  Edit limit
+      ) : isError && !data ? (
+        <ErrorState error={error} title="Couldn't load budgets" onRetry={() => refetch()} retrying={isRefetching} />
+      ) : (
+        <>
+          {summary && (summary.overallCap > 0 || categories.length > 0) ? (
+            <Card variant="tinted" accent="finance" style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+                <Text variant="title" style={{ flex: 1 }}>
+                  {summary.hasOverallBudget ? 'Overall monthly budget' : 'Total monthly budget'}
                 </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </GlassCard>
-      ) : isPending ? (
-        <Card>
-          <Text muted>Loading…</Text>
-        </Card>
-      ) : null}
-
-      {categories.map((b) => (
-        <Pressable key={b.id} accessibilityRole="button" onPress={() => openBudget(router, month, b)} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
-          <GlassCard style={{ gap: spacing.sm }} glowColor={b.isOverBudget ? colors.danger : undefined}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="label" style={{ fontWeight: '700' }}>
-                {b.category}
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: radius.pill,
-                  backgroundColor: `${statusColor(b)}20`,
-                }}>
-                <Text variant="caption" style={{ color: statusColor(b), fontWeight: '700' }}>
-                  {b.isOverBudget ? 'Over budget' : b.isNearLimit ? 'Near limit' : `${b.percentage}%`}
-                </Text>
+                {summary.isOverBudget ? <Badge severity="error" label="Over budget" size="sm" /> : null}
               </View>
-            </View>
-
-            <ProgressBar percent={b.percentage} color={statusColor(b)} />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" muted>
-                {formatMoney(b.spent)} spent
+              <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} color={summary.isOverBudget ? 'errorText' : 'text'}>
+                {formatMoney(summary.totalSpent)}
               </Text>
-              <Text variant="caption" muted>
-                {formatMoney(b.amount)} cap
-              </Text>
+              <ProgressBar percent={summary.percentage} autoThresholdColor showLabel label="Used this month" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+                <Text variant="caption" numeric color="textSecondary" style={{ flex: 1 }}>
+                  {summary.overallCap > 0
+                    ? `${formatMoney(summary.remaining)} remaining of ${formatMoney(summary.overallCap)}`
+                    : 'No budgets set for this month yet.'}
+                </Text>
+                {overall ? <Button title="Edit limit" size="sm" variant="tertiary" fullWidth={false} onPress={() => openBudget(router, month, overall)} /> : null}
+              </View>
+            </Card>
+          ) : null}
+
+          {categories.length > 0 ? (
+            <View style={{ gap: spacing.md }}>
+              {categories.map((b, i) => (
+                <BudgetCard key={b.id} budget={b} month={month} index={i} />
+              ))}
             </View>
-          </GlassCard>
-        </Pressable>
-      ))}
+          ) : (
+            <EmptyState
+              accent="finance"
+              icon="pie-chart-outline"
+              title="No category budgets"
+              description="Set monthly limits for things like food, fuel or shopping to keep spending in check."
+              actionTitle="Create a budget"
+              onAction={() => openBudget(router, month)}
+            />
+          )}
 
-      {!isPending && categories.length === 0 && !isError ? (
-        <EmptyState
-          icon="pie-chart-outline"
-          title="No Category Budgets"
-          description="Set monthly spending limits for categories like Food, Fuel, or Shopping to avoid overspending."
-        />
-      ) : null}
-
-      <Button title="+ Create Budget Category" variant="secondary" onPress={() => openBudget(router, month)} />
+          {categories.length > 0 ? <Button title="New budget" variant="secondary" leftIcon="add" onPress={() => openBudget(router, month)} /> : null}
+        </>
+      )}
     </Screen>
   );
 }
-

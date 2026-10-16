@@ -1,19 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 
+import { FormCard, failureMessage } from '@/components/finance/form-parts';
 import { Button } from '@/components/ui/button';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useDeleteTimeLog, useSaveTimeLog } from '@/features/time/hooks';
-import { DURATION_PRESETS, TIME_CATEGORIES, categoryColor, type TimeLog } from '@/features/time/types';
-import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { DURATION_PRESETS, TIME_CATEGORIES, categoryColor, formatMinutes, type TimeLog } from '@/features/time/types';
+import { haptics } from '@/lib/haptics';
+import { useNotify } from '@/providers/notify';
+import { spacing, tabularNums, useTheme } from '@/theme';
 
 const CUSTOM = '__custom__';
 
@@ -27,8 +27,8 @@ function parseLog(raw?: string): TimeLog | null {
 
 export default function TimeLogScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{ log?: string }>();
   const existing = useMemo(() => parseLog(params.log), [params.log]);
 
@@ -41,19 +41,25 @@ export default function TimeLogScreen() {
   const [date, setDate] = useState(existing?.date.slice(0, 10) ?? toIsoDay(new Date()));
   const [score, setScore] = useState<number | null>(existing?.productivityScore ?? null);
   const [description, setDescription] = useState(existing?.description ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
+  const durationRef = useRef<TextInput>(null);
   const save = useSaveTimeLog();
   const remove = useDeleteTimeLog();
 
   const finalCategory = category === CUSTOM ? customCategory.trim() : category;
+  const minutes = Number.parseInt(duration, 10);
+  const hasMinutes = Number.isFinite(minutes) && minutes > 0;
+  const activityError = activity.trim() ? null : 'What did you do?';
+  const durationError = hasMinutes ? null : 'Enter how many minutes it took.';
 
   async function submit() {
-    const minutes = Number.parseInt(duration, 10);
-    if (!activity.trim()) return setError('What did you do?');
-    if (!Number.isFinite(minutes) || minutes <= 0) return setError('Enter how many minutes it took.');
+    setSubmitted(true);
+    if (activityError || durationError) {
+      haptics.warning();
+      return;
+    }
 
-    setError(null);
     try {
       await save.mutateAsync({
         id: existing?.id,
@@ -66,179 +72,127 @@ export default function TimeLogScreen() {
           productivityScore: score ?? undefined,
         },
       });
+      notify.success(existing ? 'Time log updated' : 'Time log added');
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      notify.error(failureMessage(e, 'Could not save. Try again.'));
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete this time log?', existing.activity, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remove.mutateAsync(existing.id);
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({
+      title: 'Delete this time log?',
+      message: existing.activity,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(existing.id);
+      notify.success('Time log deleted');
+      router.back();
+    } catch (e) {
+      notify.error(failureMessage(e, 'Could not delete. Try again.'));
+    }
   }
 
   return (
     <Screen topInset={false}>
       <Stack.Screen options={{ title: existing ? 'Edit time log' : 'Add time log' }} />
 
-      {/* Activity Card */}
-      <GlassCard
-        glowColor={moduleColors.time}
-        style={{
-          gap: spacing.md,
-          padding: spacing.md,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
+      <FormCard>
         <Input
-          label="Activity Name"
+          label="Activity"
           value={activity}
           onChangeText={setActivity}
-          placeholder="e.g. Deep Work, Learning Rust, Client Call"
+          placeholder="e.g. Deep work, learning Rust, client call"
           autoFocus={!existing}
-          style={{ fontSize: 18, fontWeight: '600' }}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          error={submitted ? activityError : null}
+          onSubmitEditing={() => durationRef.current?.focus()}
         />
-
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="label" muted>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="label" color="textSecondary">
             Category
           </Text>
           <ChipGroup>
             {TIME_CATEGORIES.map((name) => (
-              <Chip
-                key={name}
-                label={name}
-                selected={category === name}
-                color={categoryColor(name)}
-                onPress={() => setCategory(category === name ? '' : name)}
-              />
+              <Chip key={name} label={name} selected={category === name} color={categoryColor(name)} onPress={() => setCategory(category === name ? '' : name)} />
             ))}
-            <Chip
-              label="Custom…"
-              selected={category === CUSTOM}
-              color={moduleColors.time}
-              onPress={() => setCategory(CUSTOM)}
-            />
+            <Chip label="Custom" icon="create-outline" accent="time" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
           </ChipGroup>
           {category === CUSTOM ? (
-            <Input value={customCategory} onChangeText={setCustomCategory} placeholder="Category name" />
+            <Input label="Category name" value={customCategory} onChangeText={setCustomCategory} placeholder="e.g. Side project" autoCapitalize="words" returnKeyType="done" />
           ) : null}
         </View>
-      </GlassCard>
+      </FormCard>
 
-      {/* Duration Card with Presets */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="timer-outline" size={16} color={moduleColors.time} />
-          <Text variant="label" muted>
-            Duration
-          </Text>
-        </View>
+      <FormCard title="Duration" icon="timer-outline">
         <Input
+          ref={durationRef}
           label="Minutes"
           value={duration}
-          onChangeText={setDuration}
+          onChangeText={(text) => setDuration(text.replace(/[^0-9]/g, ''))}
           keyboardType="number-pad"
+          inputMode="numeric"
           placeholder="60"
-          style={{ fontSize: 24, fontWeight: '700' }}
+          returnKeyType="done"
+          style={{ fontVariant: tabularNums }}
+          helper={hasMinutes ? `That is ${formatMinutes(minutes)}.` : undefined}
+          error={submitted ? durationError : null}
         />
         <ChipGroup>
-          {DURATION_PRESETS.map((minutes) => (
+          {DURATION_PRESETS.map((preset) => (
             <Chip
-              key={minutes}
-              label={minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`}
-              selected={duration === String(minutes)}
-              color={moduleColors.time}
-              onPress={() => setDuration(String(minutes))}
+              key={preset}
+              label={preset >= 60 ? `${preset / 60}h` : `${preset}m`}
+              accent="time"
+              selected={duration === String(preset)}
+              onPress={() => setDuration(String(preset))}
+              accessibilityHint={`Sets the duration to ${formatMinutes(preset)}`}
             />
           ))}
         </ChipGroup>
-      </GlassCard>
+      </FormCard>
 
-      {/* Productivity Score */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="sparkles-outline" size={16} color={colors.warning} />
-          <Text variant="label" muted>
-            Productivity Rating (1 - 10)
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+      <FormCard title="Productivity rating (optional)" icon="sparkles-outline">
+        <ChipGroup>
           {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => {
-            const isSelected = score === value;
-            const scoreColor = value <= 4 ? colors.danger : value <= 7 ? colors.warning : colors.success;
+            const tone = value <= 4 ? colors.error : value <= 7 ? colors.warning : colors.success;
             return (
-              <Pressable
+              <Chip
                 key={value}
-                onPress={() => setScore(isSelected ? null : value)}
-                style={({ pressed }) => ({
-                  width: 32,
-                  height: 32,
-                  borderRadius: radius.pill,
-                  backgroundColor: isSelected ? scoreColor : isDark ? 'rgba(34, 48, 65, 0.6)' : colors.cardMuted,
-                  borderWidth: 1,
-                  borderColor: isSelected ? scoreColor : colors.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.7 : 1,
-                })}>
-                <Text
-                  style={{
-                    fontWeight: '700',
-                    fontSize: 13,
-                    color: isSelected ? '#ffffff' : colors.text,
-                  }}>
-                  {value}
-                </Text>
-              </Pressable>
+                label={String(value)}
+                color={tone}
+                selected={score === value}
+                onPress={() => setScore(score === value ? null : value)}
+                accessibilityHint={`Rate this ${value} out of 10`}
+              />
             );
           })}
-        </View>
-      </GlassCard>
+        </ChipGroup>
+        <Text variant="caption" color="textSecondary">
+          1 is a low-focus session, 10 is your best. Tap again to clear.
+        </Text>
+      </FormCard>
 
-      {/* Date & Description */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
+      <FormCard>
         <DateField label="Date" value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
         <Input
           label="Notes (optional)"
           value={description}
           onChangeText={setDescription}
           multiline
-          placeholder="What did you achieve, blockers encountered…"
+          autoCapitalize="sentences"
+          placeholder="What did you achieve? Any blockers?"
           style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: spacing.md }}
         />
-      </GlassCard>
-
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
+      </FormCard>
 
       <Button title={existing ? 'Save changes' : 'Add time log'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete time log" variant="ghost" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      {existing ? <Button title="Delete time log" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );
 }

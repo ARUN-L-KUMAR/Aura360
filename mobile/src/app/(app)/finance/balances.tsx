@@ -1,29 +1,32 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import type { TextInput } from 'react-native';
 
+import { FormCard, cleanAmount, failureMessage, parseAmount } from '@/components/finance/form-parts';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
+import { Card } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useBalances, useSaveBalances } from '@/features/finance/hooks';
-import { ApiError } from '@/lib/api';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { useNotify } from '@/providers/notify';
+import { spacing, tabularNums } from '@/theme';
 
 export default function BalancesScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
-  const { data } = useBalances();
+  const notify = useNotify();
+  const { data, isPending, isError, error, refetch, isRefetching } = useBalances();
   const save = useSaveBalances();
 
   const [cash, setCash] = useState<string | null>(null);
   const [account, setAccount] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const accountRef = useRef<TextInput>(null);
 
   const initialCash = data ? String(Number(data.data.find((b) => b.paymentMethod === 'cash')?.currentBalance ?? 0)) : '';
   const initialAccount = data ? String(Number(data.data.find((b) => b.paymentMethod === 'upi')?.currentBalance ?? 0)) : '';
@@ -31,105 +34,95 @@ export default function BalancesScreen() {
   const activeCash = cash ?? initialCash;
   const activeAccount = account ?? initialAccount;
 
-  const cashVal = Number.parseFloat(activeCash.replace(/,/g, '')) || 0;
-  const accountVal = Number.parseFloat(activeAccount.replace(/,/g, '')) || 0;
-  const totalLiquid = cashVal + accountVal;
+  // An empty field means zero; anything else must be a number.
+  const cashValue = activeCash.trim() ? parseAmount(activeCash) : 0;
+  const accountValue = activeAccount.trim() ? parseAmount(activeAccount) : 0;
+  const cashError = Number.isFinite(cashValue) ? null : 'Enter a valid amount.';
+  const accountError = Number.isFinite(accountValue) ? null : 'Enter a valid amount.';
+  const totalLiquid = (Number.isFinite(cashValue) ? cashValue : 0) + (Number.isFinite(accountValue) ? accountValue : 0);
 
   async function submit() {
-    const cashValue = activeCash.trim() ? Number.parseFloat(activeCash.replace(/,/g, '')) : 0;
-    const accountValue = activeAccount.trim() ? Number.parseFloat(activeAccount.replace(/,/g, '')) : 0;
-    if (!Number.isFinite(cashValue) || !Number.isFinite(accountValue)) return setError('Enter valid amounts.');
+    setSubmitted(true);
+    if (cashError || accountError) {
+      haptics.warning();
+      return;
+    }
 
-    setError(null);
     try {
       await save.mutateAsync({ cash_balance: cashValue, account_balance: accountValue });
+      notify.success('Balances updated');
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      notify.error(failureMessage(e, 'Could not save. Try again.'));
     }
   }
+
+  const symbol = (
+    <Text variant="body" color="textSecondary">
+      {CURRENCY_SYMBOL}
+    </Text>
+  );
 
   return (
     <Screen topInset={false}>
       <Stack.Screen options={{ title: 'Money on hand' }} />
 
-      {/* Hero Total Liquid Assets Card */}
-      <GlassCard
-        glowColor={moduleColors.finance}
-        style={{
-          gap: spacing.xs,
-          padding: spacing.lg,
-          alignItems: 'center',
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
-        <Text variant="caption" muted style={{ fontWeight: '700', letterSpacing: 0.8 }}>
-          TOTAL LIQUID ASSETS
-        </Text>
-        <Text
-          style={{
-            fontSize: 34,
-            fontWeight: '800',
-            color: moduleColors.finance,
-            fontVariant: ['tabular-nums'],
-          }}>
-          {formatMoney(totalLiquid)}
-        </Text>
-        <Text variant="caption" muted>
-          Cash + Bank & UPI combined
-        </Text>
-      </GlassCard>
-
-      {/* Inputs in GlassCards */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ gap: spacing.xs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="wallet-outline" size={18} color={moduleColors.finance} />
-            <Text variant="label" muted>
-              Physical Cash on Hand ({CURRENCY_SYMBOL})
+      {isPending ? (
+        <>
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={2} />
+        </>
+      ) : isError && !data ? (
+        <ErrorState error={error} title="Couldn't load your balances" onRetry={() => refetch()} retrying={isRefetching} />
+      ) : (
+        <>
+          <Card variant="tinted" accent="finance" style={{ alignItems: 'center', gap: spacing.xs }}>
+            <Text variant="caption" weight="semiBold" color="textSecondary">
+              Total money on hand
             </Text>
-          </View>
-          <Input
-            value={activeCash}
-            onChangeText={setCash}
-            keyboardType="decimal-pad"
-            placeholder="0"
-            style={{ fontSize: 20, fontWeight: '700' }}
-          />
-        </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="card-outline" size={18} color={moduleColors.saved} />
-            <Text variant="label" muted>
-              Bank & UPI Balances ({CURRENCY_SYMBOL})
+            <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {formatMoney(totalLiquid)}
             </Text>
-          </View>
-          <Input
-            value={activeAccount}
-            onChangeText={setAccount}
-            keyboardType="decimal-pad"
-            placeholder="0"
-            style={{ fontSize: 20, fontWeight: '700' }}
-          />
-        </View>
-      </GlassCard>
+            <Text variant="caption" color="textSecondary">
+              Cash plus bank and UPI balances
+            </Text>
+          </Card>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
+          <FormCard>
+            <Input
+              label="Cash in hand"
+              value={activeCash}
+              onChangeText={(text) => setCash(cleanAmount(text))}
+              leftIcon="wallet-outline"
+              leftAdornment={symbol}
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+              placeholder="0"
+              returnKeyType="next"
+              style={{ fontVariant: tabularNums }}
+              error={submitted ? cashError : null}
+              onSubmitEditing={() => accountRef.current?.focus()}
+            />
+            <Input
+              ref={accountRef}
+              label="Bank and UPI balance"
+              value={activeAccount}
+              onChangeText={(text) => setAccount(cleanAmount(text))}
+              leftIcon="card-outline"
+              leftAdornment={symbol}
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+              placeholder="0"
+              returnKeyType="done"
+              style={{ fontVariant: tabularNums }}
+              error={submitted ? accountError : null}
+              onSubmitEditing={submit}
+            />
+          </FormCard>
 
-      <Button title="Update Balances" onPress={submit} loading={save.isPending} />
+          <Button title="Update balances" onPress={submit} loading={save.isPending} />
+        </>
+      )}
     </Screen>
   );
 }

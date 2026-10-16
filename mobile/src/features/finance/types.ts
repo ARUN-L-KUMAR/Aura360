@@ -1,3 +1,5 @@
+import { categoryRamps, error, primary, success, tertiary, warning } from '@/theme';
+
 export type TransactionType = 'income' | 'expense' | 'investment' | 'transfer';
 export type EditableTransactionType = Exclude<TransactionType, 'transfer'>;
 
@@ -141,4 +143,13 @@ export const GOAL_CATEGORIES = [
   'Other',
 ];
 
-export const GOAL_COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
+/** Swatches offered for new goals (theme mid-tones). Goals saved earlier keep whatever colour they were stored with. */
+export const GOAL_COLORS = [
+  primary[500],
+  success[500],
+  categoryRamps.notes[500],
+  warning[500],
+  error[500],
+  tertiary[500],
+  categoryRamps.skincare[500],
+];
