@@ -9,6 +9,7 @@
     "moduleResolution": "bundler",
     "customConditions": ["react-native"],
     "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "expo-router": [
         "./node_modules/expo-router/build/index.d.ts"
