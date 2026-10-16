@@ -126,6 +126,12 @@ export type ToastOptions = {
   position?: ToastPosition;
   /** Fire the severity's haptic. Default true. */
   haptic?: boolean;
+  /**
+   * Called once when the toast leaves the screen for any reason (timeout, swipe, close button, or after its action
+   * ran). Toasts with `onClose` are never merged with an identical toast, so every callback is guaranteed to fire -
+   * use it to run work that must wait until an Undo window has closed.
+   */
+  onClose?: () => void;
 };
 
 export type BannerOptions = {
@@ -198,7 +204,7 @@ export function errorMessage(error: unknown, fallback = FALLBACK_ERROR_MESSAGE):
 // ---------------------------------------------------------------------------------------------------------------
 
 export type ToastItem = Required<Pick<ToastOptions, 'id' | 'message' | 'severity' | 'duration' | 'position' | 'haptic'>> &
-  Pick<ToastOptions, 'title' | 'action'> & {
+  Pick<ToastOptions, 'title' | 'action' | 'onClose'> & {
     /** Bumped when an identical toast arrives while this one is visible, so the host restarts its timer. */
     nonce: number;
   };
@@ -227,6 +233,7 @@ export function normalizeToast(options: ToastOptions | string): ToastItem {
     action: o.action,
     position: o.position ?? 'bottom',
     haptic: o.haptic ?? true,
+    onClose: o.onClose,
     nonce: 0,
   };
 }
@@ -242,11 +249,13 @@ export const toastKey = (t: Pick<ToastItem, 'severity' | 'title' | 'message' | '
  */
 export function enqueueToast(state: ToastQueue, item: ToastItem): ToastQueue {
   const key = toastKey(item);
-  if (state.current && (state.current.id === item.id || toastKey(state.current) === key)) {
+  // A toast that carries an `onClose` callback is never merged with a look-alike: each one has its own payload.
+  const sameAs = (other: ToastItem) => other.id === item.id || (!item.onClose && !other.onClose && toastKey(other) === key);
+  if (state.current && sameAs(state.current)) {
     return { ...state, current: { ...state.current, nonce: state.current.nonce + 1 } };
   }
   if (!state.current) return { current: item, queue: state.queue };
-  if (state.queue.some((q) => q.id === item.id || toastKey(q) === key)) return state;
+  if (state.queue.some(sameAs)) return state;
 
   const rank = severityRank(item.severity);
   const at = state.queue.findIndex((q) => severityRank(q.severity) < rank);

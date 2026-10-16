@@ -11,10 +11,14 @@
  * notify.banner({ id: 'session', severity: 'critical', message: 'Your session expired.', action: { label: 'Sign in', onPress } });
  * ```
  *
- * Toasts and banners render in the app tree; dialogs use a native Modal. A toast raised while a dialog or sheet is
- * open appears behind it (and is visible once it closes).
+ * Toasts and banners render in a full-window overlay on iOS (so they stay visible above native modal screens such as
+ * the add / edit forms) and in the app tree on Android; dialogs use a native Modal. A toast raised while a dialog or
+ * sheet is open appears behind it (and is visible once it closes).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Platform, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FullWindowOverlay } from 'react-native-screens';
 
 import { useLatest } from '@/components/ui/bottom-sheet';
 import { BannerHost } from '@/components/ui/banner';
@@ -61,6 +65,22 @@ type Props = {
 
 let requestCounter = 0;
 
+/**
+ * Hosts toasts and banners. On iOS, native modal screens (expo-router `presentation: 'modal'`) cover everything in the
+ * root view, so the messages go in a FullWindowOverlay with its own gesture root (their swipe-to-dismiss needs one).
+ * `box-none` keeps touches flowing to the screen underneath wherever there is no message.
+ */
+function MessageLayer({ children }: { children: ReactNode }) {
+  if (Platform.OS !== 'ios') return <>{children}</>;
+  return (
+    <FullWindowOverlay>
+      <GestureHandlerRootView pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        {children}
+      </GestureHandlerRootView>
+    </FullWindowOverlay>
+  );
+}
+
 export function NotifyProvider({ children, toastBottomOffset, topOffset }: Props) {
   const [toasts, setToasts] = useState<ToastQueue>(EMPTY_TOAST_QUEUE);
   const [banners, setBanners] = useState<BannerItem[]>([]);
@@ -73,7 +93,16 @@ export function NotifyProvider({ children, toastBottomOffset, topOffset }: Props
     return item.id;
   }, []);
 
-  const dismissToast = useCallback((id?: string) => setToasts((state) => dismissToastIn(state, id)), []);
+  const toastsRef = useLatest(toasts);
+  const dismissToast = useCallback(
+    (id?: string) => {
+      const state = toastsRef.current;
+      const target = id === undefined || state.current?.id === id ? state.current : state.queue.find((q) => q.id === id);
+      setToasts((current) => dismissToastIn(current, id));
+      target?.onClose?.();
+    },
+    [toastsRef],
+  );
 
   const banner = useCallback((options: Parameters<NotifyApi['banner']>[0]) => {
     const item = normalizeBanner(options);
@@ -163,8 +192,10 @@ export function NotifyProvider({ children, toastBottomOffset, topOffset }: Props
   return (
     <NotifyContext.Provider value={api}>
       {children}
-      <BannerHost banners={banners} onDismiss={handleBannerDismiss} topOffset={topOffset} />
-      <ToastHost current={toasts.current} onDismiss={dismissToast} bottomOffset={toastBottomOffset} topOffset={topOffset} />
+      <MessageLayer>
+        <BannerHost banners={banners} onDismiss={handleBannerDismiss} topOffset={topOffset} />
+        <ToastHost current={toasts.current} onDismiss={dismissToast} bottomOffset={toastBottomOffset} topOffset={topOffset} />
+      </MessageLayer>
       {shown ? (
         <Dialog
           visible={!!active}
