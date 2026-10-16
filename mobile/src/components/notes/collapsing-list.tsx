@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { APP_BAR_HEIGHT, LargeTitle, TopAppBar, useCollapsingHeader } from '@/components/ui/app-bar';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
 import { layout, spacing, useTheme } from '@/theme';
@@ -32,7 +33,8 @@ type Props<T> = {
 
 /**
  * `Screen` with a title, for a long virtualized list: the same collapsing large-title app bar, safe-area padding and
- * pull-to-refresh, but the content is a FlatList instead of a ScrollView.
+ * pull-to-refresh, but the content is a FlatList instead of a ScrollView. In a single column the rows reflow smoothly
+ * when one leaves; rows add their own enter / exit motion with `useListMotion`.
  */
 export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, extraData }: Props<T>) {
   const { colors } = useTheme();
@@ -41,6 +43,10 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
   const padding = useScreenPadding(false, headerHeight);
   const { scrollHandler, scrollY } = useCollapsingHeader();
   const refreshControl = useRefreshControl({ onRefresh, refreshing, progressViewOffset: headerHeight });
+  // Rows below a removed (or moved) row slide to close the gap. The animation has to sit on the FlatList's cell, not on
+  // the row inside it, because it is the cell that moves. Reanimated supports it for a single column only; it is
+  // undefined under reduce-motion.
+  const { layout: reflow } = useListMotion();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -50,6 +56,7 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
         keyExtractor={keyExtractor}
         extraData={extraData}
         numColumns={numColumns}
+        itemLayoutAnimation={numColumns === 1 ? reflow : undefined}
         columnWrapperStyle={numColumns > 1 ? { gap: layout.itemGap } : undefined}
         ListHeaderComponent={
           <View style={{ gap: layout.itemGap, marginBottom: spacing.xs }}>

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { Linking, View, type AccessibilityActionEvent } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { ActionSheet, type SheetAction } from '@/components/notes/action-sheet';
 import { CollapsingList } from '@/components/notes/collapsing-list';
+import { EmptyHero } from '@/components/notes/empty-hero';
 import { Thumbnail } from '@/components/notes/thumbnail';
 import { useUndoableRemove } from '@/components/notes/use-undoable-remove';
 import { Card } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { FloatingAction } from '@/components/ui/floating-action';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SkeletonCard } from '@/components/ui/skeleton';
@@ -21,11 +23,10 @@ import { useDeleteSavedItem, useSavedItems, useToggleFavorite } from '@/features
 import { SAVED_TYPES, hostOf, type SavedItem } from '@/features/saved/types';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
-import { duration, layout, radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing } from '@/theme';
 
 type Filter = 'all' | 'favorites' | SavedItem['type'];
 
-const MAX_ANIMATED_ROWS = 8;
 const typeLabel = (type: SavedItem['type']) => SAVED_TYPES.find((t) => t.value === type)?.label ?? 'Other';
 
 export default function SavedScreen() {
@@ -137,7 +138,7 @@ export default function SavedScreen() {
     empty = <EmptyState variant="noResults" accent="saved" title="No matching items" description="Try a different search or another filter." onClearFilters={clearFilters} />;
   } else {
     empty = (
-      <EmptyState
+      <EmptyHero
         accent="saved"
         icon="bookmark-outline"
         title="Nothing saved yet"
@@ -176,7 +177,8 @@ type CardProps = {
 };
 
 const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorite, onMenu, onRemove, onEdit }: CardProps) {
-  const { reduceMotion } = useTheme();
+  // Enter + exit live on the row; the list animates the reflow on the FlatList cell.
+  const { entering, exiting } = useListMotion(index);
   const host = hostOf(item.url);
   const favorite = !!item.isFavorite;
   const tags = item.tags ?? [];
@@ -201,10 +203,8 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
     }
   };
 
-  const entering = reduceMotion || index >= MAX_ANIMATED_ROWS ? undefined : FadeInDown.delay(index * 40).duration(duration.base);
-
   return (
-    <Animated.View entering={entering}>
+    <Animated.View entering={entering} exiting={exiting}>
       <Card padding="none" style={{ overflow: 'hidden' }}>
         {item.imageUrl ? (
           <PressableScale accessible={false} scaleTo={1} focusRing={false} hitSlop={0} onPress={() => onOpen(item)} onLongPress={() => onMenu(item)}>

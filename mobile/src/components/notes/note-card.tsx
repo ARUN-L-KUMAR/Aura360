@@ -3,17 +3,18 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback } from 'react';
 import { View, type AccessibilityActionEvent } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import type { IconName } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { checklistOf, type Note } from '@/features/notes/types';
 import { formatDay } from '@/lib/format';
-import { duration, radius, spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 export function openNote(router: ReturnType<typeof useRouter>, note?: Note) {
   router.push({ pathname: '/notes/edit', params: note ? { note: JSON.stringify(note) } : {} });
@@ -24,7 +25,7 @@ export type NoteLayout = 'list' | 'grid';
 type Props = {
   note: Note;
   layout: NoteLayout;
-  /** Position in the list: the first few rows fade in. */
+  /** Position in the list: the first few rows fade in (see `useListMotion`). */
   index: number;
   onTogglePin: (note: Note) => void;
   onToggleArchive: (note: Note) => void;
@@ -35,7 +36,6 @@ type Props = {
 };
 
 const ACTION_WIDTH = spacing.xxxl + spacing.xl; // 72
-const MAX_ANIMATED_ROWS = 8;
 
 function SwipeAction({ label, icon, background, foreground, onPress }: { label: string; icon: IconName; background: string; foreground: string; onPress: () => void }) {
   return (
@@ -62,9 +62,11 @@ function SwipeAction({ label, icon, background, foreground, onPress }: { label: 
  */
 export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTogglePin, onToggleArchive, onDelete, onMenu, onToggleItem }: Props) {
   const router = useRouter();
-  const { colors, accent, reduceMotion } = useTheme();
+  const { colors, accent } = useTheme();
   const a = accent('notes');
   const grid = mode === 'grid';
+  // Enter + exit live on the row. The reflow (`layout`) is done by the list on the FlatList cell, in a single column only.
+  const { entering, exiting } = useListMotion(index);
   const pinned = !!note.isPinned;
   const archived = !!note.isArchived;
 
@@ -174,19 +176,17 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
     </Card>
   );
 
-  const entering = reduceMotion || index >= MAX_ANIMATED_ROWS ? undefined : FadeInDown.delay(index * 40).duration(duration.base);
-
   if (grid) {
     // flex 1 + maxWidth keeps a lone last tile at half width instead of stretching across the row
     return (
-      <Animated.View entering={entering} style={{ flex: 1, maxWidth: '50%' }}>
+      <Animated.View entering={entering} exiting={exiting} style={{ flex: 1, maxWidth: '50%' }}>
         {card}
       </Animated.View>
     );
   }
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View entering={entering} exiting={exiting}>
       <ReanimatedSwipeable
         friction={2}
         overshootLeft={false}

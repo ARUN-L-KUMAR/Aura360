@@ -5,6 +5,7 @@ import { View } from 'react-native';
 
 import { ActionSheet, type SheetAction } from '@/components/notes/action-sheet';
 import { CollapsingList } from '@/components/notes/collapsing-list';
+import { EmptyHero } from '@/components/notes/empty-hero';
 import { NoteCard, openNote, type NoteLayout } from '@/components/notes/note-card';
 import { useUndoableRemove } from '@/components/notes/use-undoable-remove';
 import { Chip, ChipRow } from '@/components/ui/chip';
@@ -220,7 +221,7 @@ export default function NotesScreen() {
     empty = <EmptyState variant="noResults" accent="notes" title="No matching notes" description="Try a different search or another filter." onClearFilters={clearFilters} />;
   } else {
     empty = (
-      <EmptyState
+      <EmptyHero
         accent="notes"
         icon="document-text-outline"
         title="No notes yet"

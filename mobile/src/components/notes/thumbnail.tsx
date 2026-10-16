@@ -7,11 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { duration, useTheme } from '@/theme';
 
 /**
- * Wide picture for a saved link: a shimmering skeleton while it loads, a fade-in once it has, and a quiet icon tile
+ * Wide picture for a saved link: a shimmering skeleton while it loads, an opacity-only fade-in once it has (none under reduce-motion), and a quiet icon tile
  * if the picture cannot be fetched. Decorative (the title next to it says what the item is).
  */
 export function Thumbnail({ uri, aspectRatio = 16 / 9 }: { uri: string; aspectRatio?: number }) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [height, setHeight] = useState(0);
 
@@ -27,7 +27,7 @@ export function Thumbnail({ uri, aspectRatio = 16 / 9 }: { uri: string; aspectRa
           source={{ uri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          transition={duration.fast}
+          transition={reduceMotion ? 0 : duration.fast}
           onLoad={() => setState('ready')}
           onError={() => setState('failed')}
           accessibilityIgnoresInvertColors

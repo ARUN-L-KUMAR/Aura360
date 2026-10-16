@@ -29,7 +29,7 @@ type Props = {
 export function ActionSheet({ visible, onClose, title, actions }: Props) {
   const { colors } = useTheme();
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={title}>
+    <BottomSheet glass visible={visible} onClose={onClose} title={title}>
       <View style={{ paddingBottom: spacing.md }}>
         {actions.map((action) => (
           <PressableScale

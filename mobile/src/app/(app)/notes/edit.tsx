@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 import { ToggleRow } from '@/components/notes/toggle-row';
 import { useLatest } from '@/components/ui/bottom-sheet';
@@ -19,7 +20,7 @@ import { checklistOf, newItemId, parseTags, type ChecklistItem, type Note, type 
 import { ApiError } from '@/lib/api';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
-import { layout, radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, spring, useTheme } from '@/theme';
 
 type Mode = 'text' | 'checklist';
 
@@ -371,7 +372,21 @@ export default function NoteEditorScreen() {
 
 /** Autosave indicator: icon + words, never colour alone. New notes are only saved by the button. */
 function SaveStatus({ existing, saving, failed, dirty, problem }: { existing: boolean; saving: boolean; failed: Failure['kind'] | null; dirty: boolean; problem: string | null }) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
+  const settled = existing && !saving && !failed && !dirty;
+
+  // A small pop on the tick each time a save lands (not on first open, when the note is already saved). Opacity and
+  // scale only; nothing at all under reduce-motion.
+  const pop = useSharedValue(1);
+  const wasSettled = useRef(settled);
+  useEffect(() => {
+    if (settled && !wasSettled.current && !reduceMotion) {
+      pop.set(withSequence(withTiming(0, { duration: 0 }), withSpring(1, spring.bouncy)));
+    }
+    wasSettled.current = settled;
+  }, [settled, reduceMotion, pop]);
+  const iconStyle = useAnimatedStyle(() => ({ opacity: 0.4 + 0.6 * Math.min(1, pop.get()), transform: [{ scale: 0.7 + 0.3 * pop.get() }] }));
+
   let icon: React.ComponentProps<typeof Ionicons>['name'] = 'checkmark-circle';
   let text = 'Saved';
   let color: 'successText' | 'warningText' | 'errorText' | 'textSecondary' = 'successText';
@@ -404,7 +419,9 @@ function SaveStatus({ existing, saving, failed, dirty, problem }: { existing: bo
 
   return (
     <View accessible accessibilityLiveRegion="polite" accessibilityLabel={text} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-      <Ionicons name={icon} size={18} color={colors[color]} />
+      <Animated.View style={iconStyle}>
+        <Ionicons name={icon} size={18} color={colors[color]} />
+      </Animated.View>
       <Text variant="caption" weight="medium" color={color} style={{ flex: 1 }}>
         {text}
       </Text>

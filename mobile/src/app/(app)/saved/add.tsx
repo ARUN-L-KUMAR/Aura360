@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Thumbnail } from '@/components/notes/thumbnail';
@@ -11,11 +11,16 @@ import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonCard } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useLinkPreview, useSaveLink } from '@/features/saved/hooks';
 import { MODULE_LABEL, extractUrl, hostOf, type Destination, type IngestPreview } from '@/features/saved/types';
 import { useNotify } from '@/providers/notify';
 import { spacing, useTheme } from '@/theme';
+
+/** How long the "saved" confirmation stays before the screen closes (shorter under reduce-motion, where it does not pop). */
+const CONFIRM_MS = 800;
+const CONFIRM_REDUCED_MS = 450;
 
 const DESTINATIONS: { value: Destination; label: string }[] = [
   { value: 'auto', label: 'Best fit (AI)' },
@@ -27,7 +32,7 @@ const DESTINATIONS: { value: Destination; label: string }[] = [
 export default function AddSavedScreen() {
   const router = useRouter();
   const notify = useNotify();
-  const { accent } = useTheme();
+  const { accent, reduceMotion } = useTheme();
   const preview = useLinkPreview();
   const saveLink = useSaveLink();
 
@@ -35,6 +40,16 @@ export default function AddSavedScreen() {
   const [destination, setDestination] = useState<Destination>('auto');
   const [result, setResult] = useState<IngestPreview | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
+  /** Where the link went, once saved: swaps the form for a confirmation, then the screen closes. */
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   async function paste() {
     let text = '';
@@ -71,8 +86,11 @@ export default function AddSavedScreen() {
     if (!result) return;
     try {
       const saved = await saveLink.mutateAsync({ url: result.url, destination });
-      notify.success(`Added to ${MODULE_LABEL[saved.persistedTo ?? 'saved'] ?? 'Saved'}.`);
-      router.back();
+      const label = MODULE_LABEL[saved.persistedTo ?? 'saved'] ?? 'Saved';
+      // The toast already gives the success haptic; the check is the visual half of the same moment.
+      notify.success(`Added to ${label}.`);
+      setSavedTo(label);
+      closeTimer.current = setTimeout(() => router.back(), reduceMotion ? CONFIRM_REDUCED_MS : CONFIRM_MS);
     } catch (e) {
       notify.error(e);
     }
@@ -81,6 +99,18 @@ export default function AddSavedScreen() {
   function pickDestination(value: Destination) {
     setDestination(value);
     if (result) void fetchDetails(value);
+  }
+
+  if (savedTo) {
+    return (
+      <Screen topInset={false}>
+        <Stack.Screen options={{ title: 'Save a link' }} />
+        <View accessibilityLiveRegion="polite" style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxxl }}>
+          <SuccessCheck size={spacing.xxxl + spacing.xl} accent="saved" accessibilityLabel={null} />
+          <Text variant="title">Added to {savedTo}</Text>
+        </View>
+      </Screen>
+    );
   }
 
   const resolvedLabel = result ? (MODULE_LABEL[result.resolvedDestination] ?? 'Saved') : null;
