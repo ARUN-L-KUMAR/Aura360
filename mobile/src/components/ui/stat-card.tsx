@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { GlassCard } from '@/components/ui/glass-card';
+import { Card, withAlpha } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -13,7 +13,11 @@ export interface StatCardProps {
   value: string | number;
   subtitle?: string;
   icon?: IconName;
+  /** Module accent for the icon tile. */
+  accent?: ModuleKey;
+  /** Legacy: arbitrary colour for the icon tile and card tint. Prefer `accent`. */
   color?: string;
+  /** `isPositive` true / false shows up / down; leave it undefined for a neutral (flat) trend. */
   trend?: {
     value: string;
     isPositive?: boolean;
@@ -21,145 +25,73 @@ export interface StatCardProps {
   onPress?: () => void;
 }
 
-export function StatCard({
-  label,
-  value,
-  subtitle,
-  icon,
-  color,
-  trend,
-  onPress,
-}: StatCardProps) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
-  const accentColor = color ?? colors.text;
+/** Label, big tabular number, optional trend and subtitle. Reads as one element for screen readers. */
+export function StatCard({ label, value, subtitle, icon, accent, color, trend, onPress }: StatCardProps) {
+  const { colors, accent: accentFor } = useTheme();
+  const a = accent ? accentFor(accent) : null;
+  const iconColor = a ? a.text : (color ?? colors.textSecondary);
+  const tile = a ? a.soft : color ? withAlpha(color, 0.14) : colors.cardMuted;
 
-  const content = (
-    <GlassCard glowColor={color ? `${color}` : undefined} style={styles.card}>
-      <View style={styles.header}>
-        <Text variant="caption" muted style={styles.label}>
-          {label.toUpperCase()}
+  const direction = trend ? (trend.isPositive === undefined ? 'flat' : trend.isPositive ? 'up' : 'down') : null;
+  const trendTone =
+    direction === 'up'
+      ? { bg: colors.successContainer, fg: colors.onSuccessContainer, icon: 'arrow-up' as const, word: 'up' }
+      : direction === 'down'
+        ? { bg: colors.errorContainer, fg: colors.onErrorContainer, icon: 'arrow-down' as const, word: 'down' }
+        : { bg: colors.cardMuted, fg: colors.textSecondary, icon: 'remove' as const, word: 'unchanged' };
+
+  const spoken = [`${label}: ${value}`, trend ? `${trendTone.word} ${trend.value}` : null, subtitle].filter(Boolean).join(', ');
+
+  return (
+    <Card
+      accessible
+      accessibilityLabel={spoken}
+      onPress={onPress}
+      accent={accent}
+      tintColor={accent ? undefined : color}
+      padding="sm"
+      style={{ gap: spacing.xs }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+        <Text variant="caption" weight="medium" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
+          {label}
         </Text>
-        {icon && (
-          <View
-            style={[
-              styles.iconWrapper,
-              {
-                backgroundColor: isDark
-                  ? `${accentColor}24`
-                  : `${accentColor}18`,
-              },
-            ]}>
-            <Ionicons name={icon} size={18} color={accentColor} />
+        {icon ? (
+          <View style={{ width: spacing.xxl, height: spacing.xxl, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: tile }}>
+            <Ionicons name={icon} size={18} color={iconColor} />
           </View>
-        )}
+        ) : null}
       </View>
 
-      <Text variant="headline" style={styles.value} numberOfLines={1}>
+      <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {value}
       </Text>
 
-      {(subtitle || trend) && (
-        <View style={styles.footer}>
-          {trend && (
+      {subtitle || trend ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          {trend ? (
             <View
-              style={[
-                styles.trendPill,
-                {
-                  backgroundColor: trend.isPositive
-                    ? `${colors.success}1c`
-                    : `${colors.danger}1c`,
-                },
-              ]}>
-              <Ionicons
-                name={trend.isPositive ? 'arrow-up' : 'arrow-down'}
-                size={11}
-                color={trend.isPositive ? colors.success : colors.danger}
-              />
-              <Text
-                variant="caption"
-                style={[
-                  styles.trendText,
-                  { color: trend.isPositive ? colors.success : colors.danger },
-                ]}>
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 2,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 2,
+                borderRadius: radius.pill,
+                backgroundColor: trendTone.bg,
+              }}>
+              <Ionicons name={trendTone.icon} size={12} color={trendTone.fg} />
+              <Text variant="caption" weight="semiBold" numeric style={{ color: trendTone.fg }}>
                 {trend.value}
               </Text>
             </View>
-          )}
-          {subtitle && (
-            <Text variant="caption" muted numberOfLines={1} style={styles.subtitle}>
+          ) : null}
+          {subtitle ? (
+            <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
               {subtitle}
             </Text>
-          )}
+          ) : null}
         </View>
-      )}
-    </GlassCard>
+      ) : null}
+    </Card>
   );
-
-  if (onPress) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => ({
-          opacity: pressed ? 0.85 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        })}>
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
 }
-
-const styles = StyleSheet.create({
-  card: {
-    gap: spacing.xs,
-    padding: spacing.md + 2,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  label: {
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    fontSize: 11,
-  },
-  iconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  value: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 2,
-  },
-  trendPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  trendText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  subtitle: {
-    flex: 1,
-    fontSize: 11,
-  },
-});
