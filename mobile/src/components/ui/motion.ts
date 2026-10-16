@@ -1,7 +1,14 @@
-import { useMemo } from 'react';
-import { Easing, FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import { useEffect, useMemo, useRef } from 'react';
+import { Easing, FadeIn, FadeInDown, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { duration, easing, useTheme } from '@/theme';
+import { duration, easing, motionDuration, spring, useTheme } from '@/theme';
+
+/** `withTiming` config for "change at once" (reduce-motion, first placement): a single frame. */
+export const instant = { duration: motionDuration(0, true) } as const;
+
+/** Scale a control starts from when it pops into its selected state, and from when it pops out of it. */
+const POP_IN_FROM = 0.9;
+const POP_OUT_FROM = 1.05;
 
 /** How many leading rows stagger in; later rows (and recycled cells while scrolling) appear instantly. */
 const STAGGER_ROWS = 8;
@@ -43,4 +50,28 @@ export function useListMotion(index = 0) {
 export function useBlockMotion(delayMs = 0) {
   const { reduceMotion } = useTheme();
   return useMemo(() => (reduceMotion ? {} : { entering: FadeIn.delay(delayMs).duration(duration.base).easing(decelerate) }), [reduceMotion, delayMs]);
+}
+
+/**
+ * A small scale pop whenever `active` changes (not on first render): selecting overshoots from slightly smaller,
+ * deselecting settles from slightly larger. Returns an animated style (transform only) for an `Animated.View` that
+ * wraps the control. No pop under reduce-motion.
+ */
+export function usePop(active: boolean) {
+  const { reduceMotion } = useTheme();
+  const scale = useSharedValue(1);
+  const previous = useRef(active);
+
+  useEffect(() => {
+    if (previous.current === active) return;
+    previous.current = active;
+    if (reduceMotion) {
+      scale.set(1);
+      return;
+    }
+    scale.set(active ? POP_IN_FROM : POP_OUT_FROM);
+    scale.set(withSpring(1, active ? spring.bouncy : spring.gentle));
+  }, [active, reduceMotion, scale]);
+
+  return useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 }

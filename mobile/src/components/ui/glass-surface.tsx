@@ -9,6 +9,15 @@ type Props = ViewProps & {
 };
 
 /**
+ * True when `GlassSurface` will render the real system glass (iOS 26+ and "Reduce transparency" off). Overlays use it
+ * to skip shadows, which show through translucent glass; everywhere else the opaque `glassSolid` surface is used.
+ */
+export function useGlassSupported() {
+  const { reduceTransparency } = useTheme();
+  return Platform.OS === 'ios' && isGlassEffectAPIAvailable() && !reduceTransparency;
+}
+
+/**
  * Surface for OVERLAYS only: tab bar, sheets, headers, the floating widget. Never wrap content cards in it.
  *
  * On iOS 26+ it renders the system glass effect. Everywhere else - Android, older iOS, or when the user turned on
@@ -16,8 +25,8 @@ type Props = ViewProps & {
  * what scrolls underneath.
  */
 export function GlassSurface({ glass = 'regular', style, children, ...rest }: Props) {
-  const { colors, scheme, reduceTransparency } = useTheme();
-  const supported = Platform.OS === 'ios' && isGlassEffectAPIAvailable() && !reduceTransparency;
+  const { colors, scheme } = useTheme();
+  const supported = useGlassSupported();
   const border = { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.glassBorder };
 
   if (supported) {

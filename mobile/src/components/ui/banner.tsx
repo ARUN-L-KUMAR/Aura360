@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { FadeIn, FadeInUp, FadeOut, FadeOutUp } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp, FadeOut, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -97,7 +97,9 @@ export function BannerHost({ banners, onDismiss, topOffset = spacing.xxxl }: Hos
         <Animated.View
           key={banner.id}
           entering={reduceMotion ? FadeIn.duration(duration.fast) : FadeInUp.duration(duration.base)}
-          exiting={reduceMotion ? FadeOut.duration(duration.fast) : FadeOutUp.duration(duration.fast)}>
+          exiting={reduceMotion ? FadeOut.duration(duration.fast) : FadeOutUp.duration(duration.fast)}
+          // The banners below slide up to close the gap (none under reduce-motion).
+          layout={reduceMotion ? undefined : LinearTransition.duration(duration.base)}>
           <Banner
             severity={banner.severity}
             title={banner.title}

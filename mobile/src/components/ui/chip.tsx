@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { readableOn, withAlpha } from '@/components/ui/card';
+import { usePop } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -55,9 +58,19 @@ function useChipColors({ accent, color }: Pick<ChipBase, 'accent' | 'color'>, se
 
 /**
  * Filter / choice pill. Selected chips are filled and show a check mark, so state never relies on colour alone.
- * The visual is 28 / 36pt tall; the hit area is padded to 44pt.
+ * The visual is 28 / 36pt tall; the hit area is padded to 44pt. Selecting or deselecting plays a small scale pop
+ * (transform only, skipped under reduce-motion) and a selection haptic.
  */
-export function Chip({
+export function Chip(props: ChipProps) {
+  const pop = usePop(props.selectable !== false && !!props.selected);
+  return (
+    <Animated.View style={[{ alignSelf: 'flex-start' }, pop]}>
+      <ChipView {...props} />
+    </Animated.View>
+  );
+}
+
+function ChipView({
   label,
   selected = false,
   selectable = true,
@@ -146,7 +159,10 @@ export function Chip({
           accessibilityState={a11yState}
           disabled={disabled}
           hitSlop={{ top: verticalSlop, bottom: verticalSlop, left: spacing.xs, right: 0 }}
-          onPress={onPress}
+          onPress={() => {
+            haptics.select();
+            onPress();
+          }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}>
           {body}
         </Pressable>

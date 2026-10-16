@@ -2,6 +2,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
+import { instant } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, spring, useTheme, type ModuleKey } from '@/theme';
@@ -33,10 +34,11 @@ export function Toggle({ value, onValueChange, disabled, accent, accessibilityLa
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    progress.set(reduceMotion ? withTiming(value ? 1 : 0, { duration: 1 }) : withSpring(value ? 1 : 0, spring.gentle));
+    progress.set(reduceMotion ? withTiming(value ? 1 : 0, instant) : withSpring(value ? 1 : 0, spring.gentle));
   }, [value, reduceMotion, progress]);
 
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: progress.get() * TRAVEL }] }));
+  // Colour changes are layered and faded in with opacity (never an animated backgroundColor); the thumb's off face stays opaque underneath.
   const onTrack = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, progress.get())) }));
 
   const fill = accent ? accentFor(accent).solid : colors.primary;
@@ -60,7 +62,10 @@ export function Toggle({ value, onValueChange, disabled, accent, accessibilityLa
       style={style}>
       <View style={[styles.track, { backgroundColor: colors.cardMuted, borderColor: colors.borderStrong }]}>
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: fill, borderRadius: radius.full }, onTrack]} />
-        <Animated.View style={[styles.thumb, { backgroundColor: value ? thumbColor : colors.borderStrong }, thumb]} />
+        <Animated.View pointerEvents="none" style={[styles.thumb, thumb]}>
+          <Animated.View style={[StyleSheet.absoluteFill, styles.thumbFace, { backgroundColor: colors.borderStrong }]} />
+          <Animated.View style={[StyleSheet.absoluteFill, styles.thumbFace, { backgroundColor: thumbColor }, onTrack]} />
+        </Animated.View>
       </View>
     </PressableScale>
   );
@@ -82,4 +87,5 @@ const styles = StyleSheet.create({
     height: THUMB,
     borderRadius: radius.full,
   },
+  thumbFace: { borderRadius: radius.full },
 });

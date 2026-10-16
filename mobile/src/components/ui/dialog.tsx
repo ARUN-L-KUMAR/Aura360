@@ -6,7 +6,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { useLatest } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
-import { GlassSurface } from '@/components/ui/glass-surface';
+import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
 import { Text } from '@/components/ui/text';
 import { describeSeverity, severityColors, type Severity } from '@/lib/notify';
 import { duration, easing, layout, radius, spacing, useTheme } from '@/theme';
@@ -55,6 +55,7 @@ export function Dialog({ visible, onClose, title, message, children, severity, a
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
   const visibleRef = useLatest(visible);
+  const glassActive = useGlassSupported() && glass;
 
   if (visible && !mounted) setMounted(true);
 
@@ -104,7 +105,12 @@ export function Dialog({ visible, onClose, title, message, children, severity, a
         <Animated.View
           accessibilityViewIsModal
           onAccessibilityEscape={close}
-          style={[styles.cardWrap, { width: Math.min(MAX_WIDTH, width - layout.screenPadding * 2) }, elevation(4), cardStyle]}>
+          style={[
+            styles.cardWrap,
+            { width: Math.min(MAX_WIDTH, width - layout.screenPadding * 2) },
+            glassActive ? null : [{ backgroundColor: glass ? colors.glassSolid : colors.card }, elevation(4)],
+            cardStyle,
+          ]}>
           <Surface
             style={[styles.card, glass ? null : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}>
             {described && tone ? (

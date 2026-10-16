@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { withAlpha } from '@/components/ui/card';
+import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -66,6 +68,7 @@ export function EmptyState({
   style,
 }: EmptyStateProps) {
   const { colors, accent: accentFor } = useTheme();
+  const motion = useBlockMotion();
   const preset = PRESETS[variant];
   const a = accent ? accentFor(accent) : null;
   const iconColor = a ? a.text : (color ?? colors.textSecondary);
@@ -89,7 +92,8 @@ export function EmptyState({
         : null;
 
   return (
-    <View
+    <Animated.View
+      {...motion}
       style={[{ alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl }, style]}>
       {illustration ?? (
         <View
@@ -124,6 +128,6 @@ export function EmptyState({
           {secondary ? <Button title={secondary.title} variant="ghost" fullWidth={false} onPress={secondary.onPress} /> : null}
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

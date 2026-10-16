@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useEffect, useRef, type ComponentProps } from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -12,7 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { GlassSurface } from '@/components/ui/glass-surface';
+import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
+import { instant, usePop } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
@@ -50,6 +51,10 @@ const MAX_ITEM_WIDTH = 96;
 const ITEM_HEIGHT = 56;
 const PILL_HEIGHT = 32;
 const PILL_INSET = spacing.sm;
+const ICON_SIZE = 22;
+/** The sliding pill stretches by this much per tab of distance still to travel, up to `MAX_STRETCH_TABS` tabs. */
+const STRETCH_PER_TAB = 0.06;
+const MAX_STRETCH_TABS = 3;
 const FADE_STEPS = 6;
 const FADE_STEP_WIDTH = spacing.xs;
 
@@ -65,6 +70,7 @@ export type AppTabsProps = BottomTabBarProps & {
 export function AppTabs({ state, descriptors, navigation, insets, badges }: AppTabsProps) {
   const { colors, accent: accentFor, elevation, reduceMotion } = useTheme();
   const { width: viewport } = useWindowDimensions();
+  const glassActive = useGlassSupported();
 
   const count = state.routes.length;
   const itemWidth = Math.round(Math.min(MAX_ITEM_WIDTH, Math.max(MIN_ITEM_WIDTH, viewport / VISIBLE_TABS)));
@@ -96,7 +102,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
     const first = !placed.current;
     placed.current = true;
     pillTarget.value = toPill;
-    pillX.value = first || reduceMotion ? withTiming(toPill, { duration: 1 }) : withSpring(toPill, spring.gentle);
+    pillX.value = first || reduceMotion ? withTiming(toPill, instant) : withSpring(toPill, spring.gentle);
     scrollToActive(!first);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- scrollToActive only reads the values listed here
   }, [state.index, itemWidth, maxScroll, viewport, reduceMotion, pillX, pillTarget]);
@@ -105,7 +111,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   const pillStyle = useAnimatedStyle(() => {
     const distance = Math.abs(pillTarget.value - pillX.value) / itemWidth;
     return {
-      transform: [{ translateX: pillX.value }, { scaleX: reduceMotion ? 1 : 1 + Math.min(distance, 3) * 0.06 }],
+      transform: [{ translateX: pillX.value }, { scaleX: reduceMotion ? 1 : 1 + Math.min(distance, MAX_STRETCH_TABS) * STRETCH_PER_TAB }],
     };
   });
 
@@ -120,7 +126,8 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   return (
     <GlassSurface
       accessibilityRole="tablist"
-      style={[styles.bar, { paddingBottom: Math.max(insets?.bottom ?? 0, spacing.sm) }, Platform.OS === 'android' ? elevation(3) : null]}>
+      // Level-3 shadow on the opaque fallback (Android, older iOS, reduce transparency); real glass is translucent.
+      style={[styles.bar, { paddingBottom: Math.max(insets?.bottom ?? 0, spacing.sm) }, glassActive ? null : elevation(3)]}>
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -176,7 +183,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
               ringRadius={radius.lg}
               style={[styles.item, { width: itemWidth }]}>
               <View style={styles.iconSlot}>
-                <Ionicons name={focused ? config.activeIcon : config.inactiveIcon} size={22} color={color} />
+                <TabIcon name={focused ? config.activeIcon : config.inactiveIcon} focused={focused} color={color} />
                 {badge ? (
                   <View style={[styles.badge, { backgroundColor: colors.error }]}>
                     <Text variant="caption" weight="semiBold" color="onError" numberOfLines={1} maxFontSizeMultiplier={1}>
@@ -197,6 +204,16 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
       <Fade side="left" color={colors.glassSolid} style={leftFade} />
       <Fade side="right" color={colors.glassSolid} style={rightFade} />
     </GlassSurface>
+  );
+}
+
+/** The tab's icon; it pops when its tab becomes the active one. */
+function TabIcon({ name, focused, color }: { name: IconName; focused: boolean; color: string }) {
+  const pop = usePop(focused);
+  return (
+    <Animated.View style={pop}>
+      <Ionicons name={name} size={ICON_SIZE} color={color} />
+    </Animated.View>
   );
 }
 

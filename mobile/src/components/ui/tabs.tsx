@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+import { instant } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
@@ -63,8 +64,8 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
     const toX = boxX + boxW / 2 - 0.5;
     if (!placed.current || reduceMotion) {
       placed.current = true;
-      x.value = withTiming(toX, { duration: 1 });
-      w.value = withTiming(boxW, { duration: 1 });
+      x.value = withTiming(toX, instant);
+      w.value = withTiming(boxW, instant);
       visible.value = 1;
     } else {
       x.value = withSpring(toX, spring.gentle);

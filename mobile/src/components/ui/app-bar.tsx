@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Extrapolation,
   FadeIn,
+  FadeOut,
   interpolate,
-  runOnJS,
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -14,8 +13,9 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
-import { GlassSurface } from '@/components/ui/glass-surface';
+import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { duration, layout, radius, spacing, typeScale, useTheme } from '@/theme';
@@ -98,11 +98,6 @@ export type TopAppBarProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-const useGlassBlur = () => {
-  const { reduceTransparency } = useTheme();
-  return Platform.OS === 'ios' && isGlassEffectAPIAvailable() && !reduceTransparency;
-};
-
 /**
  * Top app bar: leading action, small title, trailing actions. With `scrollY` + `large` it pairs with `<LargeTitle>`
  * for the collapsing large-title pattern. Overlays the content (absolute), so the scroll view needs top padding of
@@ -123,13 +118,13 @@ export function TopAppBar({
 }: TopAppBarProps) {
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
-  const blur = useGlassBlur();
+  const blur = useGlassSupported();
   const [scrolled, setScrolled] = useState(false);
 
   useAnimatedReaction(
     () => (scrollY ? scrollY.value > (large ? BACKGROUND_AT : spacing.xs) : false),
     (now, previous) => {
-      if (now !== previous) runOnJS(setScrolled)(now);
+      if (now !== previous) scheduleOnRN(setScrolled, now);
     },
     [scrollY, large],
   );
@@ -163,7 +158,9 @@ export function TopAppBar({
       {hasBackground ? (
         <Animated.View
           pointerEvents="none"
+          // Real glass appears without a fade (the system animates it); the solid fallback fades in and out.
           entering={blur || reduceMotion ? undefined : FadeIn.duration(duration.fast)}
+          exiting={blur || reduceMotion ? undefined : FadeOut.duration(duration.fast)}
           style={StyleSheet.absoluteFill}>
           <GlassSurface style={[StyleSheet.absoluteFill, styles.glassEdge, { borderBottomColor: colors.glassBorder }]} />
         </Animated.View>

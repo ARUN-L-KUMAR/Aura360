@@ -18,7 +18,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { GlassSurface } from '@/components/ui/glass-surface';
+import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { duration, easing, layout, radius, spacing, spring, useTheme } from '@/theme';
@@ -126,6 +126,8 @@ export function BottomSheet({
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const keyboard = useKeyboardHeight();
+  // Real glass is translucent, so a shadow would show through it: only the solid surface carries the level-4 shadow.
+  const glassActive = useGlassSupported() && glass;
 
   const auto = snapPoints === 'auto';
   const maxHeight = Math.max(0, windowHeight - insets.top - spacing.md);
@@ -348,7 +350,7 @@ export function BottomSheet({
               }}
               style={[
                 auto ? { maxHeight } : { height: sheetHeight },
-                elevation(4),
+                glassActive ? null : [styles.shadowCaster, { backgroundColor: glass ? colors.glassSolid : colors.card }, elevation(4)],
                 sheetStyle,
               ]}>
               <Surface
@@ -422,6 +424,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexShrink: 1 },
   anchor: { flex: 1, justifyContent: 'flex-end' },
+  /** Gives the shadow (iOS) and the elevation outline (Android) a shape to follow; the surface paints over it. */
+  shadowCaster: { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
   surface: {
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,

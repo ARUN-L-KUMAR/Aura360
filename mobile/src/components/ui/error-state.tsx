@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type ComponentProps } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
+import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { ApiError } from '@/lib/api';
 import { radius, spacing, useTheme } from '@/theme';
@@ -82,6 +84,7 @@ export type ErrorStateProps = {
 /** Error with a way forward. Announced to screen readers as an alert. */
 export function ErrorState({ kind, error, title, message, icon, onRetry, retryLabel, retrying, size = 'full', style }: ErrorStateProps) {
   const { colors } = useTheme();
+  const motion = useBlockMotion();
   const preset = PRESETS[kind ?? (error !== undefined ? errorKindFromError(error) : 'generic')];
   const heading = title ?? preset.title;
   const body = message ?? preset.message;
@@ -89,7 +92,8 @@ export function ErrorState({ kind, error, title, message, icon, onRetry, retryLa
 
   if (size === 'inline') {
     return (
-      <View
+      <Animated.View
+        {...motion}
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
         style={[
@@ -115,12 +119,13 @@ export function ErrorState({ kind, error, title, message, icon, onRetry, retryLa
           </Text>
         </View>
         {onRetry ? <Button title={action} variant="tertiary" size="sm" fullWidth={false} loading={retrying} onPress={onRetry} /> : null}
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View
+    <Animated.View
+      {...motion}
       accessibilityRole="alert"
       accessibilityLiveRegion="assertive"
       style={[{ alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl }, style]}>
@@ -147,6 +152,6 @@ export function ErrorState({ kind, error, title, message, icon, onRetry, retryLa
           <Button title={action} loading={retrying} fullWidth={false} onPress={onRetry} />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

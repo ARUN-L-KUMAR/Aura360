@@ -35,7 +35,8 @@ function check(scheme: ColorScheme, pairs: Pair[]) {
 
 for (const scheme of ['light', 'dark'] as const) {
   const c: ThemeColors = palettes[scheme];
-  const surfaces: (keyof ThemeColors)[] = ['background', 'card', 'cardMuted'];
+  // glassSolid is what overlays (tab bar, app bar, sheets) paint when blur is unavailable.
+  const surfaces: (keyof ThemeColors)[] = ['background', 'card', 'cardMuted', 'glassSolid'];
   const pairs: Pair[] = [];
 
   for (const s of surfaces) {
@@ -46,7 +47,7 @@ for (const scheme of ['light', 'dark'] as const) {
       pairs.push([c[t], c[s], 3, `${t} (icon/UI) on ${s}`]);
     }
   }
-  for (const s of ['background', 'card'] as const) {
+  for (const s of ['background', 'card', 'glassSolid'] as const) {
     pairs.push([c.borderStrong, c[s], 3, `borderStrong on ${s}`], [c.focusRing, c[s], 3, `focusRing on ${s}`]);
   }
   pairs.push(
@@ -63,6 +64,7 @@ for (const scheme of ['light', 'dark'] as const) {
     pairs.push(
       [c[`on${cap}` as keyof ThemeColors], c[k], 4.5, `on${cap} on ${k}`],
       [c[`on${cap}Container` as keyof ThemeColors], c[`${k}Container` as keyof ThemeColors], 4.5, `on${cap}Container on ${k}Container`],
+      [c[k], c[`${k}Container` as keyof ThemeColors], 3, `${k} (icon/check) on ${k}Container`],
       [c[`${k}Text` as keyof ThemeColors], c[`${k}Container` as keyof ThemeColors], 4.5, `${k}Text on ${k}Container`],
     );
   }
@@ -76,6 +78,7 @@ for (const scheme of ['light', 'dark'] as const) {
       [a.text, a.soft, 4.5, `accent ${key}: text on soft`],
       [a.solid, c.card, 3, `accent ${key}: solid on card`],
       [a.solid, c.background, 3, `accent ${key}: solid on background`],
+      [a.text, c.glassSolid, 4.5, `accent ${key}: text on glassSolid`],
     );
   }
   check(scheme, pairs);

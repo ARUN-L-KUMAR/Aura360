@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+import { instant } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
@@ -50,7 +51,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
     const to = index * segmentWidth;
     if (!placed.current || reduceMotion) {
       placed.current = true;
-      x.value = withTiming(to, { duration: 1 });
+      x.value = withTiming(to, instant);
     } else {
       x.value = withSpring(to, spring.gentle);
     }

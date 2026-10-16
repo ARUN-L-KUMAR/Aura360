@@ -8,6 +8,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { useKeyboardHeight } from '@/components/ui/bottom-sheet';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
 import { describeSeverity, hapticFor, severityColors, type NotifyAction, type Severity, type ToastItem } from '@/lib/notify';
@@ -25,6 +26,8 @@ export type ToastProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+const ICON_SIZE = 22;
+
 /**
  * The toast card: severity icon, text, optional action and optional close button. Presentational; `ToastHost` adds
  * the queue, timing, swipe-to-dismiss and placement. Use `useNotify().toast(...)` to show one.
@@ -37,7 +40,11 @@ export function Toast({ severity = 'info', title, message, action, onDismiss, st
   return (
     <View style={[styles.card, { backgroundColor: tone.background, borderColor: tone.border }, elevation(3), style]}>
       <View style={styles.icon} accessible accessibilityLabel={label}>
-        <Ionicons name={icon} size={22} color={tone.icon} />
+        {severity === 'success' ? (
+          <SuccessCheck size={ICON_SIZE} accessibilityLabel={null} />
+        ) : (
+          <Ionicons name={icon} size={ICON_SIZE} color={tone.icon} />
+        )}
       </View>
       <View style={styles.body}>
         {title ? (
