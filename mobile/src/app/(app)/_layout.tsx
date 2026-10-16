@@ -2,16 +2,22 @@ import { Stack } from 'expo-router';
 import { View } from 'react-native';
 
 import { OfflineBanner } from '@/components/offline-banner';
-import { useTheme } from '@/theme';
+import { fontFamily, typeScale, useTheme } from '@/theme';
 
 export default function AppLayout() {
   const { colors } = useTheme();
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerTitleStyle: {
+            fontFamily: fontFamily.semiBold,
+            fontSize: typeScale.title.fontSize,
+            color: colors.text,
+          },
+          headerBackButtonDisplayMode: 'minimal',
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
         }}>
@@ -37,7 +43,7 @@ export default function AppLayout() {
         <Stack.Screen name="fashion/outfit" options={{ presentation: 'modal', title: 'Curated Look' }} />
         <Stack.Screen name="ai/history" options={{ presentation: 'modal', title: 'Conversations' }} />
       </Stack>
-    <OfflineBanner />
+      <OfflineBanner />
     </View>
   );
 }

@@ -1,20 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { duration, layout, radius, spacing, useTheme } from '@/theme';
+
+const ICON_TILE = spacing.xxxl * 2; // 96
+const CONTENT_MAX_WIDTH = 360;
 
 export function BiometricLockScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { colors, reduceMotion } = useTheme();
   const { biometricLabel, biometricType, authenticate } = useBiometrics();
   const { signOut } = useAuth();
+  const [checking, setChecking] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const iconName: keyof typeof Ionicons.glyphMap =
     biometricType === 'face'
@@ -23,76 +29,64 @@ export function BiometricLockScreen() {
         ? 'finger-print-outline'
         : 'shield-checkmark-outline';
 
+  async function unlock() {
+    if (checking) return;
+    setChecking(true);
+    setFailed(false);
+    try {
+      const ok = await authenticate();
+      setFailed(!ok);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  const entering = reduceMotion ? FadeIn.duration(duration.fast) : FadeInDown.duration(duration.slow);
+
   return (
     <View
+      accessibilityViewIsModal
       style={[
         styles.overlay,
         {
           backgroundColor: colors.background,
           paddingTop: insets.top + spacing.xl,
           paddingBottom: insets.bottom + spacing.xl,
-          paddingHorizontal: spacing.xl,
+          paddingHorizontal: layout.screenPaddingWide,
         },
       ]}>
-      <View style={styles.content}>
-        {/* Glowing Shield Halo */}
+      <Animated.View entering={entering} style={styles.content}>
         <View
-          style={[
-            styles.haloContainer,
-            {
-              backgroundColor: isDark ? 'rgba(168, 85, 247, 0.12)' : 'rgba(168, 85, 247, 0.08)',
-              borderColor: `${moduleColors.ai}50`,
-            },
-          ]}>
-          <Ionicons name={iconName} size={48} color={moduleColors.ai} />
+          style={[styles.iconTile, { backgroundColor: colors.primaryContainer }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants">
+          <Ionicons name={iconName} size={spacing.xxxl} color={colors.onPrimaryContainer} />
         </View>
 
-        <View style={{ alignItems: 'center', gap: spacing.xs }}>
-          <Text variant="headline" style={{ fontSize: 26, fontWeight: '800' }}>
-            Aura360 is Locked
+        <View style={styles.titles}>
+          <Text variant="headline" accessibilityRole="header" style={styles.center}>
+            Aura360 is locked
           </Text>
-          <Text muted style={{ textAlign: 'center', fontSize: 15 }}>
-            Authenticate with {biometricLabel} to access your workspace.
+          <Text variant="body" color="textSecondary" style={styles.center}>
+            Use {biometricLabel} to unlock your workspace.
           </Text>
         </View>
 
-        <GlassCard
-          glowColor={moduleColors.ai}
-          style={{
-            width: '100%',
-            alignItems: 'center',
-            padding: spacing.xl,
-            gap: spacing.lg,
-            backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-          }}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void authenticate()}
-            style={({ pressed }) => [
-              styles.touchTarget,
-              {
-                backgroundColor: isDark ? 'rgba(34, 48, 65, 0.7)' : colors.cardMuted,
-                transform: [{ scale: pressed ? 0.94 : 1 }],
-              },
-            ]}>
-            <Ionicons name={iconName} size={36} color={moduleColors.ai} />
-          </Pressable>
+        {failed ? (
+          <Banner severity="warning" message={`We could not confirm it is you. Try ${biometricLabel} again.`} style={styles.fullWidth} />
+        ) : null}
 
-          <Button
-            title={`Unlock with ${biometricLabel}`}
-            onPress={() => void authenticate()}
-            style={{ width: '100%' }}
-          />
-        </GlassCard>
-      </View>
-
-      <View style={{ width: '100%', alignItems: 'center' }}>
         <Button
-          title="Sign out of Aura360"
-          variant="ghost"
-          onPress={() => void signOut()}
+          title={failed ? 'Try again' : `Unlock with ${biometricLabel}`}
+          size="lg"
+          leftIcon={iconName}
+          loading={checking}
+          onPress={unlock}
+          style={styles.fullWidth}
         />
-      </View>
+      </Animated.View>
+
+      <Button title="Sign out of Aura360" variant="ghost" onPress={() => void signOut()} />
     </View>
   );
 }
@@ -111,31 +105,19 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
-    maxWidth: 360,
+    maxWidth: CONTENT_MAX_WIDTH,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.xl,
+    gap: layout.sectionGap,
   },
-  haloContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: moduleColors.ai,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 8,
-  },
-  touchTarget: {
-    width: 72,
-    height: 72,
+  iconTile: {
+    width: ICON_TILE,
+    height: ICON_TILE,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: `${moduleColors.ai}40`,
   },
+  titles: { alignItems: 'center', gap: spacing.xs },
+  center: { textAlign: 'center' },
+  fullWidth: { width: '100%' },
 });
