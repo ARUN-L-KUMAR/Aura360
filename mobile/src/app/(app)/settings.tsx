@@ -2,21 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, Switch, View } from 'react-native';
+import { View } from 'react-native';
 
+import { SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
+import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import {
-  DEFAULT_NOTIF_PREFERENCES,
-  notificationService,
-  type NotificationPreferences,
-} from '@/lib/notifications';
+import { haptics } from '@/lib/haptics';
+import { DEFAULT_NOTIF_PREFERENCES, notificationService, type NotificationPreferences } from '@/lib/notifications';
+import { useOfflineSnapshot } from '@/lib/offline/use-offline';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
-import { moduleColors, radius, spacing, useTheme, type ThemeMode } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { syncNow } from '@/providers/offline';
+import { layout, radius, spacing, useTheme, type ThemeMode } from '@/theme';
 
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -24,15 +25,35 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Small preview of the brand colours in the current theme. Decorative: the text below it says what it shows. */
+function PalettePreview() {
+  const { colors, scheme, mode } = useTheme();
+  const swatches = [colors.primary, colors.secondary, colors.tertiary, colors.success, colors.warning, colors.error];
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', gap: spacing.xs }}>
+        {swatches.map((color) => (
+          <View key={color} style={{ flex: 1, height: spacing.xl, borderRadius: radius.sm, backgroundColor: color }} />
+        ))}
+      </View>
+      <Text variant="caption" color="textSecondary">
+        {mode === 'system' ? `Following your phone: ${scheme} theme` : `Using the ${scheme} theme`}
+      </Text>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
+  const notify = useNotify();
   const { user, signOut, serverUrl } = useAuth();
-  const { mode, setMode, colors, scheme, shades } = useTheme();
-  const isDark = scheme === 'dark';
+  const { mode, setMode } = useTheme();
   const { isAvailable, isEnabled, biometricLabel, biometricType, toggleBiometrics } = useBiometrics();
+  const sync = useOfflineSnapshot();
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFERENCES);
-  const [testSent, setTestSent] = useState(false);
 
   useEffect(() => {
     void notificationService.getPreferences().then(setNotifPrefs);
@@ -41,378 +62,190 @@ export default function SettingsScreen() {
   async function updateNotif(patch: Partial<NotificationPreferences>) {
     const next = { ...notifPrefs, ...patch };
     setNotifPrefs(next);
-    await notificationService.savePreferences(next);
-  }
-
-  async function sendTest() {
-    const ok = await notificationService.sendTestNotification();
-    if (ok) {
-      setTestSent(true);
-      setTimeout(() => setTestSent(false), 4000);
-    } else {
-      Alert.alert(
-        'Notifications in Expo Go',
-        'Android notifications in Expo SDK 53+ require a development build (npx expo run:android) to display native system notifications.',
-        [{ text: 'OK' }]
-      );
+    try {
+      await notificationService.savePreferences(next);
+    } catch (e) {
+      notify.error(e);
     }
   }
 
-  function confirmSignOut() {
-    Alert.alert('Sign out?', 'You will need to sign in again to access your Aura360 workspace.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
-    ]);
+  async function sendTest() {
+    try {
+      const ok = await notificationService.sendTestNotification();
+      if (ok) {
+        notify.success('Test notification sent. Check your notification tray.');
+      } else {
+        await notify.alert({
+          title: 'Notifications in Expo Go',
+          message: 'Android notifications in Expo SDK 53+ require a development build (npx expo run:android) to display native system notifications.',
+          severity: 'info',
+        });
+      }
+    } catch (e) {
+      notify.error(e);
+    }
   }
 
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((p) => p[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.email
-      ? user.email[0].toUpperCase()
-      : 'A';
+  async function confirmSignOut() {
+    const ok = await notify.confirm({
+      title: 'Sign out?',
+      message: 'You will need to sign in again to access your Aura360 workspace.',
+      confirmLabel: 'Sign out',
+      destructive: true,
+    });
+    if (ok) void signOut();
+  }
 
+  const displayName = user?.name ?? 'Aura user';
   const biometricIcon: keyof typeof Ionicons.glyphMap =
-    biometricType === 'face'
-      ? 'scan-outline'
-      : biometricType === 'fingerprint'
-        ? 'finger-print-outline'
-        : 'shield-checkmark-outline';
+    biometricType === 'face' ? 'scan-outline' : biometricType === 'fingerprint' ? 'finger-print-outline' : 'shield-checkmark-outline';
+
+  const syncSubtitle =
+    sync.failed > 0
+      ? `${plural(sync.failed, "entry couldn't", "entries couldn't")} be saved`
+      : sync.pending > 0
+        ? `${plural(sync.pending, 'entry', 'entries')} waiting to sync`
+        : sync.online
+          ? 'Everything is saved to your account'
+          : 'Changes are saved on this phone until you are back online';
+  const canSync = sync.online && sync.pending > 0;
 
   return (
     <Screen topInset={false}>
-      {/* Profile Hero Card */}
-      <GlassCard
-        glowColor={moduleColors.ai}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.lg,
-          padding: spacing.lg,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
-        <View
-          style={{
-            width: 58,
-            height: 58,
-            borderRadius: radius.pill,
-            backgroundColor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)',
-            borderWidth: 2,
-            borderColor: moduleColors.ai,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: moduleColors.ai }}>{initials}</Text>
-        </View>
+      <Section title="Account">
+        <ListItem avatar={{ name: user?.name ?? user?.email, size: 'lg' }} title={displayName} subtitle={user?.email ?? 'user@aura360.internal'} />
+      </Section>
 
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="title">{user?.name ?? 'Aura User'}</Text>
-          <Text muted numberOfLines={1}>
-            {user?.email ?? 'user@aura360.internal'}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
-            <Text variant="caption" style={{ color: colors.success, fontWeight: '600' }}>
-              Active Workspace
-            </Text>
-          </View>
+      <Section title="Appearance" footer="System follows your phone's light or dark setting.">
+        <View style={{ padding: layout.cardPadding, gap: spacing.lg }}>
+          <Segmented options={THEME_OPTIONS} value={mode} onChange={setMode} accessibilityLabel="Theme" />
+          <PalettePreview />
         </View>
-      </GlassCard>
+      </Section>
 
-      {/* Alerts & reminders sent by the server (budget, renewals, workout, meals, skincare, unworn clothes) */}
-      <GlassCard style={{ padding: spacing.md }}>
-        <Pressable
-          accessibilityRole="button"
+      <Section
+        title="Notifications"
+        footer={
+          notifPrefs.enabled
+            ? 'Habit reminders are scheduled on this phone. Alerts and reminders from the server arrive even when the app is closed.'
+            : 'Turn on habit reminders to get scheduled water, skincare and daily review alerts.'
+        }>
+        <ListItem
+          icon="notifications"
+          accent="finance"
+          title="Alerts and reminders"
+          subtitle="Budget alerts, renewals, workout, meals and more"
           onPress={() => router.push('/notifications/settings' as never)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Ionicons name="notifications" size={20} color={moduleColors.finance} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontWeight: '700' }}>Alerts & reminders</Text>
-            <Text variant="caption" muted>
-              Budget alerts, renewals, workout, meals and more. Sent to this phone, even when the app is closed.
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Pressable>
-      </GlassCard>
-
-      {/* Habit Reminders & Notifications Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="notifications-outline" size={18} color={moduleColors.fitness} />
-            <Text variant="label" muted>
-              Daily Habit Reminders
-            </Text>
-          </View>
-          <Switch
-            value={notifPrefs.enabled}
-            onValueChange={(val) => void updateNotif({ enabled: val })}
-            trackColor={{ false: colors.border, true: moduleColors.fitness }}
-          />
-        </View>
-
+          divider
+        />
+        <SwitchRow
+          icon="alarm-outline"
+          accent="fitness"
+          title="Daily habit reminders"
+          subtitle="Reminders on this phone"
+          value={notifPrefs.enabled}
+          onValueChange={(val) => void updateNotif({ enabled: val })}
+          divider={notifPrefs.enabled}
+        />
         {notifPrefs.enabled ? (
-          <View style={{ gap: spacing.md, paddingTop: spacing.xs }}>
-            {/* Water Reminder */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>💧 Hydration Check</Text>
-                <Text variant="caption" muted>
-                  Prompts at 11:00 AM, 2:30 PM & 5:30 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.waterReminders}
-                onValueChange={(val) => void updateNotif({ waterReminders: val })}
-                trackColor={{ false: colors.border, true: moduleColors.food }}
-              />
-            </View>
-
-            {/* Morning Skincare */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>☀️ Morning Skincare</Text>
-                <Text variant="caption" muted>
-                  Daily routine alert at 8:00 AM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.morningSkincare}
-                onValueChange={(val) => void updateNotif({ morningSkincare: val })}
-                trackColor={{ false: colors.border, true: moduleColors.skincare }}
-              />
-            </View>
-
-            {/* Evening Skincare */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>🌙 Evening Skincare</Text>
-                <Text variant="caption" muted>
-                  Night routine & wind-down at 10:00 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.eveningSkincare}
-                onValueChange={(val) => void updateNotif({ eveningSkincare: val })}
-                trackColor={{ false: colors.border, true: moduleColors.skincare }}
-              />
-            </View>
-
-            {/* Daily Review */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>✨ Evening Review</Text>
-                <Text variant="caption" muted>
-                  Review workout & finance tallies at 8:00 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.dailyReview}
-                onValueChange={(val) => void updateNotif({ dailyReview: val })}
-                trackColor={{ false: colors.border, true: moduleColors.ai }}
-              />
-            </View>
-
-            {/* Budget Alerts */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>💳 Budget Threshold Alerts</Text>
-                <Text variant="caption" muted>
-                  Notify when spending crosses limits
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.budgetAlerts}
-                onValueChange={(val) => void updateNotif({ budgetAlerts: val })}
-                trackColor={{ false: colors.border, true: moduleColors.finance }}
-              />
-            </View>
-
-            {/* Test Notification Trigger */}
-            <Pressable
-              accessibilityRole="button"
+          <>
+            <SwitchRow
+              icon="water-outline"
+              accent="food"
+              title="Hydration check"
+              subtitle="11:00 AM, 2:30 PM and 5:30 PM"
+              value={notifPrefs.waterReminders}
+              onValueChange={(val) => void updateNotif({ waterReminders: val })}
+              divider
+            />
+            <SwitchRow
+              icon="sunny-outline"
+              accent="skincare"
+              title="Morning skincare"
+              subtitle="Daily routine alert at 8:00 AM"
+              value={notifPrefs.morningSkincare}
+              onValueChange={(val) => void updateNotif({ morningSkincare: val })}
+              divider
+            />
+            <SwitchRow
+              icon="moon-outline"
+              accent="skincare"
+              title="Evening skincare"
+              subtitle="Night routine at 10:00 PM"
+              value={notifPrefs.eveningSkincare}
+              onValueChange={(val) => void updateNotif({ eveningSkincare: val })}
+              divider
+            />
+            <SwitchRow
+              icon="sparkles-outline"
+              accent="ai"
+              title="Evening review"
+              subtitle="Workout and finance tallies at 8:00 PM"
+              value={notifPrefs.dailyReview}
+              onValueChange={(val) => void updateNotif({ dailyReview: val })}
+              divider
+            />
+            <SwitchRow
+              icon="card-outline"
+              accent="finance"
+              title="Budget threshold alerts"
+              subtitle="When spending crosses a limit"
+              value={notifPrefs.budgetAlerts}
+              onValueChange={(val) => void updateNotif({ budgetAlerts: val })}
+              divider
+            />
+            <ListItem
+              icon="paper-plane-outline"
+              title="Send a test notification"
+              subtitle="See how reminders look on this phone"
               onPress={() => void sendTest()}
-              style={{
-                marginTop: spacing.xs,
-                padding: spacing.md,
-                borderRadius: radius.md,
-                backgroundColor: isDark ? 'rgba(34, 48, 65, 0.5)' : colors.cardMuted,
-                borderWidth: 1,
-                borderColor: colors.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: spacing.xs,
-              }}>
-              <Ionicons name="paper-plane-outline" size={16} color={moduleColors.fitness} />
-              <Text variant="caption" style={{ fontWeight: '700', color: colors.text }}>
-                {testSent ? '✓ Test Alert Sent to Notification Tray!' : 'Send Test Notification'}
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text variant="caption" muted>
-            Turn on habit notifications to receive scheduled water, skincare, and daily review alerts.
-          </Text>
-        )}
-      </GlassCard>
+              chevron={false}
+            />
+          </>
+        ) : null}
+      </Section>
 
-      {/* Security & Biometrics Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name={biometricIcon} size={18} color={moduleColors.ai} />
-          <Text variant="label" muted>
-            Security & App Lock
-          </Text>
-        </View>
+      <Section title="Security and privacy" footer={isAvailable ? undefined : 'Biometric hardware is not enrolled or available on this device.'}>
+        <SwitchRow
+          icon={biometricIcon}
+          accent="ai"
+          title={`Require ${biometricLabel}`}
+          subtitle={isAvailable ? 'Lock Aura360 when you open it or switch back to it' : 'Not available on this device'}
+          value={isEnabled}
+          disabled={!isAvailable}
+          onValueChange={(val) => void toggleBiometrics(val)}
+        />
+      </Section>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, gap: 2, paddingRight: spacing.md }}>
-            <Text style={{ fontWeight: '600' }}>Require {biometricLabel}</Text>
-            <Text variant="caption" muted>
-              {isAvailable
-                ? `Lock Aura360 and require ${biometricLabel} when opening or switching apps`
-                : 'Biometric hardware not enrolled or available on this device'}
-            </Text>
-          </View>
-          <Switch
-            disabled={!isAvailable}
-            value={isEnabled}
-            onValueChange={(val) => void toggleBiometrics(val)}
-            trackColor={{ false: colors.border, true: moduleColors.ai }}
+      <Section title="Data and sync">
+        <ListItem
+          icon={sync.online ? 'cloud-done-outline' : 'cloud-offline-outline'}
+          title={sync.online ? 'Online' : 'Offline'}
+          subtitle={syncSubtitle}
+          divider
+        />
+        {canSync ? (
+          <ListItem
+            icon="sync-outline"
+            title="Sync now"
+            subtitle={sync.replaying ? 'Syncing...' : 'Send the entries saved on this phone'}
+            disabled={sync.replaying}
+            onPress={() => {
+              haptics.tap();
+              void syncNow();
+            }}
+            chevron={false}
+            divider
           />
-        </View>
-      </GlassCard>
+        ) : null}
+        <ListItem icon="server-outline" title="Server" subtitle={serverUrl || 'Default local host'} />
+      </Section>
 
-      {/* Appearance Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
-          <Text variant="label" muted>
-            Appearance & Brand Theme
-          </Text>
-        </View>
-        <Segmented options={THEME_OPTIONS} value={mode} onChange={setMode} />
+      <Section title="About">
+        <ListItem icon="information-circle-outline" title="App version" meta={Constants.expoConfig?.version ?? '1.0.0'} />
+      </Section>
 
-        {/* Live Brand Palette & Shades Showcase */}
-        <View style={{ gap: spacing.sm, paddingTop: spacing.xs }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="caption" weight="semiBold" muted>
-              BRAND PALETTE & SHADES
-            </Text>
-            <Text variant="caption" muted style={{ fontSize: 11 }}>
-              Plus Jakarta Sans
-            </Text>
-          </View>
-
-          {/* Primary Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.primary }}>
-                Primary (Electric Indigo)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                {colors.primary}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`p-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.primary[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Secondary Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.secondary }}>
-                Secondary (Sky / Cyan)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                {colors.secondary}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`s-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.secondary[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Slate Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" muted style={{ fontSize: 11, fontWeight: '600' }}>
-                Executive Slate (Neutrals)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                50 – 950
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`sl-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.slate[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-        </View>
-      </GlassCard>
-
-      {/* Server & Architecture Info */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="server-outline" size={18} color={colors.textMuted} />
-          <Text variant="label" muted>
-            Backend & System
-          </Text>
-        </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="caption" muted>
-            Backend Server URL
-          </Text>
-          <View
-            style={{
-              padding: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: isDark ? 'rgba(34, 48, 65, 0.5)' : colors.cardMuted,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}>
-            <Text style={{ fontFamily: 'monospace', fontSize: 13 }}>{serverUrl || 'Default local host'}</Text>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.xs }}>
-          <Text muted>App Version</Text>
-          <Text style={{ fontWeight: '600' }}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
-        </View>
-      </GlassCard>
-
-      <Button title="Sign out from Aura360" variant="danger" onPress={confirmSignOut} />
+      <Button title="Sign out" variant="destructive" leftIcon="log-out-outline" onPress={() => void confirmSignOut()} />
     </Screen>
   );
 }

@@ -4,6 +4,7 @@ import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 
 import { api } from '@/lib/api';
+import { error as errorRamp, moduleColors } from '@/theme/colors';
 
 const NOTIF_PREFS_KEY = 'aura.notification_preferences';
 
@@ -120,13 +121,13 @@ export const notificationService = {
           name: 'Habit & Daily Reminders',
           importance: Notifications.AndroidImportance.HIGH,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#a855f7',
+          lightColor: moduleColors.ai,
         });
         await Notifications.setNotificationChannelAsync('finance', {
           name: 'Budget & Finance Alerts',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 300, 200, 300],
-          lightColor: '#ef4444',
+          lightColor: errorRamp[500],
         });
       }
 
