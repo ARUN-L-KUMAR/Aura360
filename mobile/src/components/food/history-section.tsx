@@ -69,7 +69,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Ionicons name="calendar-outline" size={16} color={moduleColors.food} />
-          <Text variant="heading" style={{ fontSize: 16 }}>
+          <Text variant="title" style={{ fontSize: 16 }}>
             {monthLabel(month)}
           </Text>
         </View>

@@ -86,7 +86,7 @@ export default function SignUpScreen() {
               }}>
               <Ionicons name="mail-open-outline" size={32} color={colors.success} />
             </View>
-            <Text variant="heading" weight="bold" style={{ textAlign: 'center' }}>
+            <Text variant="title" weight="bold" style={{ textAlign: 'center' }}>
               Check your email
             </Text>
             <Text variant="body" muted style={{ textAlign: 'center', lineHeight: 22 }}>
@@ -131,7 +131,7 @@ export default function SignUpScreen() {
           </View>
 
           <View style={styles.headerTitles}>
-            <Text variant="title" weight="bold" style={styles.title}>
+            <Text variant="headline" weight="bold" style={styles.title}>
               Create Account
             </Text>
             <Text variant="body" muted style={styles.subtitle}>

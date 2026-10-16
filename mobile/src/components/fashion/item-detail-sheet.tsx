@@ -144,7 +144,7 @@ export function ItemDetailSheet({ item, visible, onClose, onEdit }: ItemDetailSh
             {/* Title & Brand */}
             <View style={{ gap: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text variant="title" style={{ fontSize: 22, fontWeight: '800' }}>
+                <Text variant="headline" style={{ fontSize: 22, fontWeight: '800' }}>
                   {item.name}
                 </Text>
                 <View
@@ -180,7 +180,7 @@ export function ItemDetailSheet({ item, visible, onClose, onEdit }: ItemDetailSh
                 <Text variant="caption" muted style={styles.metricLabel}>
                   PRICE
                 </Text>
-                <Text variant="title" style={styles.metricValue}>
+                <Text variant="headline" style={styles.metricValue}>
                   {priceNum > 0 ? formatMoney(priceNum) : '—'}
                 </Text>
               </GlassCard>
@@ -189,7 +189,7 @@ export function ItemDetailSheet({ item, visible, onClose, onEdit }: ItemDetailSh
                 <Text variant="caption" muted style={styles.metricLabel}>
                   TIMES WORN
                 </Text>
-                <Text variant="title" style={[styles.metricValue, { color: moduleColors.fashion }]}>
+                <Text variant="headline" style={[styles.metricValue, { color: moduleColors.fashion }]}>
                   {wearCount}x
                 </Text>
               </GlassCard>
@@ -199,7 +199,7 @@ export function ItemDetailSheet({ item, visible, onClose, onEdit }: ItemDetailSh
                   <Text variant="caption" muted style={styles.metricLabel}>
                     COST / WEAR
                   </Text>
-                  <Text variant="title" style={[styles.metricValue, { color: '#38bdf8' }]}>
+                  <Text variant="headline" style={[styles.metricValue, { color: '#38bdf8' }]}>
                     {formatMoney(cpw)}
                   </Text>
                 </GlassCard>

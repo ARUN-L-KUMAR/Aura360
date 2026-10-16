@@ -69,7 +69,7 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Ionicons name="calendar-outline" size={16} color={moduleColors.finance} />
-          <Text variant="heading" style={{ fontSize: 16 }}>
+          <Text variant="title" style={{ fontSize: 16 }}>
             {monthLabel(month)}
           </Text>
         </View>
@@ -104,7 +104,7 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
           glowColor={summary.isOverBudget ? colors.danger : moduleColors.finance}
           style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               {summary.hasOverallBudget ? 'Overall Monthly Budget' : 'Total Monthly Budget'}
             </Text>
             <View

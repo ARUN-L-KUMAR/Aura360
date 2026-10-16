@@ -85,7 +85,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
       <GlassCard style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <Ionicons name="sparkles" size={18} color={moduleColors.ai} />
-          <Text variant="heading">Build my plan</Text>
+          <Text variant="title">Build my plan</Text>
         </View>
 
         <Field label="Goal">
@@ -129,7 +129,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
       {program && day ? (
         <>
           <GlassCard style={{ gap: spacing.sm }}>
-            <Text variant="heading">{program.programName}</Text>
+            <Text variant="title">{program.programName}</Text>
             <Text variant="caption" muted>
               {[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ')}
             </Text>
@@ -160,7 +160,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
 
           <GlassCard style={{ gap: spacing.md }}>
             <View style={{ gap: spacing.xs }}>
-              <Text variant="heading">{day.name}</Text>
+              <Text variant="title">{day.name}</Text>
               <Text variant="caption" muted>
                 {day.focus}
                 {day.targetDurationMinutes ? ` · ~${day.targetDurationMinutes} min` : ''}

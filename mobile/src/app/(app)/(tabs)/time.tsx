@@ -73,7 +73,7 @@ export default function TimeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Screen onRefresh={() => Promise.all([monthLogs.refetch(), weekLogs.refetch()])} refreshing={monthLogs.isRefetching || weekLogs.isRefetching}>
-        <Text variant="title">Time</Text>
+        <Text variant="headline">Time</Text>
 
         {/* KPI Summary Cards */}
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -129,7 +129,7 @@ export default function TimeScreen() {
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Ionicons name="calendar-outline" size={16} color={moduleColors.time} />
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               {monthLabel(month)}
             </Text>
           </View>
@@ -168,7 +168,7 @@ export default function TimeScreen() {
         {breakdown.length > 0 ? (
           <GlassCard style={{ gap: spacing.md }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text variant="heading" style={{ fontSize: 16 }}>
+              <Text variant="title" style={{ fontSize: 16 }}>
                 Time Distribution
               </Text>
               <Text variant="caption" muted style={{ fontWeight: '600' }}>
@@ -345,7 +345,7 @@ function TimerCard() {
       <GlassCard glowColor={activeColor} style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: activeColor }} />
-          <Text variant="heading" style={{ flex: 1, fontSize: 16 }} numberOfLines={1}>
+          <Text variant="title" style={{ flex: 1, fontSize: 16 }} numberOfLines={1}>
             {timer.activity}
           </Text>
           {timer.category ? (
@@ -392,7 +392,7 @@ function TimerCard() {
     <GlassCard glowColor={moduleColors.time} style={{ gap: spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
         <Ionicons name="stopwatch-outline" size={18} color={moduleColors.time} />
-        <Text variant="heading" style={{ fontSize: 16 }}>
+        <Text variant="title" style={{ fontSize: 16 }}>
           Live Stopwatch
         </Text>
       </View>

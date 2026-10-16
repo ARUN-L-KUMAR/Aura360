@@ -119,7 +119,7 @@ export default function GoalScreen() {
           </Text>
         </View>
 
-        <Text variant="heading" numberOfLines={1}>
+        <Text variant="title" numberOfLines={1}>
           {title.trim() || 'Goal title'}
         </Text>
 

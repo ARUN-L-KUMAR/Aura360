@@ -48,7 +48,7 @@ export function BiometricLockScreen() {
         </View>
 
         <View style={{ alignItems: 'center', gap: spacing.xs }}>
-          <Text variant="title" style={{ fontSize: 26, fontWeight: '800' }}>
+          <Text variant="headline" style={{ fontSize: 26, fontWeight: '800' }}>
             Aura360 is Locked
           </Text>
           <Text muted style={{ textAlign: 'center', fontSize: 15 }}>

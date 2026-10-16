@@ -39,7 +39,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
 
       <GlassCard glowColor={fitnessColor} style={{ gap: spacing.sm }}>
         <SectionLabel>Today</SectionLabel>
-        <Text variant="heading">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
+        <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
         <Button title={session ? 'Resume workout' : 'Start workout'} onPress={onOpenTrain} />
       </GlassCard>
 
@@ -49,7 +49,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
         {readiness.data ? (
           <>
             <View style={styles.scoreRow}>
-              <Text variant="title" style={{ color: scoreColor }}>
+              <Text variant="headline" style={{ color: scoreColor }}>
                 {readiness.data.score}
               </Text>
               <Text muted>{readiness.data.status}</Text>

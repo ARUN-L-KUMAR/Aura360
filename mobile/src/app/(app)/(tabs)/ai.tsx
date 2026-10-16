@@ -40,7 +40,7 @@ export default function AskAuraScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}>
       {/* Tab Screen Top Header */}
       <View style={{ paddingTop: insets.top + spacing.xs, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text variant="title">Ask Aura</Text>
+        <Text variant="headline">Ask Aura</Text>
         <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" accessibilityLabel="New chat" onPress={startNew} hitSlop={10}>
             <Ionicons name="create-outline" size={22} color={colors.text} />

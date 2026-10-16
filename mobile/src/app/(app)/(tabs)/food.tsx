@@ -28,7 +28,7 @@ export default function FoodScreen() {
 
   const header = (
     <View style={{ gap: spacing.md }}>
-      <Text variant="title">Food</Text>
+      <Text variant="headline">Food</Text>
       <Segmented options={SECTIONS} value={section} onChange={setSection} />
     </View>
   );

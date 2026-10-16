@@ -444,7 +444,7 @@ export function FloatingAiWidget() {
                     <View style={[styles.emptyIconBox, { backgroundColor: `${moduleColors.ai}18` }]}>
                       <Ionicons name="sparkles" size={28} color={moduleColors.ai} />
                     </View>
-                    <Text variant="heading" style={{ fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
+                    <Text variant="title" style={{ fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
                       How can I help with {pageTitle}?
                     </Text>
                     <Text variant="caption" muted style={{ textAlign: 'center', maxWidth: 280, marginTop: 4 }}>
@@ -586,7 +586,7 @@ export function FloatingAiWidget() {
                     <View style={[styles.emptyIconBox, { backgroundColor: `${colors.success}18` }]}>
                       <Ionicons name="checkmark-done" size={28} color={colors.success} />
                     </View>
-                    <Text variant="heading" style={{ fontSize: 15, fontWeight: '700' }}>
+                    <Text variant="title" style={{ fontSize: 15, fontWeight: '700' }}>
                       Nothing waiting for review
                     </Text>
                     <Text variant="caption" muted style={{ textAlign: 'center', maxWidth: 280, marginTop: 4 }}>

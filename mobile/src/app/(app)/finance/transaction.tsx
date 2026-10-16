@@ -135,7 +135,7 @@ export default function TransactionScreen() {
       <Screen topInset={false}>
         <Stack.Screen options={{ title: 'Transfer' }} />
         <Card style={{ gap: spacing.sm }}>
-          <Text variant="heading">{existing.description}</Text>
+          <Text variant="title">{existing.description}</Text>
           <Text muted>Transfers between accounts can only be deleted here.</Text>
         </Card>
         {error ? <Text color="danger">{error}</Text> : null}

@@ -42,7 +42,7 @@ export function EmptyState({
         <Ionicons name={icon} size={32} color={iconColor} />
       </View>
 
-      <Text variant="heading" style={styles.title}>
+      <Text variant="title" style={styles.title}>
         {title}
       </Text>
 

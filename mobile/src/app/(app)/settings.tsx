@@ -110,7 +110,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="heading">{user?.name ?? 'Aura User'}</Text>
+          <Text variant="title">{user?.name ?? 'Aura User'}</Text>
           <Text muted numberOfLines={1}>
             {user?.email ?? 'user@aura360.internal'}
           </Text>

@@ -121,7 +121,7 @@ export function ProfileSection({ header }: ProfileSectionProps) {
             <Ionicons name="sparkles" size={20} color="#ec4899" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="heading" style={{ fontSize: 17, fontWeight: '700' }}>
+            <Text variant="title" style={{ fontSize: 17, fontWeight: '700' }}>
               My Fit & Size Profile
             </Text>
             <Text variant="caption" muted>

@@ -82,7 +82,7 @@ export function TodaySection({ header }: { header: ReactNode }) {
           hitSlop={8}
           style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Ionicons name="calendar-outline" size={16} color={moduleColors.food} />
-          <Text variant="heading" style={{ fontSize: 16 }}>
+          <Text variant="title" style={{ fontSize: 16 }}>
             {dayTitle(day)}
           </Text>
           {day !== today ? (
@@ -125,7 +125,7 @@ export function TodaySection({ header }: { header: ReactNode }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Ionicons name="nutrition-outline" size={18} color={moduleColors.food} />
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               Daily Nutrition Target
             </Text>
           </View>
@@ -150,7 +150,7 @@ export function TodaySection({ header }: { header: ReactNode }) {
 
       {/* Meal Slots Section */}
       <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-        <Text variant="heading" style={{ fontSize: 18 }}>
+        <Text variant="title" style={{ fontSize: 18 }}>
           {"Today's Meals"}
         </Text>
 

@@ -53,7 +53,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Ionicons name="wallet-outline" size={18} color={moduleColors.finance} />
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               Total Liquidity
             </Text>
           </View>
@@ -108,7 +108,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
 
       {/* Monthly Cashflow Stats */}
       <GlassCard style={{ gap: spacing.md }}>
-        <Text variant="heading" style={{ fontSize: 16 }}>
+        <Text variant="title" style={{ fontSize: 16 }}>
           Monthly Cashflow
         </Text>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -124,7 +124,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
             <Text variant="caption" muted style={{ color: colors.success, fontWeight: '600' }}>
               Income
             </Text>
-            <Text variant="heading" style={{ color: colors.success, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
+            <Text variant="title" style={{ color: colors.success, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
               {formatMoney(dashboard.data?.month.income ?? 0, { compact: true })}
             </Text>
           </View>
@@ -141,7 +141,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
             <Text variant="caption" muted style={{ color: colors.danger, fontWeight: '600' }}>
               Spent
             </Text>
-            <Text variant="heading" style={{ color: colors.text, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
+            <Text variant="title" style={{ color: colors.text, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
               {formatMoney(dashboard.data?.month.expense ?? 0, { compact: true })}
             </Text>
           </View>
@@ -158,7 +158,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
             <Text variant="caption" muted style={{ fontWeight: '600' }}>
               Net Savings
             </Text>
-            <Text variant="heading" style={{ color: net >= 0 ? colors.success : colors.danger, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
+            <Text variant="title" style={{ color: net >= 0 ? colors.success : colors.danger, fontSize: 18, marginTop: 2 }} numberOfLines={1}>
               {formatMoney(net, { compact: true })}
             </Text>
           </View>
@@ -169,7 +169,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
       {closeToLimit.length > 0 ? (
         <GlassCard style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               Budget Alerts
             </Text>
             <Pressable accessibilityRole="button" onPress={() => router.push('/finance/budget' as any)} hitSlop={8}>
@@ -197,7 +197,7 @@ export function OverviewSection({ header }: { header: ReactNode }) {
       {/* Recent Activity */}
       <GlassCard style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text variant="heading" style={{ fontSize: 16 }}>
+          <Text variant="title" style={{ fontSize: 16 }}>
             Recent Activity
           </Text>
           <Pressable accessibilityRole="button" onPress={() => openTransaction(router)} hitSlop={8}>

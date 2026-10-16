@@ -42,7 +42,7 @@ export default function FitnessScreen() {
               STRENGTH & RECOVERY
             </Text>
           </View>
-          <Text variant="title">Fitness</Text>
+          <Text variant="headline">Fitness</Text>
         </View>
         <View style={[styles.iconCircle, { backgroundColor: `${fitnessColor}18` }]}>
           <Ionicons name="barbell-outline" size={22} color={fitnessColor} />

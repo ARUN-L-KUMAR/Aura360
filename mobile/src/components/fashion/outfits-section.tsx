@@ -50,7 +50,7 @@ export function OutfitsSection({ items, header, onCreateOutfit }: OutfitsSection
       {/* Header Bar */}
       <View style={styles.titleRow}>
         <View style={{ gap: 2 }}>
-          <Text variant="heading" style={{ fontSize: 18, fontWeight: '700' }}>
+          <Text variant="title" style={{ fontSize: 18, fontWeight: '700' }}>
             Curated Looks
           </Text>
           <Text variant="caption" muted>
@@ -86,7 +86,7 @@ export function OutfitsSection({ items, header, onCreateOutfit }: OutfitsSection
                 {/* Outfit Card Header */}
                 <View style={styles.cardHeader}>
                   <View style={{ gap: 2, flex: 1 }}>
-                    <Text variant="title" style={{ fontSize: 16, fontWeight: '700' }}>
+                    <Text variant="headline" style={{ fontSize: 16, fontWeight: '700' }}>
                       {outfit.name}
                     </Text>
                     {outfit.occasion || outfit.vibe ? (

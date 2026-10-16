@@ -84,7 +84,7 @@ export function RestTimer() {
 
       {/* Main Countdown Display */}
       <View style={styles.timerDisplay}>
-        <Text variant="title" style={styles.timeText} color={isComplete ? 'success' : 'text'}>
+        <Text variant="headline" style={styles.timeText} color={isComplete ? 'success' : 'text'}>
           {formatTime(secondsRemaining)}
         </Text>
 

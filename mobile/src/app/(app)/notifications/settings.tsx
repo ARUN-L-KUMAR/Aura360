@@ -121,7 +121,7 @@ export default function NotificationSettingsScreen() {
     <Screen contentContainerStyle={{ gap: spacing.lg }}>
       {/* Where alerts go */}
       <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <Text variant="heading">Where you get alerts</Text>
+        <Text variant="title">Where you get alerts</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <Ionicons name="notifications" size={16} color={colors.textMuted} />
           <Text variant="caption" muted style={{ flex: 1 }}>
@@ -143,7 +143,7 @@ export default function NotificationSettingsScreen() {
 
       {/* Time zone + quiet hours */}
       <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <Text variant="heading">Time & quiet hours</Text>
+        <Text variant="title">Time & quiet hours</Text>
         <View style={{ gap: spacing.xs }}>
           <Text variant="label" muted>
             Time zone
@@ -165,14 +165,14 @@ export default function NotificationSettingsScreen() {
 
       {/* Alerts */}
       <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <Text variant="heading">Alerts</Text>
+        <Text variant="title">Alerts</Text>
         <ToggleRow title="Budget alerts" hint="When a category reaches its alert level or goes over" value={draft.budget.enabled} onValueChange={(v) => patchIn('budget', { enabled: v })} />
         <ToggleRow title="Subscription renewals" hint="Before a subscription is charged" value={draft.subscriptions.enabled} onValueChange={(v) => patchIn('subscriptions', { enabled: v })} />
       </GlassCard>
 
       {/* Reminders */}
       <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <Text variant="heading">Reminders</Text>
+        <Text variant="title">Reminders</Text>
 
         <ToggleRow title="Workout" hint="A nudge on the days you choose" value={draft.workout.enabled} onValueChange={(v) => patchIn('workout', { enabled: v })} />
         {draft.workout.enabled ? (

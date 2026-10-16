@@ -85,7 +85,7 @@ export default function FashionTabScreen() {
                 STYLE & WARDROBE
               </Text>
             </View>
-            <Text variant="title" style={{ fontSize: 24, fontWeight: '800' }}>
+            <Text variant="headline" style={{ fontSize: 24, fontWeight: '800' }}>
               Fashion
             </Text>
           </View>

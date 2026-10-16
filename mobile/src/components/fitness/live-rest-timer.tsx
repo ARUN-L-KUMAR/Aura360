@@ -37,7 +37,7 @@ export function LiveRestTimer({ remaining, total }: { remaining: number; total: 
           </Svg>
         </View>
         <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text variant="heading">{formatDuration(remaining)}</Text>
+          <Text variant="title">{formatDuration(remaining)}</Text>
           <Text variant="caption" muted>
             rest
           </Text>

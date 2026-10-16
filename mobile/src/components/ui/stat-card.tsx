@@ -55,7 +55,7 @@ export function StatCard({
         )}
       </View>
 
-      <Text variant="title" style={styles.value} numberOfLines={1}>
+      <Text variant="headline" style={styles.value} numberOfLines={1}>
         {value}
       </Text>
 

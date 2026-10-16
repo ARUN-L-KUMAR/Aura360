@@ -61,7 +61,7 @@ export function NoteCard({ note }: { note: Note }) {
               {note.isPinned ? (
                 <Ionicons name="pin" size={14} color={moduleColors.notes} />
               ) : null}
-              <Text variant="heading" numberOfLines={2} style={{ fontSize: 16 }}>
+              <Text variant="title" numberOfLines={2} style={{ fontSize: 16 }}>
                 {note.title}
               </Text>
             </View>

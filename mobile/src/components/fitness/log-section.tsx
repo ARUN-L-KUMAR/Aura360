@@ -41,7 +41,7 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
         <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setMonth(shiftMonth(month, -1))} hitSlop={12}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
-        <Text variant="heading">{monthLabel(month)}</Text>
+        <Text variant="title">{monthLabel(month)}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Next month"

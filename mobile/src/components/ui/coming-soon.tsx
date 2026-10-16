@@ -23,7 +23,7 @@ export function ComingSoon({ module }: { module: ModuleInfo }) {
           }}>
           <Ionicons name={module.icon} size={30} color={module.color} />
         </View>
-        <Text variant="heading">{module.label}</Text>
+        <Text variant="title">{module.label}</Text>
         <Text muted style={{ textAlign: 'center' }}>
           {module.blurb}
         </Text>

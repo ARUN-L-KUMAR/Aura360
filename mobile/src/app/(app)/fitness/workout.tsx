@@ -172,7 +172,7 @@ export default function WorkoutModalScreen() {
       {/* Exercises Section */}
       <Card style={{ gap: spacing.md }}>
         <View style={styles.sectionHeader}>
-          <Text variant="heading" style={{ fontSize: 16 }}>
+          <Text variant="title" style={{ fontSize: 16 }}>
             Exercises
           </Text>
           <Pressable

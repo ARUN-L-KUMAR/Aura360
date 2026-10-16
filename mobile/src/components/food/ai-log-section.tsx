@@ -113,7 +113,7 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
             <Ionicons name="sparkles" size={16} color={moduleColors.ai} />
           </View>
           <View>
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               AI Food Intelligence
             </Text>
             <Text variant="caption" muted>

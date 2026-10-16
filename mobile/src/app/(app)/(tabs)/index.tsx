@@ -154,7 +154,7 @@ export default function HomeScreen() {
       {/* Error state */}
       {isError && !data ? (
         <GlassCard style={{ gap: spacing.sm }}>
-          <Text variant="heading">{"Couldn't load your dashboard"}</Text>
+          <Text variant="title">{"Couldn't load your dashboard"}</Text>
           <Text muted>{error instanceof Error ? error.message : 'Something went wrong.'}</Text>
           <Pressable onPress={() => refetch()} hitSlop={8}>
             <Text style={{ fontWeight: '600' }}>Try again</Text>
@@ -272,7 +272,7 @@ export default function HomeScreen() {
                     <Text variant="caption" muted style={styles.statLabel}>
                       {stat.label}
                     </Text>
-                    <Text variant="title" style={styles.statVal}>
+                    <Text variant="headline" style={styles.statVal}>
                       {stat.val}
                     </Text>
                   </View>
@@ -285,7 +285,7 @@ export default function HomeScreen() {
           <GlassCard style={{ gap: spacing.md }}>
             <View style={styles.chartHeader}>
               <View style={{ gap: 2, flex: 1 }}>
-                <Text variant="heading" style={{ fontSize: 18, fontWeight: '700' }}>
+                <Text variant="title" style={{ fontSize: 18, fontWeight: '700' }}>
                   Activity Overview
                 </Text>
                 <Text variant="caption" muted>
@@ -344,7 +344,7 @@ export default function HomeScreen() {
             <View style={styles.sectionTitleRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Ionicons name="grid-outline" size={18} color={colors.primary} />
-                <Text variant="heading" style={{ fontSize: 18, fontWeight: '700' }}>
+                <Text variant="title" style={{ fontSize: 18, fontWeight: '700' }}>
                   Your Modules
                 </Text>
               </View>
@@ -420,7 +420,7 @@ export default function HomeScreen() {
                 <Text variant="caption" muted style={styles.sectionCapsLabel}>
                   RECENT ACTIVITY
                 </Text>
-                <Text variant="heading" style={{ fontSize: 17, fontWeight: '700' }}>
+                <Text variant="title" style={{ fontSize: 17, fontWeight: '700' }}>
                   Transactions
                 </Text>
               </View>

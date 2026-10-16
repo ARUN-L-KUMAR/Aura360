@@ -82,7 +82,7 @@ export function WorkoutCard({ entry }: { entry: FitnessEntry }) {
             )}
           </View>
 
-          <Text variant="heading" style={{ fontSize: 17, fontWeight: '700' }}>
+          <Text variant="title" style={{ fontSize: 17, fontWeight: '700' }}>
             {title}
           </Text>
           <Text variant="caption" muted>

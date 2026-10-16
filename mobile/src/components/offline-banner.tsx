@@ -78,7 +78,7 @@ export function OfflineBanner() {
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay }]} onPress={() => setOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border, paddingBottom: insets.bottom + spacing.lg }]}>
-          <Text variant="heading">Offline entries</Text>
+          <Text variant="title">Offline entries</Text>
           <Text variant="caption" muted style={{ marginBottom: spacing.md }}>
             Saved on this phone. Waiting entries are sent automatically; the rest were rejected by the server.
           </Text>

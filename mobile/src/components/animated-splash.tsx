@@ -1,7 +1,7 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colorShades, typography } from '@/theme';
+import { colorShades, typography, useReducedMotion } from '@/theme';
 
 /**
  * The launch screen after the native splash.
@@ -54,7 +54,7 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const palette = COLORS[scheme];
 
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [slow, setSlow] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -74,10 +74,6 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
   const slowHint = useSharedValue(0);
   const overlay = useSharedValue(1);
   const logoZoom = useSharedValue(1);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
-  }, []);
 
   useEffect(() => {
     const min = setTimeout(() => setMinTimePassed(true), MIN_VISIBLE_MS);

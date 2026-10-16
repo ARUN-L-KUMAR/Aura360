@@ -96,7 +96,7 @@ export function OverviewSection({
             <Text variant="caption" muted style={styles.kpiLabel}>
               WARDROBE
             </Text>
-            <Text variant="title" style={styles.kpiValue}>
+            <Text variant="headline" style={styles.kpiValue}>
               {wardrobeItems.length}
             </Text>
           </GlassCard>
@@ -110,7 +110,7 @@ export function OverviewSection({
             <Text variant="caption" muted style={styles.kpiLabel}>
               WISHLIST
             </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#3b82f6' }]}>
+            <Text variant="headline" style={[styles.kpiValue, { color: '#3b82f6' }]}>
               {wishlistItems.length}
             </Text>
           </GlassCard>
@@ -124,7 +124,7 @@ export function OverviewSection({
             <Text variant="caption" muted style={styles.kpiLabel}>
               TOTAL WEARS
             </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#8b5cf6' }]}>
+            <Text variant="headline" style={[styles.kpiValue, { color: '#8b5cf6' }]}>
               {totalWears}
             </Text>
           </GlassCard>
@@ -138,7 +138,7 @@ export function OverviewSection({
             <Text variant="caption" muted style={styles.kpiLabel}>
               CATEGORIES
             </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#10b981' }]}>
+            <Text variant="headline" style={[styles.kpiValue, { color: '#10b981' }]}>
               {categories.length}
             </Text>
           </GlassCard>
@@ -171,7 +171,7 @@ export function OverviewSection({
       {mostWornItems.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
           <View style={styles.sectionTitleRow}>
-            <Text variant="heading" style={{ fontSize: 16, fontWeight: '700' }}>
+            <Text variant="title" style={{ fontSize: 16, fontWeight: '700' }}>
               Most Worn Pieces
             </Text>
             <Pressable onPress={onGoToWardrobe}>
@@ -193,7 +193,7 @@ export function OverviewSection({
       {recentItems.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
           <View style={styles.sectionTitleRow}>
-            <Text variant="heading" style={{ fontSize: 16, fontWeight: '700' }}>
+            <Text variant="title" style={{ fontSize: 16, fontWeight: '700' }}>
               Recent Additions
             </Text>
           </View>

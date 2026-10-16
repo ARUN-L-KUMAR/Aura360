@@ -47,7 +47,7 @@ export function GoalsSection({ header }: { header: ReactNode }) {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Ionicons name="flag-outline" size={18} color={moduleColors.finance} />
-              <Text variant="heading" style={{ fontSize: 16 }}>
+              <Text variant="title" style={{ fontSize: 16 }}>
                 Financial Goals
               </Text>
             </View>

@@ -37,7 +37,7 @@ export function FitnessSummary({ entries }: { entries: FitnessEntry[] }) {
           <Text variant="caption" muted style={{ fontSize: 11 }}>
             Duration
           </Text>
-          <Text variant="heading" style={[styles.statValue, { color: colors.text }]}>
+          <Text variant="title" style={[styles.statValue, { color: colors.text }]}>
             {durationText}
           </Text>
         </View>
@@ -46,7 +46,7 @@ export function FitnessSummary({ entries }: { entries: FitnessEntry[] }) {
           <Text variant="caption" muted style={{ fontSize: 11 }}>
             Burned
           </Text>
-          <Text variant="heading" style={[styles.statValue, { color: colors.text }]}>
+          <Text variant="title" style={[styles.statValue, { color: colors.text }]}>
             {totalCalories.toLocaleString()} <Text variant="caption" muted>kcal</Text>
           </Text>
         </View>
@@ -55,7 +55,7 @@ export function FitnessSummary({ entries }: { entries: FitnessEntry[] }) {
           <Text variant="caption" muted style={{ fontSize: 11 }}>
             Avg Time
           </Text>
-          <Text variant="heading" style={[styles.statValue, { color: colors.text }]}>
+          <Text variant="title" style={[styles.statValue, { color: colors.text }]}>
             {totalWorkouts > 0 ? Math.round(totalDuration / totalWorkouts) : 0} <Text variant="caption" muted>m</Text>
           </Text>
         </View>

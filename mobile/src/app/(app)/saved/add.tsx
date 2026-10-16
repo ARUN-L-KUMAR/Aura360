@@ -144,7 +144,7 @@ export default function AddSavedScreen() {
               />
             ) : null}
             <View style={{ padding: spacing.lg, gap: spacing.xs }}>
-              <Text variant="heading" numberOfLines={3}>
+              <Text variant="title" numberOfLines={3}>
                 {result.title}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>

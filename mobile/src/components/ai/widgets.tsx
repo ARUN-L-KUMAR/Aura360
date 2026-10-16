@@ -129,7 +129,7 @@ function Heading({ icon, color, title, subtitle }: { icon: keyof typeof Ionicons
         <Ionicons name={icon} size={18} color={color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text variant="heading" style={{ fontSize: 16 }} numberOfLines={2}>
+        <Text variant="title" style={{ fontSize: 16 }} numberOfLines={2}>
           {title}
         </Text>
         {subtitle ? (
@@ -236,7 +236,7 @@ function MealWidget({ data }: { data: MealData }) {
 function Macro({ label, value }: { label: string; value: string | number }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text variant="heading" style={{ fontSize: 17 }}>
+      <Text variant="title" style={{ fontSize: 17 }}>
         {value}
       </Text>
       <Text variant="caption" muted>

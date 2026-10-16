@@ -29,7 +29,7 @@ export default function FinanceScreen() {
 
   const header = (
     <View style={{ gap: spacing.md }}>
-      <Text variant="title">Finance</Text>
+      <Text variant="headline">Finance</Text>
       <Segmented options={SECTIONS} value={section} onChange={setSection} />
     </View>
   );

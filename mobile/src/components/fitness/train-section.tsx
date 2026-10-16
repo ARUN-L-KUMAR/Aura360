@@ -68,7 +68,7 @@ function StartWorkout({ header }: { header: ReactNode }) {
       {header}
 
       <GlassCard style={{ gap: spacing.md }}>
-        <Text variant="heading">Start a workout</Text>
+        <Text variant="title">Start a workout</Text>
         <Input label="Name" value={title} onChangeText={setTitle} placeholder="e.g. Push day" />
         <Button title="Start empty workout" onPress={() => sessionActions.start(title.trim() || 'Workout')} />
       </GlassCard>
@@ -166,7 +166,7 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
           style={{ color: colors.text, fontSize: 18, fontWeight: '600', padding: 0 }}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text variant="title" style={{ fontVariant: ['tabular-nums'] }}>
+          <Text variant="headline" style={{ fontVariant: ['tabular-nums'] }}>
             {formatDuration(seconds)}
           </Text>
           <Pressable
@@ -242,7 +242,7 @@ function ExerciseCard({ exercise, last }: { exercise: LiveExercise; last?: Exerc
     <GlassCard style={{ gap: spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
         <View style={{ flex: 1 }}>
-          <Text variant="heading" numberOfLines={2}>
+          <Text variant="title" numberOfLines={2}>
             {exercise.name}
           </Text>
           <Text variant="caption" muted>

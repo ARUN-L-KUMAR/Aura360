@@ -103,7 +103,7 @@ export default function LoginScreen() {
               </Text>
             </View>
 
-            <Text variant="title" weight="bold" style={styles.title}>
+            <Text variant="headline" weight="bold" style={styles.title}>
               Aura360
             </Text>
             <Text variant="body" muted style={styles.subtitle}>
@@ -320,7 +320,7 @@ export default function LoginScreen() {
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="server-outline" size={20} color={colors.primary} />
-                <Text variant="heading" weight="bold">
+                <Text variant="title" weight="bold">
                   Backend Configuration
                 </Text>
               </View>

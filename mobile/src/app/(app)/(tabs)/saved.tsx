@@ -35,7 +35,7 @@ export default function SavedScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Screen onRefresh={() => refetch()} refreshing={isRefetching}>
-        <Text variant="title">Saved Items</Text>
+        <Text variant="headline">Saved Items</Text>
 
         <View
           style={{
@@ -163,7 +163,7 @@ function SavedCard({ item }: { item: SavedItem }) {
         <View style={{ padding: spacing.lg, gap: spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="heading" numberOfLines={2} style={{ fontSize: 16 }}>
+              <Text variant="title" numberOfLines={2} style={{ fontSize: 16 }}>
                 {item.title}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>

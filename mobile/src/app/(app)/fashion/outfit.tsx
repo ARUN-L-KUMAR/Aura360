@@ -117,7 +117,7 @@ export default function FashionOutfitModal() {
         {/* Item Selector Grid */}
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="heading" style={{ fontSize: 16, fontWeight: '700' }}>
+            <Text variant="title" style={{ fontSize: 16, fontWeight: '700' }}>
               Select Pieces from Wardrobe
             </Text>
             <Text variant="caption" style={{ color: '#8b5cf6', fontWeight: '800' }}>

@@ -57,7 +57,7 @@ export default function TargetsScreen() {
         <Text variant="caption" muted style={{ fontWeight: '700', letterSpacing: 0.8 }}>
           NUTRITION & HYDRATION GOALS
         </Text>
-        <Text variant="heading">Personalized Daily Targets</Text>
+        <Text variant="title">Personalized Daily Targets</Text>
         <Text variant="caption" muted>
           Calorie and macro targets dictate your ring completion progress on the Nutrition dashboard.
         </Text>

@@ -31,7 +31,7 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
             <Ionicons name="water" size={20} color={WATER_COLOR} />
           </View>
           <View>
-            <Text variant="heading" style={{ fontSize: 16 }}>
+            <Text variant="title" style={{ fontSize: 16 }}>
               Hydration Tracker
             </Text>
             <Text variant="caption" muted>

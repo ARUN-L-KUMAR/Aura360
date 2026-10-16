@@ -49,7 +49,7 @@ export default function NotesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Screen onRefresh={() => refetch()} refreshing={isRefetching}>
-        <Text variant="title">Notes</Text>
+        <Text variant="headline">Notes</Text>
 
         <View
           style={{

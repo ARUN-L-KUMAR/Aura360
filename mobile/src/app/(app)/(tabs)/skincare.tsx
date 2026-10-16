@@ -62,7 +62,7 @@ export default function SkincareScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Screen onRefresh={() => query.refetch()} refreshing={query.isRefetching}>
-        <Text variant="title">Skincare</Text>
+        <Text variant="headline">Skincare</Text>
 
         {/* Hero Routine Status Card */}
         <GlassCard glowColor={moduleColors.skincare} style={{ gap: spacing.md }}>
@@ -73,7 +73,7 @@ export default function SkincareScreen() {
                 size={18}
                 color={tab === 'evening' ? '#818cf8' : '#f59e0b'}
               />
-              <Text variant="heading" style={{ fontSize: 16 }}>
+              <Text variant="title" style={{ fontSize: 16 }}>
                 {tab === 'morning' ? 'Morning Glow Routine' : tab === 'evening' ? 'Night Repair Routine' : 'Product Shelf'}
               </Text>
             </View>

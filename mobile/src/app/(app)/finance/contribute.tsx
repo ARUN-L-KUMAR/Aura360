@@ -91,7 +91,7 @@ export default function ContributeScreen() {
           </View>
         </View>
 
-        <Text variant="heading">{goal.title}</Text>
+        <Text variant="title">{goal.title}</Text>
 
         <ProgressBar percent={newPercent} color={goal.color} height={6} />
 

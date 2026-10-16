@@ -94,7 +94,7 @@ export function PlannerSection({ items, header, onSelectItem }: PlannerSectionPr
 
       {/* Seasonal Wardrobe Rotation Header */}
       <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-        <Text variant="heading" style={{ fontSize: 18, fontWeight: '700' }}>
+        <Text variant="title" style={{ fontSize: 18, fontWeight: '700' }}>
           Seasonal Capsules
         </Text>
         <Text variant="caption" muted>

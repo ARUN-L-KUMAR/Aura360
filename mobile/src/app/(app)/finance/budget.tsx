@@ -99,7 +99,7 @@ export default function BudgetScreen() {
           <Text variant="caption" muted style={{ fontWeight: '700', letterSpacing: 0.8 }}>
             TARGET CATEGORY
           </Text>
-          <Text variant="heading">{isOverallExisting ? 'Overall Monthly Budget' : existing.category}</Text>
+          <Text variant="title">{isOverallExisting ? 'Overall Monthly Budget' : existing.category}</Text>
         </GlassCard>
       ) : (
         <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>

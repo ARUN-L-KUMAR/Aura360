@@ -113,7 +113,7 @@ export function StatsSection({ header }: { header: ReactNode }) {
         <SectionLabel>Body weight</SectionLabel>
         {latestWeight !== null ? (
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
-            <Text variant="title">{latestWeight} kg</Text>
+            <Text variant="headline">{latestWeight} kg</Text>
             {change !== null ? (
               <Text color={change > 0 ? 'warning' : 'success'}>
                 {change > 0 ? '+' : ''}
@@ -150,7 +150,7 @@ export function StatsSection({ header }: { header: ReactNode }) {
             <Input label="Reps" value={liftReps} onChangeText={setLiftReps} keyboardType="number-pad" />
           </View>
         </View>
-        <Text variant="title" style={{ color: moduleColors.fitness }}>
+        <Text variant="headline" style={{ color: moduleColors.fitness }}>
           {oneRm > 0 ? `${oneRm} kg` : '—'}
         </Text>
         <Text variant="caption" muted>
@@ -175,7 +175,7 @@ export function StatsSection({ header }: { header: ReactNode }) {
           <Text muted>Just the bar.</Text>
         ) : (
           <>
-            <Text variant="heading">{plateResult.plates.length > 0 ? plateResult.plates.join(' + ') + ' kg' : '—'}</Text>
+            <Text variant="title">{plateResult.plates.length > 0 ? plateResult.plates.join(' + ') + ' kg' : '—'}</Text>
             <Text variant="caption" muted>
               on each side{plateResult.leftover > 0 ? ` · ${plateResult.leftover} kg short of the target with these plates` : ''}
             </Text>
