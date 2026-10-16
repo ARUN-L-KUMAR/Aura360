@@ -7,7 +7,9 @@
     "jsx": "react-jsx",
     "module": "preserve",
     "moduleResolution": "bundler",
-    "customConditions": ["react-native"],
+    "customConditions": [
+      "react-native"
+    ],
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "paths": {
@@ -27,5 +29,8 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "tests"
   ]
 }

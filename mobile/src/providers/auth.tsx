@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { api, apiSession, type SessionResponse } from '@/lib/api';
 import { storage, type StoredUser } from '@/lib/storage';
 import { unregisterFromServerPush } from '@/lib/push';
+import { analytics } from '@/lib/telemetry';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -16,6 +17,9 @@ type AuthContextValue = {
   signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   setServerUrl: (url: string | null) => Promise<void>;
+  /** True after the server ended the session (expired or revoked) until the user signs in again or dismisses it. */
+  sessionExpired: boolean;
+  dismissSessionExpired: () => void;
   /** Re-read the signed-in user's name / avatar after the profile changes. */
   updateUser: (patch: Partial<StoredUser>) => Promise<void>;
 };
@@ -27,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<StoredUser | null>(null);
   const [serverUrl, setServerUrlState] = useState(apiSession.getBaseUrl());
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const clearLocalSession = useCallback(async () => {
     apiSession.setTokens({ accessToken: null, refreshToken: null });
@@ -65,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // The API client tells us when the server rejects the refresh token (expired / revoked).
   useEffect(() => {
     apiSession.onSessionLost(() => {
+      setSessionExpired(true);
+      analytics.track('session_expired');
       void clearLocalSession();
     });
     apiSession.onSessionRefreshed((refreshedUser) => setUser(refreshedUser));
@@ -85,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await storage.saveTokens({ accessToken: session.accessToken, refreshToken: session.refreshToken });
     await storage.saveUser(session.user);
     setUser(session.user);
+    setSessionExpired(false);
     setStatus('signedIn');
   }, []);
 
@@ -102,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await storage.saveTokens({ accessToken: session.accessToken, refreshToken: session.refreshToken });
     await storage.saveUser(session.user);
     setUser(session.user);
+    setSessionExpired(false);
     setStatus('signedIn');
   }, []);
 
@@ -134,9 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const dismissSessionExpired = useCallback(() => setSessionExpired(false), []);
+
   const value = useMemo(
-    () => ({ status, user, serverUrl, signIn, signInWithGoogle, signOut, setServerUrl, updateUser }),
-    [status, user, serverUrl, signIn, signInWithGoogle, signOut, setServerUrl, updateUser],
+    () => ({ status, user, serverUrl, sessionExpired, dismissSessionExpired, signIn, signInWithGoogle, signOut, setServerUrl, updateUser }),
+    [status, user, serverUrl, sessionExpired, dismissSessionExpired, signIn, signInWithGoogle, signOut, setServerUrl, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

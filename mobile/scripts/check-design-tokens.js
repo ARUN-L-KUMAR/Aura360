@@ -18,9 +18,13 @@ const BASELINE = path.join(__dirname, 'design-tokens-baseline.json');
 const SPACING_SCALE = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 48]);
 const SPACING_PROPS = /^(padding|margin|gap|rowGap|columnGap)(Top|Bottom|Left|Right|Horizontal|Vertical|Start|End)?$/;
 
+/** Physical left / right in styles: use start / end so layouts mirror in right-to-left languages. */
+const RTL_PHYSICAL = /\b(margin|padding)(Left|Right)\b|\bborder(Left|Right|Top(Left|Right)|Bottom(Left|Right))(Width|Color|Radius)?\b|\b(left|right):\s*[\w.$(-]|textAlign:\s*['"](left|right)['"]|writingDirection:\s*['"](ltr|rtl)['"]/;
+
 const RULES = [
   { id: 'color-hex', test: (l) => /#[0-9a-fA-F]{3,8}\b/.test(l.replace(/\/\/.*$/, '')) && !/^\s*(\/\/|\*|\/\*)/.test(l), msg: 'hard-coded hex colour' },
   { id: 'color-rgba', test: (l) => /\brgba?\(/.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l), msg: 'hard-coded rgb()/rgba() colour' },
+  { id: 'rtl-physical', test: (l) => RTL_PHYSICAL.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l), msg: 'physical left/right - use start/end (or marginStart, paddingEnd, borderStartWidth, ...)' },
   { id: 'font-size', test: (l) => /\bfontSize:\s*\d/.test(l), msg: 'raw fontSize - use <Text variant>' },
   { id: 'font-family', test: (l) => /\bfontFamily:\s*['"]/.test(l), msg: 'raw fontFamily - use <Text weight>' },
   { id: 'font-weight', test: (l) => /\bfontWeight:\s*['"]?\d/.test(l) || /\bfontWeight:\s*'(bold|semibold|normal)'/.test(l), msg: 'raw fontWeight - use <Text weight>' },

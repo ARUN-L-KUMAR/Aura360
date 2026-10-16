@@ -34,8 +34,10 @@
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-web-browser": "~57.0.3",
+    "i18next": "^26.4.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-i18next": "^17.0.20",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-markdown-display": "^7.0.2",
@@ -47,6 +49,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
@@ -57,9 +60,12 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
     "check:contrast": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-contrast.ts",
-    "lint:tokens": "node scripts/check-design-tokens.js"
+    "lint:tokens": "node scripts/check-design-tokens.js",
+    "lint:i18n": "node scripts/check-i18n.js",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
+    "verify": "npm run typecheck && npm run lint && npm run check:contrast && npm run lint:tokens && npm run lint:i18n && npm test"
   },
   "private": true
 }

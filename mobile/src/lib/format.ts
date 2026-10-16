@@ -1,4 +1,9 @@
+import { i18n } from '@/i18n';
+import { getDeviceLocale } from '@/i18n/locale';
 import { CURRENCY_SYMBOL } from '@/lib/config';
+
+/** Locale for numbers and dates: the phone's own, so "1,23,456" vs "123,456" follows the user's region. */
+const locale = () => getDeviceLocale();
 
 export function formatMoney(value: number | string | null | undefined, options: { compact?: boolean } = {}) {
   const amount = Number(value ?? 0);
@@ -13,26 +18,26 @@ export function formatMoney(value: number | string | null | undefined, options: 
     return `${sign}${CURRENCY_SYMBOL}${(abs / 100_000).toFixed(2)}L`;
   }
 
-  return `${sign}${CURRENCY_SYMBOL}${abs.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  return `${sign}${CURRENCY_SYMBOL}${abs.toLocaleString(locale(), { maximumFractionDigits: 2 })}`;
 }
 
 /** "2026-10-09" -> "9 Oct". Dates from the API are plain days, so parse without timezone shifts. */
 export function formatDay(isoDay: string) {
   const [year, month, day] = isoDay.slice(0, 10).split('-').map(Number);
   if (!year || !month || !day) return isoDay;
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return new Date(year, month - 1, day).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 export function weekdayShort(isoDay: string) {
   const [year, month, day] = isoDay.slice(0, 10).split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'short' });
+  return new Date(year, month - 1, day).toLocaleDateString(locale(), { weekday: 'short' });
 }
 
 export function greeting(date = new Date()) {
   const hour = date.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return i18n.t('common:greeting.morning');
+  if (hour < 18) return i18n.t('common:greeting.afternoon');
+  return i18n.t('common:greeting.evening');
 }
 
 /** "2026-10" for a date, in the phone's timezone. */
@@ -48,7 +53,7 @@ export function shiftMonth(key: string, delta: number) {
 /** "October 2026" */
 export function monthLabel(key: string) {
   const [year, month] = key.split('-').map(Number);
-  return new Date(year, month - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  return new Date(year, month - 1, 1).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 }
 
 /** "2026-10-09" for a date, in the phone's timezone. */

@@ -1,4 +1,6 @@
-import { Stack, useRouter } from 'expo-router';
+import '@/i18n';
+
+import { Stack, useRouter, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
@@ -13,9 +15,12 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { AnimatedSplash } from '@/components/animated-splash';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
+import { installGlobalErrorHandler } from '@/lib/global-errors';
 import { registerForServerPush } from '@/lib/push';
+import { analytics } from '@/lib/telemetry';
 import { AuthProvider, useAuth } from '@/providers/auth';
 import { NotifyProvider } from '@/providers/notify';
 import { OfflineProvider } from '@/providers/offline';
@@ -24,6 +29,7 @@ import { QueryProvider } from '@/providers/query';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
+installGlobalErrorHandler();
 
 function RootStack() {
   const { status } = useAuth();
@@ -45,7 +51,16 @@ function RootStack() {
   );
 }
 
+/** Reports each screen the user opens (route path only: no params, no content). */
+function useScreenTracking() {
+  const pathname = usePathname();
+  useEffect(() => {
+    analytics.screen(pathname);
+  }, [pathname]);
+}
+
 function RootContent() {
+  useScreenTracking();
   const router = useRouter();
   const { scheme } = useTheme();
   const { status } = useAuth();
@@ -106,6 +121,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <ErrorBoundary>
         <QueryProvider>
           <AuthProvider>
             <OfflineProvider>
@@ -119,6 +135,7 @@ export default function RootLayout() {
             </OfflineProvider>
           </AuthProvider>
         </QueryProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
