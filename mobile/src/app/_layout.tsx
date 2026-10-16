@@ -4,6 +4,20 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
 
 import { AnimatedSplash } from '@/components/animated-splash';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
@@ -45,6 +59,26 @@ function RootContent() {
   const [splashDone, setSplashDone] = useState(false);
   const finishSplash = useCallback(() => setSplashDone(true), []);
 
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  const [fontTimeout, setFontTimeout] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimeout(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const fontsReady = fontsLoaded || !!fontError || fontTimeout;
+
   // The animated splash hides the native one once it is drawn. This is only a safety net in case it never mounts.
   useEffect(() => {
     const timer = setTimeout(() => void SplashScreen.hideAsync().catch(() => {}), 5000);
@@ -72,7 +106,7 @@ function RootContent() {
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <RootStack />
-      {!splashDone && <AnimatedSplash ready={status !== 'loading'} onFinish={finishSplash} />}
+      {!splashDone && <AnimatedSplash ready={status !== 'loading' && fontsReady} onFinish={finishSplash} />}
       {signedIn && isLocked ? <BiometricLockScreen /> : null}
     </>
   );

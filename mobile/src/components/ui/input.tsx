@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, spacing, typography, useTheme } from '@/theme';
 
 type Props = TextInputProps & { label?: string; error?: string | null };
 
@@ -22,13 +22,14 @@ export const Input = forwardRef<TextInput, Props>(function Input({ label, error,
         style={[
           {
             minHeight: 48,
+            fontFamily: typography.fontFamily.medium,
             borderWidth: 1,
             borderColor: error ? colors.danger : colors.border,
             borderRadius: radius.md,
             backgroundColor: colors.card,
             color: colors.text,
             paddingHorizontal: spacing.md,
-            fontSize: 16,
+            fontSize: 15,
           },
           style,
         ]}
@@ -41,3 +42,4 @@ export const Input = forwardRef<TextInput, Props>(function Input({ label, error,
     </View>
   );
 });
+

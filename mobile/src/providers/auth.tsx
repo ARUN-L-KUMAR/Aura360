@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { api, apiSession, type SessionResponse } from '@/lib/api';
-import { defaultApiUrl } from '@/lib/config';
 import { storage, type StoredUser } from '@/lib/storage';
 import { unregisterFromServerPush } from '@/lib/push';
 
@@ -119,8 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setServerUrl = useCallback(async (url: string | null) => {
     const cleaned = url?.trim() ? url.trim() : null;
     await storage.setServerUrl(cleaned);
-    // Passing null falls back to the automatic address.
-    apiSession.setBaseUrl(cleaned ?? defaultApiUrl());
+    // Passing null falls back to the servers the app was built with.
+    if (cleaned) apiSession.setBaseUrl(cleaned);
+    else apiSession.resetBaseUrl();
     setServerUrlState(apiSession.getBaseUrl());
   }, []);
 

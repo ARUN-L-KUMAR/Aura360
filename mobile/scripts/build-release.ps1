@@ -405,27 +405,42 @@ function Test-ApiUrl {
         Add-Warn 'EXPO_PUBLIC_API_URL is not set. The release app will default to the emulator loopback (http://10.0.2.2:3000, see src/lib/config.ts) until the user enters a server on the sign-in screen. Set it before building if the app should ship pointed at your server.'
         return
     }
-    $uri = $null
-    if (-not [System.Uri]::TryCreate($val, [System.UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -notin 'http', 'https') {
-        & $report "EXPO_PUBLIC_API_URL (from $from) is not a valid http(s) URL."
-        return
+    # EXPO_PUBLIC_API_URLS: comma-separated fallback servers; every one gets the same checks.
+    $urls = @($val)
+    $listVal = [Environment]::GetEnvironmentVariable('EXPO_PUBLIC_API_URLS')
+    if (-not $listVal) {
+        foreach ($f in '.env.production.local', '.env.local', '.env.production', '.env') {
+            $p = Join-Path $MobileDir $f
+            if (Test-Path -LiteralPath $p) {
+                $m = Select-String -LiteralPath $p -Pattern '^\s*EXPO_PUBLIC_API_URLS\s*=\s*(.*)$' | Select-Object -First 1
+                if ($m) { $listVal = $m.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'"); break }
+            }
+        }
     }
-    $h = $uri.Host
-    $apiPath = $uri.AbsolutePath.TrimEnd('/')
-    if ($apiPath) {
-        & $report ("EXPO_PUBLIC_API_URL (from $from) has a path ('$apiPath'). The app adds its own /api/... paths to this base, so every request would 404. Use only the server address: " + $uri.Scheme + '://' + $uri.Authority)
-        return
-    }
-    $isLoopback = $h -in 'localhost', '10.0.2.2', '0.0.0.0', '::1', '[::1]' -or $h -match '^127\.'
-    $isPrivate  = $h -match '^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)' -or $h -like '*.local'
-    if ($isLoopback) {
-        & $report "EXPO_PUBLIC_API_URL (from $from) points at a loopback/emulator address; a phone cannot reach that."
-    } elseif ($uri.Scheme -eq 'http') {
-        & $report "EXPO_PUBLIC_API_URL (from $from) is plain http. Android 9+ blocks cleartext traffic in this release build (no usesCleartextTraffic in the manifest); use https."
-    } elseif ($isPrivate) {
-        Add-Warn "EXPO_PUBLIC_API_URL (from $from) is a private-network address; the app will only work on that network."
-    } else {
-        Write-Ok "EXPO_PUBLIC_API_URL (from $from) is an https public host"
+    if ($listVal) { $urls += @($listVal -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+    foreach ($val in ($urls | Select-Object -Unique)) {
+        $uri = $null
+        if (-not [System.Uri]::TryCreate($val, [System.UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -notin 'http', 'https') {
+            & $report "Server $val (from $from) is not a valid http(s) URL."
+            continue
+        }
+        $h = $uri.Host
+        $apiPath = $uri.AbsolutePath.TrimEnd('/')
+        if ($apiPath) {
+            & $report ("Server $val (from $from) has a path ('$apiPath'). The app adds its own /api/... paths to this base, so every request would 404. Use only the server address: " + $uri.Scheme + '://' + $uri.Authority)
+            continue
+        }
+        $isLoopback = $h -in 'localhost', '10.0.2.2', '0.0.0.0', '::1', '[::1]' -or $h -match '^127\.'
+        $isPrivate  = $h -match '^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)' -or $h -like '*.local'
+        if ($isLoopback) {
+            & $report "Server $val (from $from) points at a loopback/emulator address; a phone cannot reach that."
+        } elseif ($uri.Scheme -eq 'http') {
+            & $report "Server $val (from $from) is plain http. Android 9+ blocks cleartext traffic in this release build (no usesCleartextTraffic in the manifest); use https."
+        } elseif ($isPrivate) {
+            Add-Warn "Server $val (from $from) is a private-network address; the app will only work on that network."
+        } else {
+            Write-Ok "Server $val (from $from) is an https public host"
+        }
     }
 }
 

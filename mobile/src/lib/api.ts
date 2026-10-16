@@ -1,4 +1,4 @@
-import { REQUEST_TIMEOUT_MS, defaultApiUrl, normaliseServerUrl } from '@/lib/config';
+import { REQUEST_TIMEOUT_MS, defaultApiUrls, normaliseServerUrl } from '@/lib/config';
 import { storage, type StoredUser } from '@/lib/storage';
 
 export class ApiError extends Error {
@@ -36,7 +36,10 @@ type RequestOptions = {
 };
 
 // Session state lives here (not in React) so every request, from any hook, sees the same tokens.
-let baseUrl = defaultApiUrl();
+// More than one entry only when the app ships with several servers and the user hasn't picked one by hand: a request
+// that can't reach the active server is retried on the next, and whichever answers becomes the active one.
+let servers = defaultApiUrls();
+let activeServer = 0;
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let onSessionLost: (() => void) | null = null;
@@ -50,9 +53,16 @@ let offlineHandler: OfflineHandler | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
 
 export const apiSession = {
-  getBaseUrl: () => baseUrl,
+  getBaseUrl: () => servers[activeServer],
+  /** A server chosen by hand: used on its own, with no fallback. */
   setBaseUrl(url: string) {
-    baseUrl = normaliseServerUrl(url);
+    servers = [normaliseServerUrl(url)];
+    activeServer = 0;
+  },
+  /** Back to the servers the app was built with. */
+  resetBaseUrl() {
+    servers = defaultApiUrls();
+    activeServer = 0;
   },
   setTokens(tokens: { accessToken: string | null; refreshToken: string | null }) {
     accessToken = tokens.accessToken;
@@ -70,7 +80,7 @@ export const apiSession = {
   },
 };
 
-function buildUrl(path: string, query?: RequestOptions['query']) {
+function buildUrl(baseUrl: string, path: string, query?: RequestOptions['query']) {
   const url = new URL(`${baseUrl}${path.startsWith('/') ? path : `/${path}`}`);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
@@ -80,7 +90,34 @@ function buildUrl(path: string, query?: RequestOptions['query']) {
   return url.toString();
 }
 
+// What a proxy or tunnel (nginx, Cloudflare) answers when the machine behind it is switched off.
+const SERVER_DOWN_STATUSES = new Set([502, 503, 504, 521, 522, 523, 524, 530]);
+
 async function rawFetch(path: string, options: RequestOptions, token: string | null) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < servers.length; attempt++) {
+    const index = (activeServer + attempt) % servers.length;
+    const isLast = attempt === servers.length - 1;
+    try {
+      const response = await fetchFrom(servers[index], path, options, token);
+      if (SERVER_DOWN_STATUSES.has(response.status)) {
+        if (!isLast) continue;
+        return response;
+      }
+      activeServer = index;
+      return response;
+    } catch (error) {
+      if (options.signal?.aborted) throw error;
+      // A write that timed out may still have reached that server, so it is never replayed on another one.
+      const timedOut = error instanceof ApiError && (error.data as { timeout?: boolean } | undefined)?.timeout === true;
+      if (timedOut && (options.method ?? 'GET') !== 'GET') throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+async function fetchFrom(baseUrl: string, path: string, options: RequestOptions, token: string | null) {
   const controller = new AbortController();
   let timedOut = false;
   const timeout = setTimeout(() => {
@@ -90,7 +127,7 @@ async function rawFetch(path: string, options: RequestOptions, token: string | n
   options.signal?.addEventListener('abort', () => controller.abort());
 
   try {
-    return await fetch(buildUrl(path, options.query), {
+    return await fetch(buildUrl(baseUrl, path, options.query), {
       method: options.method ?? 'GET',
       headers: {
         Accept: 'application/json',

@@ -27,7 +27,7 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut, serverUrl } = useAuth();
-  const { mode, setMode, colors, scheme } = useTheme();
+  const { mode, setMode, colors, scheme, shades } = useTheme();
   const isDark = scheme === 'dark';
   const { isAvailable, isEnabled, biometricLabel, biometricType, toggleBiometrics } = useBiometrics();
 
@@ -292,12 +292,93 @@ export default function SettingsScreen() {
       {/* Appearance Section */}
       <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="color-palette-outline" size={18} color={colors.textMuted} />
+          <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
           <Text variant="label" muted>
-            Appearance Theme
+            Appearance & Brand Theme
           </Text>
         </View>
         <Segmented options={THEME_OPTIONS} value={mode} onChange={setMode} />
+
+        {/* Live Brand Palette & Shades Showcase */}
+        <View style={{ gap: spacing.sm, paddingTop: spacing.xs }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text variant="caption" weight="semiBold" muted>
+              BRAND PALETTE & SHADES
+            </Text>
+            <Text variant="caption" muted style={{ fontSize: 11 }}>
+              Plus Jakarta Sans
+            </Text>
+          </View>
+
+          {/* Primary Swatches */}
+          <View style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.primary }}>
+                Primary (Electric Indigo)
+              </Text>
+              <Text variant="caption" muted style={{ fontSize: 10 }}>
+                {colors.primary}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
+              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
+                <View
+                  key={`p-${step}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: shades.primary[step],
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Secondary Swatches */}
+          <View style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.secondary }}>
+                Secondary (Sky / Cyan)
+              </Text>
+              <Text variant="caption" muted style={{ fontSize: 10 }}>
+                {colors.secondary}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
+              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
+                <View
+                  key={`s-${step}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: shades.secondary[step],
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Slate Swatches */}
+          <View style={{ gap: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="caption" muted style={{ fontSize: 11, fontWeight: '600' }}>
+                Executive Slate (Neutrals)
+              </Text>
+              <Text variant="caption" muted style={{ fontSize: 10 }}>
+                50 – 950
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
+              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
+                <View
+                  key={`sl-${step}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: shades.slate[step],
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
       </GlassCard>
 
       {/* Server & Architecture Info */}

@@ -70,17 +70,22 @@ export function GoogleSignInButton({ onError }: Props) {
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: isDark ? '#ffffff' : '#ffffff',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : colors.border,
+          backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : '#ffffff',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border,
           opacity: pressed || !request ? 0.8 : 1,
         },
       ]}>
       {loading ? (
-        <ActivityIndicator size="small" color="#1f2937" />
+        <ActivityIndicator size="small" color={isDark ? '#ffffff' : '#1f2937'} />
       ) : (
         <View style={styles.content}>
-          <Ionicons name="logo-google" size={20} color="#ea4335" />
-          <Text style={styles.text}>Continue with Google</Text>
+          <Ionicons name="logo-google" size={19} color="#ea4335" />
+          <Text
+            variant="label"
+            weight="semiBold"
+            style={[styles.text, { color: isDark ? colors.text : '#1f2937' }]}>
+            Continue with Google
+          </Text>
         </View>
       )}
     </Pressable>
@@ -89,7 +94,7 @@ export function GoogleSignInButton({ onError }: Props) {
 
 const styles = StyleSheet.create({
   button: {
-    height: 48,
+    height: 50,
     borderRadius: radius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -99,11 +104,11 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.05,
         shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 1,
       },
     }),
   },
@@ -114,8 +119,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   text: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 14,
   },
 });

@@ -20,11 +20,20 @@ const API_PORT = 3000;
  */
 export function normaliseServerUrl(value: string): string {
   const trimmed = value.trim();
+  let origin = trimmed;
   try {
-    return new URL(trimmed).origin;
+    origin = new URL(trimmed).origin;
   } catch {
-    return trimmed.replace(/\/+$/, '');
+    origin = trimmed.replace(/\/+$/, '');
   }
+
+  // On Android emulator, 'localhost' and '127.0.0.1' refer to the emulator itself, not the host machine.
+  // Rewrite to 10.0.2.2 (the host PC loopback alias in Android) so local dev connects reliably:
+  if (Platform.OS === 'android' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+    return origin.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+  }
+
+  return origin;
 }
 
 export function defaultApiUrl(): string {
@@ -35,6 +44,20 @@ export function defaultApiUrl(): string {
   if (metroHost) return `http://${metroHost}:${API_PORT}`;
 
   return Platform.OS === 'android' ? `http://10.0.2.2:${API_PORT}` : `http://localhost:${API_PORT}`;
+}
+
+/**
+ * Every server the app may talk to when the user hasn't chosen one, in order of preference.
+ * `EXPO_PUBLIC_API_URLS` is a comma-separated list (e.g. "https://app.example.com,https://base.example.com"); the
+ * app uses the first one that answers. Falls back to the single address from defaultApiUrl().
+ */
+export function defaultApiUrls(): string[] {
+  const listed = (process.env.EXPO_PUBLIC_API_URLS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map(normaliseServerUrl);
+  return [...new Set(listed.length ? listed : [defaultApiUrl()])];
 }
 
 export const REQUEST_TIMEOUT_MS = 20_000;

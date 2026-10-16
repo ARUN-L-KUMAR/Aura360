@@ -12,6 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { colorShades, typography } from '@/theme';
+
 /**
  * The launch screen after the native splash.
  *
@@ -30,9 +32,10 @@ const GLOW = require('../../assets/images/logo-glow.png');
 // Must match the "expo-splash-screen" plugin in app.json, so the two screens line up pixel for pixel.
 const LOGO_BOX = 300;
 const COLORS = {
-  dark: { background: '#0b1118', text: '#f1f5f9', muted: '#94a3b8', glow: 0.45 },
-  light: { background: '#f6f8fa', text: '#0f1c2b', muted: '#64748b', glow: 0.35 },
+  dark: { background: colorShades.slate[950], text: colorShades.slate[50], muted: colorShades.slate[400], glow: 0.45 },
+  light: { background: colorShades.slate[50], text: colorShades.slate[900], muted: colorShades.slate[500], glow: 0.35 },
 } as const;
+
 
 /** Shortest time on screen, so a fast start doesn't flash the splash for a few frames. */
 const MIN_VISIBLE_MS = 900;
@@ -201,12 +204,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   name: {
+    fontFamily: typography.fallback.sans,
     fontSize: 30,
     fontWeight: '700',
     letterSpacing: 1.5,
   },
   tagline: {
+    fontFamily: typography.fallback.sans,
     fontSize: 13,
+    fontWeight: '500',
     letterSpacing: 0.6,
   },
   slow: {
