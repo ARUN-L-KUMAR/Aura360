@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { Chip, ChipRow, Tag } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
@@ -38,6 +40,37 @@ interface PlannerSectionProps {
 }
 
 const keyExtractor = (entry: GridEntry) => entry.id;
+
+type LaundryRowProps = { item: FashionItem; first: boolean; busy: boolean; onMarkClean: (item: FashionItem) => void };
+
+/** One piece waiting to be washed. Leaves with a fade and the rows below close the gap when it is marked clean. */
+const LaundryRow = memo(function LaundryRow({ item, first, busy, onMarkClean }: LaundryRowProps) {
+  const motion = useListMotion();
+  return (
+    <Animated.View {...motion}>
+      {!first ? <Divider /> : null}
+      <ListItem
+        title={item.name}
+        subtitle={`${item.category} · ${item.color || 'No colour'}`}
+        icon="water-outline"
+        accent="fashion"
+        accessible={false}
+        trailing={
+          <Button
+            title="Mark clean"
+            size="sm"
+            variant="secondary"
+            leftIcon="checkmark"
+            fullWidth={false}
+            loading={busy}
+            accessibilityLabel={`Mark ${item.name} as clean`}
+            onPress={() => onMarkClean(item)}
+          />
+        }
+      />
+    </Animated.View>
+  );
+});
 
 export function PlannerSection({ items, state, header, onSelectItem, onAddNew }: PlannerSectionProps) {
   const notify = useNotify();
@@ -152,28 +185,7 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
               ) : (
                 <View>
                   {laundryItems.map((item, index) => (
-                    <View key={item.id}>
-                      {index > 0 ? <Divider /> : null}
-                      <ListItem
-                        title={item.name}
-                        subtitle={`${item.category} · ${item.color || 'No colour'}`}
-                        icon="water-outline"
-                        accent="fashion"
-                        accessible={false}
-                        trailing={
-                          <Button
-                            title="Mark clean"
-                            size="sm"
-                            variant="secondary"
-                            leftIcon="checkmark"
-                            fullWidth={false}
-                            loading={busyId === item.id}
-                            accessibilityLabel={`Mark ${item.name} as clean`}
-                            onPress={() => handleMarkClean(item)}
-                          />
-                        }
-                      />
-                    </View>
+                    <LaundryRow key={item.id} item={item} first={index === 0} busy={busyId === item.id} onMarkClean={handleMarkClean} />
                   ))}
                 </View>
               )}

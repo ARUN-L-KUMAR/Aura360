@@ -1,12 +1,13 @@
 import { useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { ListItem } from '@/components/ui/list-item';
+import { useBlockMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
@@ -14,7 +15,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { Text } from '@/components/ui/text';
 import type { FashionItem } from '@/features/fashion/types';
 import { formatMoney } from '@/lib/format';
-import { layout, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
 import { GRID_COLUMNS, GRID_GAP, SkeletonGrid, useListPadding, type ItemsState } from './shared';
 
@@ -67,7 +68,7 @@ function OverviewSkeleton() {
 }
 
 export function OverviewSection({ items, state, header, onSelectItem, onAddNew, onGoToWardrobe, onGoToWishlist, onGoToLaundry }: OverviewSectionProps) {
-  const { reduceMotion } = useTheme();
+  const blockMotion = useBlockMotion();
   const { paddingBottom } = useListPadding();
 
   const wardrobeItems = useMemo(() => items.filter((i) => i.status === 'wardrobe'), [items]);
@@ -79,8 +80,6 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
   const categoryCount = useMemo(() => new Set(wardrobeItems.map((i) => i.category)).size, [wardrobeItems]);
   const mostWornItems = useMemo(() => [...wardrobeItems].sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0)).slice(0, 4), [wardrobeItems]);
   const recentItems = useMemo(() => items.slice(0, 4), [items]);
-
-  const enter = reduceMotion ? undefined : FadeInDown.duration(250);
 
   let body: ReactNode;
   if (state.loading) {
@@ -102,8 +101,8 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
     );
   } else {
     body = (
-      <Animated.View entering={enter} style={{ gap: layout.sectionGap }}>
-        <Card variant="tinted" accent="fashion" padding="md" style={{ gap: spacing.sm }}>
+      <Animated.View {...blockMotion} style={{ gap: layout.sectionGap }}>
+        <Card variant="tinted" accent="fashion" gradient="fashion" padding="md" style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
             <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
               Wardrobe value

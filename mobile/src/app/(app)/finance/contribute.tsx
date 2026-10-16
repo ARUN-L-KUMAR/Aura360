@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { AmountField } from '@/components/finance/amount-field';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/error-state';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useContributeToGoal } from '@/features/finance/hooks';
 import type { Goal } from '@/features/finance/types';
@@ -33,7 +34,15 @@ export default function ContributeScreen() {
 
   const [amount, setAmount] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [reached, setReached] = useState(false);
   const contribute = useContributeToGoal();
+
+  // When a deposit completes the goal, hold the screen for a beat so the tick can land before closing.
+  useEffect(() => {
+    if (!reached) return;
+    const timer = setTimeout(() => router.back(), 900);
+    return () => clearTimeout(timer);
+  }, [reached, router]);
 
   if (!goal) {
     return (
@@ -65,7 +74,8 @@ export default function ContributeScreen() {
     try {
       await contribute.mutateAsync({ id: goal.id, amount: value });
       notify.success(`Added ${formatMoney(value)} to ${goal.title}`);
-      router.back();
+      if (goal.targetAmount > 0 && goal.currentAmount < goal.targetAmount && goal.currentAmount + value >= goal.targetAmount) setReached(true);
+      else router.back();
     } catch (e) {
       notify.error(failureMessage(e, 'Could not save. Try again.'));
     }
@@ -76,10 +86,15 @@ export default function ContributeScreen() {
       <Stack.Screen options={{ title: 'Add money' }} />
 
       <Card tintColor={goal.color} style={{ gap: spacing.sm }}>
-        <Text variant="caption" weight="semiBold" color="textSecondary">
-          Contributing to
-        </Text>
-        <Text variant="title">{goal.title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text variant="caption" weight="semiBold" color="textSecondary">
+              {reached ? 'Goal reached' : 'Contributing to'}
+            </Text>
+            <Text variant="title">{goal.title}</Text>
+          </View>
+          {reached ? <SuccessCheck size={40} accessibilityLabel="Goal reached" /> : null}
+        </View>
         <ProgressBar percent={newPercent} color={goal.color} label={`${newPercent}% of ${formatMoney(goal.targetAmount)}`} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
           <Text variant="caption" numeric color="textSecondary">
@@ -104,7 +119,7 @@ export default function ContributeScreen() {
         onPreset={addPreset}
       />
 
-      <Button title={`Add ${value > 0 ? formatMoney(value) : 'money'} to goal`} leftIcon="add" onPress={submit} loading={contribute.isPending} />
+      <Button title={`Add ${value > 0 ? formatMoney(value) : 'money'} to goal`} leftIcon="add" onPress={submit} loading={contribute.isPending} disabled={reached} />
     </Screen>
   );
 }

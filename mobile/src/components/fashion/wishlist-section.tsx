@@ -1,10 +1,12 @@
 import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
@@ -41,8 +43,11 @@ const keyExtractor = (entry: GridEntry) => entry.id;
 type CellProps = { item: FashionItem; busy: boolean; onSelect: (item: FashionItem) => void; onBought: (item: FashionItem) => void };
 
 const WishlistCell = memo(function WishlistCell({ item, busy, onSelect, onBought }: CellProps) {
+  // Grid cell: fade out when bought / removed, but no layout animation (two-column cells reflow instantly).
+  const motion = useListMotion();
+  const exiting = 'exiting' in motion ? motion.exiting : undefined;
   return (
-    <View style={{ flex: 1, gap: spacing.sm }}>
+    <Animated.View exiting={exiting} style={{ flex: 1, gap: spacing.sm }}>
       <FashionCard item={item} onPress={onSelect} />
       <Button
         title="I bought this"
@@ -53,7 +58,7 @@ const WishlistCell = memo(function WishlistCell({ item, busy, onSelect, onBought
         accessibilityLabel={`I bought ${item.name}`}
         onPress={() => onBought(item)}
       />
-    </View>
+    </Animated.View>
   );
 });
 

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { RoutineStepRow, ShelfRow } from '@/components/skincare/product-row';
 import { Card } from '@/components/ui/card';
@@ -8,13 +9,16 @@ import { CategoryFrame, CategoryHeader, type CategorySection } from '@/component
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { useBlockMotion } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useSkincareProducts } from '@/features/skincare/hooks';
 import { routineFor, type SkincareProduct } from '@/features/skincare/types';
+import { haptics } from '@/lib/haptics';
 import { spacing, useTheme } from '@/theme';
 
 type Section = 'morning' | 'evening' | 'shelf';
@@ -56,6 +60,16 @@ export default function SkincareScreen() {
   );
 
   const a = accent('skincare');
+  const heroMotion = useBlockMotion();
+
+  // Celebrate the moment a routine becomes complete (a tick that completes it), never on switching sections.
+  const complete = total > 0 && remaining === 0;
+  const lastRef = useRef({ section, complete });
+  useEffect(() => {
+    const last = lastRef.current;
+    if (last.section === section && !last.complete && complete) haptics.success();
+    lastRef.current = { section, complete };
+  }, [section, complete]);
 
   const header = (
     <View style={{ gap: spacing.lg, paddingBottom: spacing.md }}>
@@ -64,22 +78,24 @@ export default function SkincareScreen() {
       {query.isPending ? (
         <SkeletonCard lines={1} />
       ) : isRoutine && total > 0 ? (
-        <Card variant="tinted" accent="skincare" style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Ionicons name={section === 'evening' ? 'moon-outline' : 'sunny-outline'} size={20} color={a.text} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text variant="title" style={{ flex: 1 }}>
-              {section === 'evening' ? 'Evening routine' : 'Morning routine'}
-            </Text>
-            <Tag label={`${doneCount} of ${total} done`} accent="skincare" />
-          </View>
-          <ProgressBar percent={percent} accent="skincare" label={`${section === 'evening' ? 'Evening' : 'Morning'} routine progress`} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            {remaining === 0 ? <Ionicons name="checkmark-circle" size={16} color={colors.successText} /> : null}
-            <Text variant="caption" color={remaining === 0 ? 'successText' : 'textSecondary'} accessibilityLiveRegion="polite">
-              {remaining === 0 ? 'Routine complete. Nice work.' : `${remaining} ${remaining === 1 ? 'step' : 'steps'} to go`}
-            </Text>
-          </View>
-        </Card>
+        <Animated.View {...heroMotion}>
+          <Card variant="tinted" accent="skincare" gradient="skincare" style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Ionicons name={section === 'evening' ? 'moon-outline' : 'sunny-outline'} size={20} color={a.text} accessibilityElementsHidden importantForAccessibility="no" />
+              <Text variant="title" style={{ flex: 1 }}>
+                {section === 'evening' ? 'Evening routine' : 'Morning routine'}
+              </Text>
+              <Tag label={`${doneCount} of ${total} done`} accent="skincare" />
+            </View>
+            <ProgressBar percent={percent} accent="skincare" label={`${section === 'evening' ? 'Evening' : 'Morning'} routine progress`} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              {remaining === 0 ? <SuccessCheck size={24} accessibilityLabel={null} /> : null}
+              <Text variant="caption" color={remaining === 0 ? 'successText' : 'textSecondary'} accessibilityLiveRegion="polite">
+                {remaining === 0 ? 'Routine complete. Nice work.' : `${remaining} ${remaining === 1 ? 'step' : 'steps'} to go`}
+              </Text>
+            </View>
+          </Card>
+        </Animated.View>
       ) : null}
     </View>
   );

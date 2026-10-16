@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
@@ -9,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { ListItem } from '@/components/ui/list-item';
+import { useBlockMotion } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -42,6 +44,7 @@ type Props = {
 export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
   const router = useRouter();
   const month = monthKey();
+  const heroMotion = useBlockMotion();
 
   const dashboard = useDashboard();
   const balances = useBalances();
@@ -74,29 +77,31 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
       ) : balances.isError && !balances.data ? (
         <ErrorState size="inline" error={balances.error} title="Couldn't load your balances" onRetry={() => balances.refetch()} retrying={balances.isRefetching} />
       ) : (
-        <Card variant="tinted" accent="finance" style={{ gap: spacing.sm }}>
-          <SectionHeader
-            title="Money on hand"
-            actionLabel="Adjust"
-            actionAccessibilityLabel="Adjust balances"
-            onActionPress={() => router.push('/finance/balances')}
-          />
-          <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-            {formatMoney(balances.data?.totalBalance ?? 0)}
-          </Text>
-          {visibleBalances.length > 0 ? (
-            <View>
-              {visibleBalances.map((b) => {
-                const cfg = METHOD_CONFIG[b.paymentMethod] ?? { label: b.paymentMethod, icon: 'wallet-outline' as const };
-                return <ListItem key={b.id} icon={cfg.icon} accent="finance" title={cfg.label} meta={formatMoney(b.currentBalance)} style={{ paddingHorizontal: 0 }} />;
-              })}
-            </View>
-          ) : (
-            <Text variant="caption" color="textSecondary">
-              Add what you hold in cash and in your bank or UPI to see a breakdown here.
+        <Animated.View {...heroMotion}>
+          <Card variant="tinted" accent="finance" gradient="finance" style={{ gap: spacing.sm }}>
+            <SectionHeader
+              title="Money on hand"
+              actionLabel="Adjust"
+              actionAccessibilityLabel="Adjust balances"
+              onActionPress={() => router.push('/finance/balances')}
+            />
+            <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {formatMoney(balances.data?.totalBalance ?? 0)}
             </Text>
-          )}
-        </Card>
+            {visibleBalances.length > 0 ? (
+              <View>
+                {visibleBalances.map((b) => {
+                  const cfg = METHOD_CONFIG[b.paymentMethod] ?? { label: b.paymentMethod, icon: 'wallet-outline' as const };
+                  return <ListItem key={b.id} icon={cfg.icon} accent="finance" title={cfg.label} meta={formatMoney(b.currentBalance)} style={{ paddingHorizontal: 0 }} />;
+                })}
+              </View>
+            ) : (
+              <Text variant="caption" color="textSecondary">
+                Add what you hold in cash and in your bank or UPI to see a breakdown here.
+              </Text>
+            )}
+          </Card>
+        </Animated.View>
       )}
 
       {/* This month */}

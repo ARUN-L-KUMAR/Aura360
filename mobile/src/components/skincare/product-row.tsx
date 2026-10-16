@@ -3,10 +3,10 @@ import { memo, type ComponentProps } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { useEntering } from '@/components/finance/list-helpers';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import type { SkincareProduct } from '@/features/skincare/types';
@@ -54,12 +54,12 @@ type StepProps = {
 export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done, onToggle, index }: StepProps) {
   const { colors, accent } = useTheme();
   const a = accent('skincare');
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   const subtitle = subtitleOf(product);
   const rating = product.rating ? `, rated ${product.rating}` : '';
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card padding="none" rounded="md" style={{ overflow: 'hidden' }}>
         <PressableScale
           accessibilityRole="checkbox"
@@ -103,13 +103,13 @@ export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done
 
 /** A product on the shelf: icon, name, brand, rating and a status badge when it needs attention. */
 export const ShelfRow = memo(function ShelfRow({ product, index }: { product: SkincareProduct; index: number }) {
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   const subtitle = subtitleOf(product);
   const status = product.status === 'need_to_buy' ? 'Need to buy' : product.status === 'finished' ? 'Finished' : null;
   const rating = product.rating ? `, rated ${product.rating}` : '';
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card padding="none" rounded="md" style={{ overflow: 'hidden' }}>
         <ListItem
           accent="skincare"

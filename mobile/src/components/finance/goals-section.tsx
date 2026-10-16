@@ -3,13 +3,14 @@ import { memo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
@@ -34,13 +35,13 @@ function deadlineText(goal: Goal) {
 
 const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: number }) {
   const router = useRouter();
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   const deadline = deadlineText(goal);
   const overdue = !goal.isCompleted && goal.daysRemaining !== null && goal.daysRemaining < 0;
   const progress = `${formatMoney(goal.currentAmount)} of ${formatMoney(goal.targetAmount)}`;
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card style={{ gap: spacing.md }}>
         <PressableScale
           accessibilityRole="button"
@@ -89,6 +90,7 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
 
 export function GoalsSection({ header }: { header: ReactNode }) {
   const router = useRouter();
+  const blockMotion = useBlockMotion();
   const { data, isPending, isError, error, refetch, isRefetching } = useGoals();
   const summary = data?.summary;
   const goals = data?.data ?? [];
@@ -108,21 +110,23 @@ export function GoalsSection({ header }: { header: ReactNode }) {
       ) : (
         <>
           {summary && summary.totalGoals > 0 ? (
-            <Card variant="tinted" accent="finance" style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-                <Text variant="title" style={{ flex: 1 }}>
-                  Savings goals
+            <Animated.View {...blockMotion}>
+              <Card variant="tinted" accent="finance" gradient="finance" style={{ gap: spacing.sm }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+                  <Text variant="title" style={{ flex: 1 }}>
+                    Savings goals
+                  </Text>
+                  <Tag label={`${summary.completedCount} of ${summary.totalGoals} reached`} icon="flag" accent="finance" />
+                </View>
+                <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  {formatMoney(summary.totalSaved)}
                 </Text>
-                <Tag label={`${summary.completedCount} of ${summary.totalGoals} reached`} icon="flag" accent="finance" />
-              </View>
-              <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {formatMoney(summary.totalSaved)}
-              </Text>
-              <ProgressBar percent={summary.overallProgress} accent="finance" showLabel label="Overall progress" />
-              <Text variant="caption" numeric color="textSecondary">
-                saved toward {formatMoney(summary.totalTarget)} in total
-              </Text>
-            </Card>
+                <ProgressBar percent={summary.overallProgress} accent="finance" showLabel label="Overall progress" />
+                <Text variant="caption" numeric color="textSecondary">
+                  saved toward {formatMoney(summary.totalTarget)} in total
+                </Text>
+              </Card>
+            </Animated.View>
           ) : null}
 
           {goals.length > 0 ? (

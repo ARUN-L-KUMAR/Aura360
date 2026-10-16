@@ -3,13 +3,14 @@ import { memo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { MonthSwitcher } from '@/components/finance/month-switcher';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonCard } from '@/components/ui/skeleton';
@@ -31,11 +32,11 @@ function BudgetStatus({ budget }: { budget: Pick<Budget, 'isOverBudget' | 'isNea
 
 const BudgetCard = memo(function BudgetCard({ budget, month, index }: { budget: Budget; month: string; index: number }) {
   const router = useRouter();
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   const status = budget.isOverBudget ? ', over budget' : budget.isNearLimit ? ', near limit' : '';
 
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card
         onPress={() => openBudget(router, month, budget)}
         accessibilityLabel={`${budget.category} budget, ${formatMoney(budget.spent)} spent of ${formatMoney(budget.amount)}, ${budget.percentage} percent${status}`}
@@ -64,6 +65,7 @@ const BudgetCard = memo(function BudgetCard({ budget, month, index }: { budget: 
 export function BudgetsSection({ header }: { header: ReactNode }) {
   const router = useRouter();
   const [month, setMonth] = useState(monthKey());
+  const blockMotion = useBlockMotion();
   const { data, isPending, isError, error, refetch, isRefetching } = useBudgets(month);
 
   const categories = (data?.data ?? []).filter((b) => b.category !== OVERALL_BUDGET);
@@ -87,26 +89,28 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
       ) : (
         <>
           {summary && (summary.overallCap > 0 || categories.length > 0) ? (
-            <Card variant="tinted" accent="finance" style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-                <Text variant="title" style={{ flex: 1 }}>
-                  {summary.hasOverallBudget ? 'Overall monthly budget' : 'Total monthly budget'}
+            <Animated.View {...blockMotion}>
+              <Card variant="tinted" accent="finance" gradient="finance" style={{ gap: spacing.sm }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+                  <Text variant="title" style={{ flex: 1 }}>
+                    {summary.hasOverallBudget ? 'Overall monthly budget' : 'Total monthly budget'}
+                  </Text>
+                  {summary.isOverBudget ? <Badge severity="error" label="Over budget" size="sm" /> : null}
+                </View>
+                <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} color={summary.isOverBudget ? 'errorText' : 'text'}>
+                  {formatMoney(summary.totalSpent)}
                 </Text>
-                {summary.isOverBudget ? <Badge severity="error" label="Over budget" size="sm" /> : null}
-              </View>
-              <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} color={summary.isOverBudget ? 'errorText' : 'text'}>
-                {formatMoney(summary.totalSpent)}
-              </Text>
-              <ProgressBar percent={summary.percentage} autoThresholdColor showLabel label="Used this month" />
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-                <Text variant="caption" numeric color="textSecondary" style={{ flex: 1 }}>
-                  {summary.overallCap > 0
-                    ? `${formatMoney(summary.remaining)} remaining of ${formatMoney(summary.overallCap)}`
-                    : 'No budgets set for this month yet.'}
-                </Text>
-                {overall ? <Button title="Edit limit" size="sm" variant="tertiary" fullWidth={false} onPress={() => openBudget(router, month, overall)} /> : null}
-              </View>
-            </Card>
+                <ProgressBar percent={summary.percentage} autoThresholdColor showLabel label="Used this month" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+                  <Text variant="caption" numeric color="textSecondary" style={{ flex: 1 }}>
+                    {summary.overallCap > 0
+                      ? `${formatMoney(summary.remaining)} remaining of ${formatMoney(summary.overallCap)}`
+                      : 'No budgets set for this month yet.'}
+                  </Text>
+                  {overall ? <Button title="Edit limit" size="sm" variant="tertiary" fullWidth={false} onPress={() => openBudget(router, month, overall)} /> : null}
+                </View>
+              </Card>
+            </Animated.View>
           ) : null}
 
           {categories.length > 0 ? (

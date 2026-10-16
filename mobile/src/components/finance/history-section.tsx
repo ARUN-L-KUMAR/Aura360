@@ -3,12 +3,13 @@ import { memo, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
 import { SearchBar } from '@/components/ui/search-bar';
@@ -35,9 +36,9 @@ const MONTHS: { value: MonthFilter; label: string }[] = [
 ];
 
 const HistoryItem = memo(function HistoryItem({ tx, index }: { tx: Transaction; index: number }) {
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card padding="none" rounded="md" style={{ overflow: 'hidden' }}>
         <TransactionRow tx={tx} />
       </Card>

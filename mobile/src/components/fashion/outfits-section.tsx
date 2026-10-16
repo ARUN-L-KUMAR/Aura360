@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard } from '@/components/ui/skeleton';
@@ -15,7 +16,7 @@ import { Text } from '@/components/ui/text';
 import { useDeleteOutfit, useLogOutfitWorn, useOutfits } from '@/features/fashion/hooks';
 import type { FashionItem, FashionOutfit } from '@/features/fashion/types';
 import { useNotify } from '@/providers/notify';
-import { layout, radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing } from '@/theme';
 import { FashionImage, HeaderStack, RowSeparator, useListPadding, type ItemsState } from './shared';
 
 interface OutfitsSectionProps {
@@ -40,12 +41,12 @@ type CardProps = {
 };
 
 const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn, onLogWorn, onDelete }: CardProps) {
-  const { reduceMotion } = useTheme();
+  const motion = useListMotion(index);
   const pieces = outfit.itemIds.map((id) => itemsMap.get(id)).filter((i): i is FashionItem => !!i);
   const wears = outfit.wearCount ?? 0;
 
   return (
-    <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(Math.min(index, 6) * 40).duration(250)}>
+    <Animated.View {...motion}>
       <Card accessible={false} style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
           <View style={{ flex: 1, gap: spacing.sm }}>

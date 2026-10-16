@@ -4,7 +4,7 @@ import { memo, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { FAB_CLEARANCE, useEntering } from '@/components/finance/list-helpers';
+import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { MonthSwitcher } from '@/components/finance/month-switcher';
 import { Button } from '@/components/ui/button';
 import { Card, withAlpha } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
@@ -169,9 +170,9 @@ export default function TimeScreen() {
 }
 
 const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: TimeLog[]; index: number }) {
-  const entering = useEntering(index);
+  const motion = useListMotion(index);
   return (
-    <Animated.View entering={entering}>
+    <Animated.View {...motion}>
       <Card padding="none" style={{ overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <Text variant="label" weight="semiBold" accessibilityRole="header" style={{ flex: 1 }}>
@@ -288,7 +289,7 @@ function TimerCard() {
     const activeColor = categoryColor(timer.category);
     const clock = formatClock(seconds);
     return (
-      <Card variant="tinted" accent="time" style={{ gap: spacing.md }}>
+      <Card variant="tinted" accent="time" gradient="time" style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <Ionicons name="radio-button-on" size={16} color={activeColor} accessibilityElementsHidden importantForAccessibility="no" />
           <Text variant="title" numberOfLines={1} style={{ flex: 1 }}>
