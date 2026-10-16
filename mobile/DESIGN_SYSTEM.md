@@ -95,7 +95,7 @@ go to `aura360://dev/components` (route `src/app/(app)/dev/components.tsx`, deve
 | Base | `Text`, `PressableScale`, `GlassSurface` | `PressableScale` is the base touchable (scale + opacity feedback on the UI thread, focus ring, optional haptic, reduce-motion aware). `GlassSurface` is for overlays only and falls back to a solid surface when blur is unavailable or "reduce transparency" is on. |
 | Actions | `Button` (primary, secondary, tertiary, ghost, destructive; sm / md / lg; icons; loading), `IconButton` (label required) | Legacy `outline` maps to `tertiary` and `danger` to `destructive`. |
 | Inputs | `Input` (label, helper, error, adornments, clear, count), `PasswordField`, `SearchBar` (optional debounce), `OtpInput` | Errors are announced and carry an icon. Inputs pass keyboard, autofill and `textContentType` props straight through. |
-| Content | `Card` (flat, outlined, elevated, tinted, pressable), `ListItem`, `Chip` / `Tag` / `ChipRow`, `Badge`, `Avatar`, `ProgressBar`, `StatCard`, `SectionHeader`, `Divider` | Pass `accent="fitness"` (a module key) instead of a colour. `GlassCard` is deprecated: use `Card`. |
+| Content | `Card` (flat, outlined, elevated, tinted, pressable), `ListItem`, `Chip` / `Tag` / `ChipRow`, `Badge`, `Avatar`, `ProgressBar`, `StatCard`, `SectionHeader`, `Divider` | Pass `accent="fitness"` (a module key) instead of a colour. |
 | Loading and state | `Skeleton` (+ `SkeletonText`, `SkeletonCard`, `SkeletonListItem`, `SkeletonList`), `EmptyState` (empty, noResults, offline), `ErrorState` (generic, network, timeout, sessionExpired, notFound; `errorKindFromError`) | Use skeletons, not spinners, for content. Every data screen needs loading, empty, error and offline states. |
 | Overlays | `BottomSheet` (snap points, drag to dismiss, keyboard aware), `Dialog`, `Toast`, `Banner` | Do not render these directly for app messages; use `useNotify()`. |
 | Navigation | bottom nav (`AppTabs`, all 10 tabs), `TopAppBar` (collapsing large title), `Tabs`, `Segmented`, `Screen`, `PullToRefresh`, `FloatingAction` | Give `Screen` a `title` to get the collapsing app bar. |
@@ -115,8 +115,20 @@ Severity decides the surface ([`src/lib/notify.ts`](src/lib/notify.ts)):
 | error | toast or banner | 7 s | error |
 | critical | banner or dialog | until dismissed | error |
 
-A toast with an action (for example Undo) stays at least 6 s. Push notifications and the server-driven inbox map onto the
+A toast with an action (for example Undo) stays at least 6 s. `toast({ onClose })` fires once when the toast leaves the
+screen for any reason; toasts with `onClose` are never merged with look-alikes. Use it to run work that must wait for an
+Undo window to close (see `components/notes/use-undoable-remove.ts`). On iOS, toasts and banners render in a
+`FullWindowOverlay`, so they stay visible above native modal screens. Known limit: iOS cannot present the `confirm()`
+dialog on top of an open `BottomSheet`; confirm inside the sheet instead (as the offline sheet does) or close the sheet first. Push notifications and the server-driven inbox map onto the
 same severity model (see the comment at the top of `notify.ts`).
+
+### Category template
+
+Fashion, Fitness, Food, Skincare, Finance and Time share [`category-template.tsx`](src/components/ui/category-template.tsx):
+`CategoryFrame` (background), `CategoryHeader` (accent eyebrow, headline, icon tile, section switcher: 2-4 sections as a
+segmented control, 5+ as scrollable tabs) and `CategoryFab` (the one primary add / log action). Sections receive the header
+as a `header` prop and render it inside their own list, so the header scrolls with the content. Notes and Saved use
+`CollapsingList` (a FlatList with the same collapsing large title as `Screen`).
 
 ### Writing a new component
 
@@ -138,6 +150,6 @@ same severity model (see the comment at the top of `notify.ts`).
 |---|---|
 | 1. Tokens | Done: colour, type, spacing, radius, elevation, motion, reduced-motion / transparency, contrast + token checks |
 | 2. Components | Done (built, typechecked and bundled; not yet exercised on a device) |
-| 3. Screens | Not started (hard-coded value debt is tracked in `scripts/design-tokens-baseline.json`) |
+| 3. Screens | Done: every screen migrated; 0 hard-coded colours / fonts / off-scale spacing (baseline is empty), no `Alert.alert` left |
 | 4. Motion and glass | Not started |
 | 5. Quality | Not started |

@@ -8,6 +8,7 @@ import { Banner } from '@/components/ui/banner';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { CategoryHeader, type CategoryKey } from '@/components/ui/category-template';
 import { Chip, ChipRow, Tag } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -348,6 +349,33 @@ function Overlays() {
   );
 }
 
+const CATEGORIES: CategoryKey[] = ['fashion', 'fitness', 'food', 'skincare', 'finance', 'time'];
+
+function Categories() {
+  const [section, setSection] = useState('one');
+  return (
+    <View style={{ gap: spacing.xl }}>
+      {CATEGORIES.map((module) => (
+        <Card key={module} variant="outlined">
+          <CategoryHeader
+            module={module}
+            sections={[
+              { value: 'one', label: 'Overview' },
+              { value: 'two', label: 'Log' },
+              { value: 'three', label: 'Stats' },
+            ]}
+            section={section}
+            onSectionChange={setSection}
+          />
+        </Card>
+      ))}
+      <Text variant="caption" muted>
+        Each category takes its accent from the tertiary ramp rotated to its own hue. The primary action is CategoryFab (see the live screens).
+      </Text>
+    </View>
+  );
+}
+
 function Navigation() {
   const [tab, setTab] = useState('all');
   const [view, setView] = useState('grid');
@@ -432,6 +460,9 @@ export default function ComponentGallery() {
         </Section>
         <Section title="Overlays and notifications">
           <Overlays />
+        </Section>
+        <Section title="Category template">
+          <Categories />
         </Section>
         <Section title="Navigation">
           <Navigation />
