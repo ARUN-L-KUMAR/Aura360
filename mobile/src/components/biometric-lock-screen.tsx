@@ -1,22 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
+import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
-import { duration, layout, radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 const ICON_TILE = spacing.xxxl * 2; // 96
 const CONTENT_MAX_WIDTH = 360;
 
 export function BiometricLockScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, reduceMotion } = useTheme();
+  const { colors } = useTheme();
+  const motion = useBlockMotion();
   const { biometricLabel, biometricType, authenticate } = useBiometrics();
   const { signOut } = useAuth();
   const [checking, setChecking] = useState(false);
@@ -41,8 +43,6 @@ export function BiometricLockScreen() {
     }
   }
 
-  const entering = reduceMotion ? FadeIn.duration(duration.fast) : FadeInDown.duration(duration.slow);
-
   return (
     <View
       accessibilityViewIsModal
@@ -55,7 +55,7 @@ export function BiometricLockScreen() {
           paddingHorizontal: layout.screenPaddingWide,
         },
       ]}>
-      <Animated.View entering={entering} style={styles.content}>
+      <Animated.View {...motion} style={styles.content}>
         <View
           style={[styles.iconTile, { backgroundColor: colors.primaryContainer }]}
           accessibilityElementsHidden

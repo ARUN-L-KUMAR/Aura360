@@ -47,7 +47,7 @@ export function MonthSummary({ month, index }: { month: Dashboard['month']; inde
         actionAccessibilityLabel="See all finance"
         onActionPress={() => router.push('/finance')}
       />
-      <Card style={{ flexDirection: 'row', gap: spacing.md }}>
+      <Card gradient="finance" style={{ flexDirection: 'row', gap: spacing.md }}>
         {figures.map((figure) => (
           <Column key={figure.key} figure={figure} />
         ))}

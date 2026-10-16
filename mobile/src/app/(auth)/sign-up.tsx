@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PasswordField } from '@/components/ui/password-field';
 import { Screen } from '@/components/ui/screen';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { api, ApiError } from '@/lib/api';
 import { haptics } from '@/lib/haptics';
@@ -78,7 +79,7 @@ export default function SignUpScreen() {
       <Screen contentContainerStyle={authContentStyle}>
         <View style={styles.column}>
           <EmptyState
-            icon="mail-open-outline"
+            illustration={<SuccessCheck size={72} accessibilityLabel="Account created" />}
             title="Check your email"
             description={`We sent a verification link to ${email.trim()}. Verify your address, then sign in.`}
             actionTitle="Back to sign in"

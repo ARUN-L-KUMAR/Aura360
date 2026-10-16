@@ -1,8 +1,10 @@
-import { View } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
+import Animated from 'react-native-reanimated';
 
 import { Card } from '@/components/ui/card';
 import { ListItem, type ListItemProps } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { Toggle } from '@/components/ui/toggle';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
@@ -20,8 +22,11 @@ type SectionProps = {
 
 /** A titled group of settings rows in one card, with optional explanation text underneath. */
 export function SettingsSection({ title, footer, card = true, children }: SectionProps) {
+  // Only the reflow: when a row group above grows or shrinks, this section slides to its new place (no entrance, so the
+  // screen does not animate on open).
+  const { layout } = useListMotion();
   return (
-    <View style={{ gap: spacing.sm }}>
+    <Animated.View layout={layout} style={{ gap: spacing.sm }}>
       <SectionHeader title={title} />
       {card ? (
         <Card padding="none" style={{ overflow: 'hidden' }}>
@@ -35,7 +40,20 @@ export function SettingsSection({ title, footer, card = true, children }: Sectio
           {footer}
         </Text>
       ) : null}
-    </View>
+    </Animated.View>
+  );
+}
+
+/**
+ * Rows that come and go with a setting (the options under a switch, a "Sync now" row): they fade in, fade out on
+ * removal, and the rows below slide to close the gap. Reduce-motion makes the change instant.
+ */
+export function Reveal({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const motion = useListMotion();
+  return (
+    <Animated.View {...motion} style={style}>
+      {children}
+    </Animated.View>
   );
 }
 

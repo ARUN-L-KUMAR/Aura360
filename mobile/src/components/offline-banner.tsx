@@ -13,8 +13,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GlassSurface } from '@/components/ui/glass-surface';
 import { IconButton } from '@/components/ui/icon-button';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
 import { discard, retryFailed, type OfflineItem } from '@/lib/offline/queue';
@@ -40,17 +42,34 @@ const ICONS: Record<BannerState, IconName> = {
 
 /** Icon colour on the glass surface for each tone. */
 function toneColor(colors: ThemeColors, tone: Tone) {
-  return { danger: colors.errorText, warning: colors.warningText, info: colors.infoText, success: colors.successText }[tone];
+  return {
+    danger: colors.errorText,
+    warning: colors.warningText,
+    info: colors.infoText,
+    success: colors.successText,
+  }[tone];
 }
 
-/** The sync icon turns while entries are being sent (stays still with reduce motion on). */
-function StatusIcon({ name, color, spinning }: { name: IconName; color: string; spinning: boolean }) {
+/**
+ * The sync icon turns while entries are being sent (stays still with reduce motion on). `done` swaps it for the pop-in
+ * success check, which plays once when the "synced" notice appears.
+ */
+function StatusIcon({ name, color, spinning, done }: { name: IconName; color: string; spinning: boolean; done: boolean }) {
   const { reduceMotion } = useTheme();
   const rotation = useSharedValue(0);
   const turning = spinning && !reduceMotion;
 
   useEffect(() => {
-    if (turning) rotation.set(withRepeat(withTiming(360, { duration: duration.slow * 2.5, easing: Easing.linear }), -1));
+    if (turning)
+      rotation.set(
+        withRepeat(
+          withTiming(360, {
+            duration: duration.slow * 2.5,
+            easing: Easing.linear,
+          }),
+          -1,
+        ),
+      );
     else {
       cancelAnimation(rotation);
       rotation.set(0);
@@ -58,7 +77,11 @@ function StatusIcon({ name, color, spinning }: { name: IconName; color: string; 
     return () => cancelAnimation(rotation);
   }, [turning, rotation]);
 
-  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.get()}deg` }] }));
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.get()}deg` }],
+  }));
+
+  if (done) return <SuccessCheck size={24} accessibilityLabel={null} />;
 
   return (
     <Animated.View style={style}>
@@ -93,8 +116,7 @@ export function OfflineBanner() {
   else if (!snap.replaying && peak !== 0) setPeak(0);
 
   const showNotice = !!notice && notice.at > seenNotice;
-  const state: BannerState | null =
-    snap.failed > 0 ? 'failed' : snap.replaying && snap.online ? 'syncing' : showNotice ? 'notice' : !snap.online ? 'offline' : snap.pending > 0 ? 'queued' : null;
+  const state: BannerState | null = snap.failed > 0 ? 'failed' : snap.replaying && snap.online ? 'syncing' : showNotice ? 'notice' : !snap.online ? 'offline' : snap.pending > 0 ? 'queued' : null;
 
   let title = '';
   let detail: string | undefined;
@@ -119,6 +141,12 @@ export function OfflineBanner() {
   }
 
   const color = toneColor(colors, tone);
+  // One haptic each time a new "synced" notice appears (not while it merely stays on screen)
+  const celebrate = state === 'notice' && tone === 'success';
+  const noticeAt = notice?.at;
+  useEffect(() => {
+    if (celebrate) haptics.success();
+  }, [celebrate, noticeAt]);
   const progress = peak > 0 ? ((peak - snap.pending) / peak) * 100 : 0;
   const retry = () => {
     haptics.tap();
@@ -133,12 +161,23 @@ export function OfflineBanner() {
           entering={reduceMotion ? undefined : FadeInUp.duration(duration.base)}
           exiting={reduceMotion ? undefined : FadeOutUp.duration(duration.fast)}
           pointerEvents="box-none"
-          style={{ position: 'absolute', left: layout.screenPadding, right: layout.screenPadding, top: insets.top + APP_BAR_HEIGHT + spacing.xs, zIndex: 50 }}>
+          style={{
+            position: 'absolute',
+            left: layout.screenPadding,
+            right: layout.screenPadding,
+            top: insets.top + APP_BAR_HEIGHT + spacing.xs,
+            zIndex: 50,
+          }}>
           <GlassSurface style={{ borderRadius: radius.lg, overflow: 'hidden' }}>
             <View
               accessibilityRole="alert"
               accessibilityLiveRegion={state === 'failed' ? 'assertive' : 'polite'}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.sm }}>
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                paddingRight: spacing.sm,
+              }}>
               <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={[title, detail].filter(Boolean).join('. ')}
@@ -146,8 +185,15 @@ export function OfflineBanner() {
                 onPress={() => setOpen(true)}
                 scaleTo={1}
                 ringRadius={radius.lg}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: layout.minTouchTarget + spacing.sm, padding: spacing.md }}>
-                <StatusIcon name={ICONS[state]} color={color} spinning={state === 'syncing'} />
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.md,
+                  minHeight: layout.minTouchTarget + spacing.sm,
+                  padding: spacing.md,
+                }}>
+                <StatusIcon name={ICONS[state]} color={color} spinning={state === 'syncing'} done={celebrate} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text variant="label" weight="semiBold">
                     {title}
@@ -247,13 +293,14 @@ function SyncSheet({ open, onClose, progress }: { open: boolean; onClose: () => 
         </View>
 
         {snap.items.length === 0 ? (
-          <EmptyState icon="checkmark-circle-outline" title="All synced" description="Nothing is waiting on this phone." accent="finance" />
+          <EmptyState illustration={<SuccessCheck size={72} accessibilityLabel={null} />} title="All synced" description="Nothing is waiting on this phone." />
         ) : (
           <Card padding="none" style={{ overflow: 'hidden' }}>
             {snap.items.map((item, index) => (
               <EntryRow
                 key={`${item.kind}-${item.id}`}
                 item={item}
+                index={index}
                 divider={index < snap.items.length - 1}
                 confirming={confirmId === item.id}
                 onAskDiscard={() => setConfirmId(item.id)}
@@ -276,6 +323,7 @@ function SyncSheet({ open, onClose, progress }: { open: boolean; onClose: () => 
 
 type EntryRowProps = {
   item: OfflineItem;
+  index: number;
   divider: boolean;
   confirming: boolean;
   onAskDiscard: () => void;
@@ -289,14 +337,23 @@ type EntryRowProps = {
  * One queued or rejected entry. Discarding is confirmed in place: a second dialog cannot open on top of the sheet on
  * iOS, so the row swaps to a Keep / Discard question instead of using `useNotify().confirm`.
  */
-function EntryRow({ item, divider, confirming, onAskDiscard, onKeep, onDiscard, tile, glyph }: EntryRowProps) {
+function EntryRow({ item, index, divider, confirming, onAskDiscard, onKeep, onDiscard, tile, glyph }: EntryRowProps) {
   const { colors } = useTheme();
+  // Enter, leave (discard or a successful send) and close-the-gap reflow; instant under reduce-motion
+  const motion = useListMotion(index);
 
   if (confirming) {
     return (
-      <View
+      <Animated.View
+        {...motion}
         accessibilityRole="alert"
-        style={{ gap: spacing.md, padding: layout.cardPadding, backgroundColor: colors.errorContainer, borderBottomWidth: divider ? 1 : 0, borderBottomColor: colors.border }}>
+        style={{
+          gap: spacing.md,
+          padding: layout.cardPadding,
+          backgroundColor: colors.errorContainer,
+          borderBottomWidth: divider ? 1 : 0,
+          borderBottomColor: colors.border,
+        }}>
         <View style={{ gap: spacing.xs }}>
           <Text variant="label" weight="semiBold" color="onErrorContainer">
             Discard this entry?
@@ -309,25 +366,40 @@ function EntryRow({ item, divider, confirming, onAskDiscard, onKeep, onDiscard, 
           <Button title="Keep" variant="tertiary" size="sm" fullWidth={false} onPress={onKeep} />
           <Button title="Discard" variant="destructive" size="sm" fullWidth={false} leftIcon="trash-outline" onPress={onDiscard} />
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   const rejected = item.kind === 'failed';
-  const when = new Date(item.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  const when = new Date(item.createdAt).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
   return (
-    <ListItem
-      accessible={false}
-      divider={divider}
-      leading={
-        <View style={{ width: layout.minTouchTarget - spacing.xs, height: layout.minTouchTarget - spacing.xs, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: tile }}>
-          <Ionicons name={rejected ? 'alert-circle-outline' : 'time-outline'} size={22} color={glyph} />
-        </View>
-      }
-      title={item.label}
-      subtitle={`${rejected ? (item.error ?? 'Rejected') : 'Waiting to sync'} · ${when}`}
-      trailing={<IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={`Discard ${item.label}`} onPress={onAskDiscard} />}
-    />
+    <Animated.View {...motion}>
+      <ListItem
+        accessible={false}
+        divider={divider}
+        leading={
+          <View
+            style={{
+              width: layout.minTouchTarget - spacing.xs,
+              height: layout.minTouchTarget - spacing.xs,
+              borderRadius: radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: tile,
+            }}>
+            <Ionicons name={rejected ? 'alert-circle-outline' : 'time-outline'} size={22} color={glyph} />
+          </View>
+        }
+        title={item.label}
+        subtitle={`${rejected ? (item.error ?? 'Rejected') : 'Waiting to sync'} · ${when}`}
+        trailing={<IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={`Discard ${item.label}`} onPress={onAskDiscard} />}
+      />
+    </Animated.View>
   );
 }

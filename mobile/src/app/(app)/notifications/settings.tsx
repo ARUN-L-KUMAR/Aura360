@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState, Linking, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SettingsSection, SwitchRow } from '@/components/settings-ui';
+import { Reveal, SettingsSection, SwitchRow } from '@/components/settings-ui';
 import { Badge } from '@/components/ui/badge';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
+import { useListMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonCard } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { TimeField } from '@/components/ui/time-field';
 import { useSaveServerPrefs, useSendTestNotification, useServerPrefs } from '@/features/notifications/hooks';
@@ -24,7 +26,7 @@ import { haptics } from '@/lib/haptics';
 import { isNotificationsSupported, notificationService } from '@/lib/notifications';
 import { registerForServerPush, type PushRegistration } from '@/lib/push';
 import { useNotify } from '@/providers/notify';
-import { duration, layout, spacing, useTheme } from '@/theme';
+import { layout, spacing, useTheme } from '@/theme';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -64,14 +66,7 @@ function describeTest(result: TestResult): string {
 
 /** Extra options that appear under a switch when it is on. */
 function Expand({ children }: { children: ReactNode }) {
-  const { reduceMotion } = useTheme();
-  return (
-    <Animated.View
-      entering={reduceMotion ? undefined : FadeIn.duration(duration.base)}
-      style={{ paddingHorizontal: layout.cardPadding, paddingBottom: layout.cardPadding, gap: spacing.md }}>
-      {children}
-    </Animated.View>
-  );
+  return <Reveal style={{ paddingHorizontal: layout.cardPadding, paddingBottom: layout.cardPadding, gap: spacing.md }}>{children}</Reveal>;
 }
 
 /** Lets a row inside an `Expand` use the card's full width again. */
@@ -81,10 +76,13 @@ function Flush({ children }: { children: ReactNode }) {
 
 /** One reminder: a switch row, and its options underneath while it is on. */
 function ReminderCard({ children }: { children: ReactNode }) {
+  const { layout: reflow } = useListMotion();
   return (
-    <Card padding="none" style={{ overflow: 'hidden' }}>
-      {children}
-    </Card>
+    <Animated.View layout={reflow}>
+      <Card padding="none" style={{ overflow: 'hidden' }}>
+        {children}
+      </Card>
+    </Animated.View>
   );
 }
 
@@ -167,6 +165,7 @@ export default function NotificationSettingsScreen() {
     setRegistering(true);
     setPushResult(null);
     const result = await registerForServerPush();
+    if (result.ok) haptics.success();
     setPushResult(result.ok ? { ok: true, text: 'This phone is connected' } : { ok: false, text: PUSH_PROBLEMS[result.reason] });
     if (result.ok) setPermission('granted');
     else if (result.reason === 'permission-denied') setPermission('denied');
@@ -286,7 +285,11 @@ export default function NotificationSettingsScreen() {
         />
         {pushResult ? (
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Ionicons name={pushResult.ok ? 'checkmark-circle' : 'warning'} size={18} color={pushResult.ok ? colors.successText : colors.warningText} />
+            {pushResult.ok ? (
+              <SuccessCheck size={20} accessibilityLabel={null} />
+            ) : (
+              <Ionicons name="warning" size={18} color={colors.warningText} />
+            )}
             <Text variant="caption" color={pushResult.ok ? 'successText' : 'warningText'} style={{ flex: 1 }}>
               {pushResult.text}
             </Text>

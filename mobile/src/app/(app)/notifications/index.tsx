@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { memo, useMemo, type ComponentProps } from 'react';
 import { FlatList, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,16 +10,18 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useInbox, useMarkRead } from '@/features/notifications/hooks';
 import { routeForActionUrl, timeAgo } from '@/features/notifications/routes';
 import type { AppNotification } from '@/features/notifications/types';
 import { useNotify } from '@/providers/notify';
-import { duration, radius, spacing, useTheme, type ThemeColors } from '@/theme';
+import { radius, spacing, useTheme, type ThemeColors } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -75,16 +77,15 @@ function groupByDay(items: AppNotification[]): Row[] {
 }
 
 const NotificationRow = memo(function NotificationRow({ item, index, onOpen }: { item: AppNotification; index: number; onOpen: (item: AppNotification) => void }) {
-  const { colors, reduceMotion } = useTheme();
+  const { colors } = useTheme();
+  const motion = useListMotion(index);
   const type = TYPES[item.type] ?? TYPES.info;
   const tone = toneColors(colors, item.type);
   const unread = !item.isRead;
   const when = timeAgo(item.createdAt);
 
   return (
-    <Animated.View
-      entering={reduceMotion || index > 8 ? undefined : FadeInDown.delay(index * 30).duration(duration.base)}
-      style={{ marginBottom: spacing.sm }}>
+    <Animated.View {...motion} style={{ marginBottom: spacing.sm }}>
       <Card
         variant={unread ? 'outlined' : 'flat'}
         padding="sm"
@@ -151,7 +152,7 @@ export default function NotificationsScreen() {
   } else {
     empty = (
       <EmptyState
-        icon="checkmark-done-outline"
+        illustration={<SuccessCheck size={72} accessibilityLabel={null} />}
         title="You're all caught up"
         description="Budget alerts, renewal reminders and your daily reminders show up here."
         actionTitle="Set up reminders"

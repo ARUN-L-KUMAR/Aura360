@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { Divider } from '@/components/ui/divider';
+import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
@@ -19,8 +21,9 @@ const LOGO_SIZE = spacing.xxxl;
 /** Brand mark, heading and one line of context at the top of the sign-in and sign-up screens. */
 export function AuthHeader({ title, subtitle }: { title: string; subtitle: string }) {
   const { colors } = useTheme();
+  const motion = useBlockMotion();
   return (
-    <View style={styles.header}>
+    <Animated.View {...motion} style={styles.header}>
       <View
         style={[styles.logoTile, { backgroundColor: colors.primaryContainer }]}
         accessibilityElementsHidden
@@ -35,7 +38,7 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle: strin
           {subtitle}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

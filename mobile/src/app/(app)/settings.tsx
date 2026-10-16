@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
-import { SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
+import { Reveal, SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
 import { Button } from '@/components/ui/button';
 import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
@@ -148,7 +148,7 @@ export default function SettingsScreen() {
           divider={notifPrefs.enabled}
         />
         {notifPrefs.enabled ? (
-          <>
+          <Reveal>
             <SwitchRow
               icon="water-outline"
               accent="food"
@@ -201,7 +201,7 @@ export default function SettingsScreen() {
               onPress={() => void sendTest()}
               chevron={false}
             />
-          </>
+          </Reveal>
         ) : null}
       </Section>
 
@@ -225,18 +225,20 @@ export default function SettingsScreen() {
           divider
         />
         {canSync ? (
-          <ListItem
-            icon="sync-outline"
-            title="Sync now"
-            subtitle={sync.replaying ? 'Syncing...' : 'Send the entries saved on this phone'}
-            disabled={sync.replaying}
-            onPress={() => {
-              haptics.tap();
-              void syncNow();
-            }}
-            chevron={false}
-            divider
-          />
+          <Reveal>
+            <ListItem
+              icon="sync-outline"
+              title="Sync now"
+              subtitle={sync.replaying ? 'Syncing...' : 'Send the entries saved on this phone'}
+              disabled={sync.replaying}
+              onPress={() => {
+                haptics.tap();
+                void syncNow();
+              }}
+              chevron={false}
+              divider
+            />
+          </Reveal>
         ) : null}
         <ListItem icon="server-outline" title="Server" subtitle={serverUrl || 'Default local host'} />
       </Section>
