@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { Toggle } from '@/components/ui/toggle';
 import { Text } from '@/components/ui/text';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -42,7 +43,7 @@ export function ToggleRow({ icon, label, description, value, onChange, accent }:
         ) : null}
       </View>
       <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <Switch value={value} trackColor={{ false: colors.borderStrong, true: a.solid }} thumbColor={colors.surfaceRaised} />
+        <Toggle value={value} onValueChange={onChange} accent={accent} />
       </View>
     </PressableScale>
   );

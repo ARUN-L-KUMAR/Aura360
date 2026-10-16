@@ -1,12 +1,13 @@
-import { Switch, View } from 'react-native';
+import { View } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { Card } from '@/components/ui/card';
 import { ListItem, type ListItemProps } from '@/components/ui/list-item';
+import { Toggle } from '@/components/ui/toggle';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
-import { spacing, useTheme } from '@/theme';
+import { spacing } from '@/theme';
 
 type SectionProps = {
   title: string;
@@ -48,8 +49,6 @@ type SwitchRowProps = Pick<ListItemProps, 'title' | 'subtitle' | 'icon' | 'accen
  * screen readers (labelled with the title, described by the subtitle) so the state is announced once.
  */
 export function SwitchRow({ value, onValueChange, disabled, title, subtitle, ...item }: SwitchRowProps) {
-  const { colors } = useTheme();
-
   const change = (next: boolean) => {
     haptics.select();
     onValueChange(next);
@@ -65,16 +64,7 @@ export function SwitchRow({ value, onValueChange, disabled, title, subtitle, ...
       chevron={false}
       onPress={() => change(!value)}
       trailing={
-        <Switch
-          value={value}
-          disabled={disabled}
-          onValueChange={change}
-          trackColor={{ false: colors.borderStrong, true: colors.primary }}
-          thumbColor={colors.primaryText}
-          ios_backgroundColor={colors.borderStrong}
-          accessibilityLabel={title}
-          accessibilityHint={subtitle}
-        />
+        <Toggle value={value} disabled={disabled} onValueChange={change} accessibilityLabel={title} accessibilityHint={subtitle} />
       }
     />
   );

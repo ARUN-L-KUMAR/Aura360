@@ -27,13 +27,14 @@ SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
   const { status } = useAuth();
+  const { reduceMotion } = useTheme();
 
   if (status === 'loading') return null;
 
   const signedIn = status === 'signedIn';
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'fade' }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>

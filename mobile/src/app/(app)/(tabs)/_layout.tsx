@@ -7,13 +7,15 @@ import { modules } from '@/features/modules';
 import { useTheme } from '@/theme';
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Tabs
         tabBar={(props) => <AppTabs {...props} />}
         screenOptions={{
           headerShown: false,
+          // Cross-fade between tabs; none at all when the user prefers reduced motion.
+          animation: reduceMotion ? 'none' : 'fade',
           sceneStyle: { backgroundColor: colors.background },
         }}>
         <Tabs.Screen name="index" options={{ title: 'Home' }} />

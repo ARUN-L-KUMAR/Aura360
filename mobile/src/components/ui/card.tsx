@@ -1,5 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
+import { AccentGradient } from '@/components/ui/gradient';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { neutral, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -58,6 +59,8 @@ export type CardProps = ViewProps & {
    * Prefer `variant="tinted" accent="finance"`.
    */
   tintColor?: string;
+  /** Soft hero wash: the module's accent fading into the card surface. Use on at most one or two hero cards per screen. */
+  gradient?: ModuleKey;
 };
 
 /**
@@ -73,6 +76,7 @@ export function Card({
   onLongPress,
   disabled,
   tintColor,
+  gradient,
   accessibilityLabel,
   accessibilityHint,
   style,
@@ -106,8 +110,10 @@ export function Card({
     surface = { ...surface, borderWidth: 1, borderColor: withAlpha(tintColor, scheme === 'dark' ? 0.4 : 0.3) };
   }
 
-  const containerStyle: StyleProp<ViewStyle> = [surface, { borderRadius, padding: PADDING[padding] }, style];
-  const wash = tintColor ? (
+  const containerStyle: StyleProp<ViewStyle> = [surface, { borderRadius, padding: PADDING[padding] }, gradient ? { overflow: 'hidden' } : null, style];
+  const wash = gradient ? (
+    <AccentGradient accent={gradient} />
+  ) : tintColor ? (
     <View
       pointerEvents="none"
       style={[StyleSheet.absoluteFill, { borderRadius, backgroundColor: withAlpha(tintColor, scheme === 'dark' ? 0.12 : 0.06) }]}
