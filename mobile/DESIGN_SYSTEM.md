@@ -16,6 +16,9 @@ Checks (run before committing):
 | `npm run lint:tokens` | Fails if any file has more hard-coded colours / fonts / off-scale spacing than `scripts/design-tokens-baseline.json`. |
 | `npm run lint:tokens -- --report` | Lists every remaining violation. |
 | `npm run lint:tokens -- --update` | Re-baselines after migrating files. The total may only go down. |
+| `npm run lint:i18n` | Fails on user-visible English written straight into a component (JSX text, label props, `notify.*` messages). `-- --report` lists them. |
+| `npm test` | Unit tests (`node:test`, no extra dependencies) for pure logic: toast queue, offline queue, telemetry consent, search matching, UI helpers, catalog completeness. |
+| `npm run verify` | Everything: typecheck, ESLint, contrast, tokens (incl. right-to-left), i18n and tests. Run it before every commit. |
 
 ## Color
 
@@ -160,6 +163,40 @@ as a `header` prop and render it inside their own list, so the header scrolls wi
 4. Animate with Reanimated, `transform` / `opacity` only, and honour `reduceMotion`.
 5. Add it to the gallery and run `npm run check:contrast`, `npm run lint:tokens` and `npx tsc --noEmit`.
 
+## Localisation, right-to-left, analytics and first-run
+
+**Strings.** Every user-visible string lives in `src/i18n/locales/en/<namespace>.json` (one file per area, so areas never
+edit the same file) and is read with `const { t } = useTranslation('<namespace>')` from `@/i18n`. Keys are type-checked,
+so a missing key is a compile error. Use interpolation (`{{name}}`) rather than joining sentence fragments, and plural
+suffixes (`items_one` / `items_other`) with `{ count }`. Never call `t()` at module scope; outside components use
+`i18n.t('ns:key')`. Numbers and dates go through `lib/format.ts` (the phone's locale). To ship a language: add
+`src/i18n/locales/<lang>/` with the same files and list it in `src/i18n/locale.ts`; `tests/i18n-catalog.test.ts` fails
+if keys differ from English. `common` holds the shared-component defaults and `common:actions.*`.
+
+**Right-to-left.** Write styles with logical properties: `marginStart`, `paddingEnd`, `start` / `end`, `borderStartWidth`,
+`textAlign: 'auto'`. `npm run lint:tokens` rejects physical left/right. Directional icons (chevrons, arrows) use
+`directional(ltrIcon, rtlIcon)` and hand-computed horizontal offsets multiply by `directionSign()` (both in
+`@/i18n/rtl`). `hitSlopOf()` is the one helper that spells out left/right, because React Native's `Insets` has no
+start/end.
+
+**Analytics and crash reports.** `analytics` from `@/lib/telemetry` is a vendor-neutral hook: typed events
+(`src/lib/telemetry/events.ts`; properties are enums, booleans and counts, never user content), screen views (automatic,
+route path only), `captureException` (error boundary, global handler, failed queries and mutations). It is **off until
+the user opts in** (Settings > Privacy) and no vendor SDK ships: implement `TelemetryAdapter` and call
+`analytics.addAdapter(...)` to connect Sentry, Firebase or PostHog. Add new events to `events.ts` first.
+
+**First run.** New installs see onboarding (3 screens, skippable), then sign-in, then once after the first sign-in a
+permissions screen that explains notifications and biometric unlock before the system prompts appear (the app never
+triggers the notification prompt on its own at launch). `PermissionRationaleSheet` (`components/permissions`) is the
+reusable "why we need your photos / camera" sheet to show before an image picker prompt.
+
+**Search.** `/search` (opened from the Home app bar) searches notes, saved items, transactions, budgets, goals, wardrobe,
+meals, workouts, time logs and more from the data already cached on the phone, so it works offline. Matching is pure
+logic in `src/features/search/match.ts`.
+
+**Session expiry.** When the server ends the session, `useAuth().sessionExpired` is true and the sign-in screen shows
+a banner until the user signs in again.
+
 ## Rules of thumb
 
 - A new colour, size or spacing value means a new token, added in `src/theme/` with its contrast check, not a literal.
@@ -174,4 +211,4 @@ as a `header` prop and render it inside their own list, so the header scrolls wi
 | 2. Components | Done (built, typechecked and bundled; not yet exercised on a device) |
 | 3. Screens | Done: every screen migrated; 0 hard-coded colours / fonts / off-scale spacing (baseline is empty), no `Alert.alert` left |
 | 4. Motion and glass | Done (kit, transitions, per-screen motion, audit); shared-element transitions skipped; needs a device pass |
-| 5. Quality | Not started |
+| 5. Quality | Done: localisation (English catalog, 0 hard-coded strings), right-to-left styles, accessibility audit, error handling, analytics hook, onboarding, permissions, search, tests; needs a device pass |
