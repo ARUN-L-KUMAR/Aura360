@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { APP_BAR_HEIGHT, LargeTitle, TopAppBar, useCollapsingHeader, type TopAppBarProps } from '@/components/ui/app-bar';
+import { useHasHeader } from '@/components/ui/chrome';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { layout, spacing, useTheme } from '@/theme';
 
@@ -16,8 +17,10 @@ export function useScreenPadding(topInset = true, extraTop = 0) {
   const insets = useSafeAreaInsets();
   // Inside the tab navigator the tab bar already sits on the bottom safe area, so don't pad it twice.
   const inTabs = !!useContext(BottomTabBarHeightContext);
+  // A persistent header (PremiumHeader) has already taken the status-bar space.
+  const hasHeader = useHasHeader();
   return {
-    paddingTop: (topInset ? insets.top : 0) + extraTop + layout.screenPadding,
+    paddingTop: (topInset && !hasHeader ? insets.top : 0) + extraTop + layout.screenPadding,
     paddingHorizontal: layout.screenPadding,
     paddingBottom: (inTabs ? 0 : insets.bottom) + spacing.xxl,
     gap: layout.sectionGap,

@@ -244,5 +244,14 @@
     "clothingItem": "Clothing Item",
     "curatedLook": "Curated Look",
     "conversations": "Conversations"
+  },
+  "header": {
+    "brand": "Aura360",
+    "search": "Search",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, you have unread items",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "account": "Account and settings"
   }
 }

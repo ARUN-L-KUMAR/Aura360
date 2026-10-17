@@ -31,7 +31,7 @@ export function Text({ variant = 'body', weight, color, muted, numeric, style, m
   const { colors } = useTheme();
   const spec = typeScale[variant];
   const flattened = (StyleSheet.flatten(style) ?? {}) as TextStyle;
-  const isMono = flattened.fontFamily === 'monospace' || flattened.fontFamily === fontFamily.mono;
+  const isMono = flattened.fontFamily === 'monospace' || flattened.fontFamily === fontFamily.monoFallback || flattened.fontFamily === fontFamily.mono;
 
   const resolvedWeight = normalizeWeight(weight ?? flattened.fontWeight) ?? spec.weight;
   const resolvedColor = color ? (colors[color as keyof ThemeColors] ?? color) : muted ? colors.textMuted : colors.text;
@@ -48,6 +48,7 @@ export function Text({ variant = 'body', weight, color, muted, numeric, style, m
           color: resolvedColor,
           fontFamily: isMono ? fontFamily.mono : fontWeightFamily[resolvedWeight],
         },
+        variant === 'overline' ? { textTransform: 'uppercase' } : null,
         numeric ? { fontVariant: tabularNums } : null,
         style,
         // The family already carries the weight; a leftover fontWeight would fake-bold it a second time.

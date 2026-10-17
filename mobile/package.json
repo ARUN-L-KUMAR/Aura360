@@ -3,7 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/geist": "^0.4.2",
+    "@expo-google-fonts/geist-mono": "^0.4.3",
     "@expo/ui": "~57.0.22",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -67,7 +68,8 @@
     "lint:i18n": "node scripts/check-i18n.js",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
     "verify": "npm run typecheck && npm run lint && npm run check:contrast && npm run lint:tokens && npm run lint:i18n && npm test",
-    "render:art": "node scripts/render-illustrations.js"
+    "render:art": "node scripts/render-illustrations.js",
+    "preview:web": "node scripts/preview-web.js"
   },
   "private": true
 }

@@ -224,3 +224,24 @@ export function splitLayoutStyle(style: unknown): { outer: Record<string, unknow
   for (const [key, value] of Object.entries(flat)) (OUTER_LAYOUT_KEYS.has(key) ? outer : inner)[key] = value;
   return { outer, inner };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Colour blending (for gradient text)
+// ---------------------------------------------------------------------------------------------------------------
+
+function channels(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Blend two `#rrggbb` colours: `t` 0 gives `from`, 1 gives `to`. Anything that is not a 6-digit hex returns `from`. */
+export function lerpHex(from: string, to: string, t: number): string {
+  const a = channels(from);
+  const b = channels(to);
+  if (!a || !b) return from;
+  const k = Math.min(1, Math.max(0, Number.isFinite(t) ? t : 0));
+  const mix = (i: number) => Math.round(a[i] + (b[i] - a[i]) * k).toString(16).padStart(2, '0');
+  return `#${mix(0)}${mix(1)}${mix(2)}`;
+}

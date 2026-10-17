@@ -216,6 +216,32 @@ row per variant) with no phone needed. Look at the PNG after every change.
 percentages). Geometry lives in `features/viz/geometry.ts` and is unit-tested. Charts draw their final state at once under
 reduce-motion. They do not mirror in right-to-left layouts yet.
 
+## Previewing screens
+
+`npm run preview:web` renders the real screens with sample data through react-native-web in headless Chrome and writes
+phone-sized PNGs (390 x 844 CSS px at 2x) to `.preview/screens/<screen>-<scheme>.png` (git-ignored). Needs Google Chrome
+(`CHROME_PATH` if it is somewhere unusual); installs nothing.
+
+```
+npm run preview:web                                  every default screen, dark
+npm run preview:web -- home finance --scheme light   some screens (names or route fragments), light
+npm run preview:web -- fitness --scheme both --height 1800   both schemes, a long screen
+npm run preview:web -- /finance/budget               any route path
+```
+
+Options: `--scheme light|dark|both`, `--height` / `--width` (CSS px), `--wait 15000`, `--skip-export` (reuse the last export in
+`.preview/web`), `--logs` (print page console output when a screen is blank).
+
+How it works: the script runs `expo export --platform web` with `EXPO_PUBLIC_PREVIEW=1`. That flag (`src/preview/flag.ts`) is
+inlined at build time, so a normal build contains none of the preview behaviour. In a preview build the app starts signed in as
+"Arun", skips onboarding, the permissions screen, the biometric lock and the animated splash, takes the scheme from `?scheme=`,
+and answers every `/api/...` call from sample data (`src/preview/seed*.ts`, dates relative to today) by wrapping `fetch`
+(`src/preview/mock-api.ts`). Writes succeed but change nothing; a route the sample data does not cover shows its normal error
+state. Chrome runs with reduced motion on, so count-ups, rings and charts are drawn in their final state (headless Chrome does not
+finish animation-frame animations under its virtual clock); light/dark and layout are otherwise the real thing. Add or change
+sample data in `src/preview/seed-*.ts`, keeping the same shapes as the feature `types.ts`. Photos are not available offline, so
+fashion, saved and note thumbnails show their placeholders.
+
 ## Rules of thumb
 
 - A new colour, size or spacing value means a new token, added in `src/theme/` with its contrast check, not a literal.
