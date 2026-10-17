@@ -6,13 +6,14 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AUTH_FORM_MAX_WIDTH } from '@/components/auth-form-parts';
-import { IconDisc } from '@/components/onboarding/icon-disc';
-import { Button, type IconName } from '@/components/ui/button';
+import { Illustration } from '@/components/illustrations/illustration';
+import { Button } from '@/components/ui/button';
 import { useBlockMotion } from '@/components/ui/motion';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { markPermissionsPrompted } from '@/features/onboarding/storage';
 import { useTranslation } from '@/i18n';
+import type { SceneName } from '@/illustrations/registry';
 import { haptics } from '@/lib/haptics';
 import { isNotificationsSupported, notificationService } from '@/lib/notifications';
 import { registerForServerPush } from '@/lib/push';
@@ -25,7 +26,8 @@ type StepKey = PermissionStep | 'done';
 /** ask: the explanation. working: the system prompt is up. granted / denied: the outcome, with a way forward. */
 type Phase = 'ask' | 'working' | 'granted' | 'denied';
 
-const HERO = spacing.xxxl * 2 + spacing.xl; // 120
+const HERO = spacing.xxxl * 2 + spacing.xl; // 120, the success check
+const ART_HEIGHT = spacing.xxxl * 4; // 192, the permission artwork
 const HOME = '/' as Href;
 
 /**
@@ -37,7 +39,7 @@ export default function PermissionsScreen() {
   const router = useRouter();
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isAvailable, isEnabled, biometricLabel, biometricType, toggleBiometrics } = useBiometrics();
+  const { isAvailable, isEnabled, biometricLabel, toggleBiometrics } = useBiometrics();
 
   // Biometrics are offered only when the phone has them set up and they are not on already. Once this screen turns
   // them on, keep the step in the list so the "Step 2 of 2" counter does not change under the user.
@@ -112,23 +114,20 @@ export default function PermissionsScreen() {
     }
   }, [stepKey, t]);
 
-  const biometricIcon: IconName =
-    biometricType === 'face' ? 'scan-outline' : biometricType === 'fingerprint' ? 'finger-print-outline' : 'shield-checkmark-outline';
-
   const content = (() => {
     if (stepKey === 'done') {
-      return { icon: 'checkmark' as IconName, accent: 'ai' as ModuleKey, title: t('done.title'), body: t('done.body') };
+      return { scene: 'permissions-biometrics' as SceneName, accent: 'ai' as ModuleKey, title: t('done.title'), body: t('done.body') };
     }
     if (stepKey === 'notifications') {
       return {
-        icon: 'notifications-outline' as IconName,
+        scene: 'permissions-notifications' as SceneName,
         accent: 'time' as ModuleKey,
         title: t('notifications.title'),
         body: t('notifications.reason'),
       };
     }
     return {
-      icon: biometricIcon,
+      scene: 'permissions-biometrics' as SceneName,
       accent: 'ai' as ModuleKey,
       title: t('biometrics.title', { method: biometricLabel }),
       body: t('biometrics.reason', { method: biometricLabel }),
@@ -170,7 +169,7 @@ export default function PermissionsScreen() {
           {stepKey === 'done' || phase === 'granted' ? (
             <SuccessCheck size={HERO} accessibilityLabel={null} />
           ) : (
-            <IconDisc icon={content.icon} size={HERO} accent={content.accent} />
+            <Illustration scene={content.scene} accent={content.accent} height={ART_HEIGHT} />
           )}
 
           <View style={styles.copy}>

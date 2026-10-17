@@ -3,11 +3,14 @@ import { type ComponentProps, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { Illustration } from '@/components/illustrations/illustration';
 import { Button } from '@/components/ui/button';
+import { accentForScene, sceneForEmptyState } from '@/components/ui/empty-scenes';
 import { withAlpha } from '@/components/ui/logic';
 import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import { useTranslation } from '@/i18n';
+import type { SceneName } from '@/illustrations/registry';
 import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -25,8 +28,13 @@ export interface EmptyStateProps {
   /** empty (default), noResults (search / filters matched nothing) or offline. Sets default icon and copy. */
   variant?: EmptyStateVariant;
   icon?: IconName;
-  /** Replaces the icon with your own artwork. */
+  /** Replaces the icon with your own artwork (wins over `scene`). */
   illustration?: ReactNode;
+  /**
+   * Spot illustration shown above the title. Left out, one is picked from the variant (noResults, offline) or from
+   * `icon` (see empty-scenes.ts). Pass `null` to keep the plain icon tile.
+   */
+  scene?: SceneName | null;
   title?: string;
   description?: string;
   /** Primary action. */
@@ -45,10 +53,14 @@ export interface EmptyStateProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/** Height of the spot illustration; its width follows the scene's aspect ratio. */
+const ART_HEIGHT = spacing.xxxl * 3;
+
 export function EmptyState({
   variant = 'empty',
   icon,
   illustration,
+  scene,
   title,
   description,
   actionTitle,
@@ -68,6 +80,7 @@ export function EmptyState({
   const iconColor = a ? a.text : (color ?? colors.textSecondary);
   const tile = a ? a.soft : color ? withAlpha(color, 0.12) : colors.cardMuted;
 
+  const artScene = illustration ? undefined : scene === null ? undefined : (scene ?? sceneForEmptyState(variant, icon));
   const heading = title ?? t(`emptyState.${variant}.title`);
   // The plain "empty" variant has a headline only; the other two explain what to do next.
   const body = description ?? (variant === 'empty' ? undefined : t(`emptyState.${variant}.description`));
@@ -91,7 +104,9 @@ export function EmptyState({
     <Animated.View
       {...motion}
       style={[{ alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl }, style]}>
-      {illustration ?? (
+      {illustration ?? (artScene ? (
+        <Illustration scene={artScene} accent={accent ?? accentForScene(artScene)} height={ART_HEIGHT} style={{ marginBottom: spacing.xs }} />
+      ) : (
         <View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
@@ -106,7 +121,7 @@ export function EmptyState({
           }}>
           <Ionicons name={icon ?? PRESET_ICONS[variant]} size={32} color={iconColor} />
         </View>
-      )}
+      ))}
 
       <Text variant="title" accessibilityRole="header" style={{ textAlign: 'center' }}>
         {heading}
