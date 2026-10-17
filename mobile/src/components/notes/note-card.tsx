@@ -13,6 +13,8 @@ import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { checklistOf, type Note } from '@/features/notes/types';
+import { useTranslation } from '@/i18n';
+import { directional, isRTL } from '@/i18n/rtl';
 import { formatDay } from '@/lib/format';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -35,7 +37,10 @@ type Props = {
   onToggleItem: (note: Note, itemId: string) => void;
 };
 
+/** Minimum width of one swipe action; wider labels (large text, longer translations) grow it. */
 const ACTION_WIDTH = spacing.xxxl + spacing.xl; // 72
+
+type SwipeMethods = { close: () => void };
 
 function SwipeAction({ label, icon, background, foreground, onPress }: { label: string; icon: IconName; background: string; foreground: string; onPress: () => void }) {
   return (
@@ -47,7 +52,7 @@ function SwipeAction({ label, icon, background, foreground, onPress }: { label: 
       focusRing={false}
       hitSlop={0}
       onPress={onPress}
-      style={{ width: ACTION_WIDTH, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: background }}>
+      style={{ minWidth: ACTION_WIDTH, paddingHorizontal: spacing.sm, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: background }}>
       <Ionicons name={icon} size={22} color={foreground} />
       <Text variant="caption" weight="semiBold" style={{ color: foreground }}>
         {label}
@@ -57,11 +62,16 @@ function SwipeAction({ label, icon, background, foreground, onPress }: { label: 
 }
 
 /**
- * One note, as a list row (swipe left for archive / delete, swipe right to pin) or a grid tile. Swiping is a shortcut:
- * every action is also in the "more" sheet, on long press, and in the screen reader's actions menu.
+ * One note, as a list row or a grid tile. In a list, a swipe towards the end of the line (left in LTR) reveals archive and
+ * delete, and a swipe towards the start (right in LTR) reveals pin. Swiping is a shortcut: every action is also in the
+ * "more" sheet, on long press, and in the screen reader's actions menu.
+ *
+ * RTL: `ReanimatedSwipeable` is physical (`renderLeftActions` is what a drag to the right reveals, and it already mirrors
+ * its own action row), so the two groups are swapped in RTL to keep "pin" on the leading side.
  */
 export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTogglePin, onToggleArchive, onDelete, onMenu, onToggleItem }: Props) {
   const router = useRouter();
+  const { t } = useTranslation('notes');
   const { colors, accent } = useTheme();
   const a = accent('notes');
   const grid = mode === 'grid';
@@ -77,13 +87,15 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
   const shownTags = tags.slice(0, grid ? 2 : 4);
 
   const open = useCallback(() => openNote(router, note), [router, note]);
-  const meta = [formatDay(note.updatedAt), checklist ? `${done} of ${checklist.length} done` : null].filter(Boolean).join(' · ');
+  const date = formatDay(note.updatedAt);
+  const meta = checklist ? t('card.metaChecklist', { date, done, total: checklist.length }) : t('card.meta', { date });
+  const labelKind = pinned ? (archived ? 'pinnedArchived' : 'pinned') : archived ? 'archived' : 'plain';
 
   const accessibilityActions = [
-    { name: 'pin', label: pinned ? 'Unpin' : 'Pin to top' },
-    { name: 'archive', label: archived ? 'Restore from archive' : 'Archive' },
-    { name: 'delete', label: 'Delete' },
-    { name: 'more', label: 'More options' },
+    { name: 'pin', label: pinned ? t('action.unpin') : t('action.pin') },
+    { name: 'archive', label: archived ? t('action.restore') : t('action.archive') },
+    { name: 'delete', label: t('action.delete') },
+    { name: 'more', label: t('action.more') },
   ];
   const onAccessibilityAction = (event: AccessibilityActionEvent) => {
     switch (event.nativeEvent.actionName) {
@@ -103,8 +115,8 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs }}>
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={[note.title, pinned ? 'pinned' : null, archived ? 'archived' : null, meta].filter(Boolean).join(', ')}
-          accessibilityHint="Opens the note. More actions are available."
+          accessibilityLabel={t(`card.label.${labelKind}`, { title: note.title, meta })}
+          accessibilityHint={t('card.hint')}
           accessibilityActions={accessibilityActions}
           onAccessibilityAction={onAccessibilityAction}
           scaleTo={1}
@@ -122,8 +134,16 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
             {meta}
           </Text>
         </PressableScale>
-        {grid ? null : <IconButton size="sm" icon={pinned ? 'pin' : 'pin-outline'} accessibilityLabel={pinned ? 'Unpin note' : 'Pin note'} selected={pinned} onPress={() => onTogglePin(note)} />}
-        <IconButton size="sm" icon="ellipsis-horizontal" accessibilityLabel="More options" onPress={() => onMenu(note)} />
+        {grid ? null : (
+          <IconButton
+            size="sm"
+            icon={pinned ? 'pin' : 'pin-outline'}
+            accessibilityLabel={pinned ? t('card.unpinNote', { title: note.title }) : t('card.pinNote', { title: note.title })}
+            selected={pinned}
+            onPress={() => onTogglePin(note)}
+          />
+        )}
+        <IconButton size="sm" icon="ellipsis-horizontal" accessibilityLabel={t('card.moreOptions', { title: note.title })} onPress={() => onMenu(note)} />
       </View>
 
       {checklist ? (
@@ -152,7 +172,7 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
           ))}
           {checklist.length > shown.length ? (
             <Text variant="caption" color="textSecondary">
-              + {checklist.length - shown.length} more {checklist.length - shown.length === 1 ? 'item' : 'items'}
+              {t('card.moreItems', { count: checklist.length - shown.length })}
             </Text>
           ) : null}
         </View>
@@ -170,7 +190,7 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
           {shownTags.map((tag) => (
             <Tag key={tag} label={`#${tag}`} tone="neutral" />
           ))}
-          {tags.length > shownTags.length ? <Tag label={`+${tags.length - shownTags.length}`} tone="neutral" /> : null}
+          {tags.length > shownTags.length ? <Tag label={t('card.moreTags', { count: tags.length - shownTags.length })} tone="neutral" /> : null}
         </View>
       ) : null}
     </Card>
@@ -185,6 +205,49 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
     );
   }
 
+  const leadingActions = (methods: SwipeMethods) => (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row' }}>
+      <SwipeAction
+        label={pinned ? t('swipe.unpin') : t('swipe.pin')}
+        icon={pinned ? 'pin-outline' : 'pin'}
+        background={a.solid}
+        foreground={a.onSolid}
+        onPress={() => {
+          methods.close();
+          onTogglePin(note);
+        }}
+      />
+    </View>
+  );
+
+  const trailingActions = (methods: SwipeMethods) => (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row' }}>
+      <SwipeAction
+        label={archived ? t('swipe.restore') : t('swipe.archive')}
+        icon={archived ? directional('arrow-undo-outline', 'arrow-redo-outline') : 'archive-outline'}
+        background={colors.secondary}
+        foreground={colors.secondaryText}
+        onPress={() => {
+          methods.close();
+          onToggleArchive(note);
+        }}
+      />
+      <SwipeAction
+        label={t('swipe.delete')}
+        icon="trash-outline"
+        background={colors.error}
+        foreground={colors.onError}
+        onPress={() => {
+          methods.close();
+          onDelete(note);
+        }}
+      />
+    </View>
+  );
+
+  // The swipeable's "left" and "right" are physical, so in RTL the leading (pin) group goes on the right.
+  const rtl = isRTL();
+
   return (
     <Animated.View entering={entering} exiting={exiting}>
       <ReanimatedSwipeable
@@ -192,44 +255,8 @@ export const NoteCard = memo(function NoteCard({ note, layout: mode, index, onTo
         overshootLeft={false}
         overshootRight={false}
         containerStyle={{ borderRadius: radius.lg, overflow: 'hidden' }}
-        renderLeftActions={(_progress, _translation, methods) => (
-          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row' }}>
-            <SwipeAction
-              label={pinned ? 'Unpin' : 'Pin'}
-              icon={pinned ? 'pin-outline' : 'pin'}
-              background={a.solid}
-              foreground={a.onSolid}
-              onPress={() => {
-                methods.close();
-                onTogglePin(note);
-              }}
-            />
-          </View>
-        )}
-        renderRightActions={(_progress, _translation, methods) => (
-          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row' }}>
-            <SwipeAction
-              label={archived ? 'Restore' : 'Archive'}
-              icon={archived ? 'arrow-undo-outline' : 'archive-outline'}
-              background={colors.secondary}
-              foreground={colors.secondaryText}
-              onPress={() => {
-                methods.close();
-                onToggleArchive(note);
-              }}
-            />
-            <SwipeAction
-              label="Delete"
-              icon="trash-outline"
-              background={colors.error}
-              foreground={colors.onError}
-              onPress={() => {
-                methods.close();
-                onDelete(note);
-              }}
-            />
-          </View>
-        )}>
+        renderLeftActions={(_progress, _translation, methods) => (rtl ? trailingActions(methods) : leadingActions(methods))}
+        renderRightActions={(_progress, _translation, methods) => (rtl ? leadingActions(methods) : trailingActions(methods))}>
         {card}
       </ReanimatedSwipeable>
     </Animated.View>

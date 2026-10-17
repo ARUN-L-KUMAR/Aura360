@@ -29,6 +29,10 @@ type Props<T> = {
   /** Floating action button. */
   fab?: ReactNode;
   extraData?: unknown;
+  /** Rows rendered on the first pass (default 8; a grid needs fewer because each row holds several tiles). */
+  initialNumToRender?: number;
+  /** Viewport multiples kept rendered (default 9). */
+  windowSize?: number;
 };
 
 /**
@@ -36,7 +40,7 @@ type Props<T> = {
  * pull-to-refresh, but the content is a FlatList instead of a ScrollView. In a single column the rows reflow smoothly
  * when one leaves; rows add their own enter / exit motion with `useListMotion`.
  */
-export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, extraData }: Props<T>) {
+export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, extraData, initialNumToRender = 8, windowSize = 9 }: Props<T>) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + APP_BAR_HEIGHT;
@@ -73,8 +77,9 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
         onScroll={scrollHandler}
         scrollIndicatorInsets={{ top: headerHeight }}
         contentContainerStyle={[padding, { gap: layout.itemGap, paddingBottom: padding.paddingBottom + FAB_CLEARANCE }]}
-        initialNumToRender={8}
-        windowSize={9}
+        initialNumToRender={initialNumToRender}
+        windowSize={windowSize}
+        maxToRenderPerBatch={initialNumToRender}
       />
       {fab}
       <TopAppBar title={title} scrollY={scrollY} large />

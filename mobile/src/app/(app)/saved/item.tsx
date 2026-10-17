@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Linking, View, type TextInput } from 'react-native';
 
+import { friendlyError } from '@/components/notes/friendly-error';
 import { Thumbnail } from '@/components/notes/thumbnail';
 import { ToggleRow } from '@/components/notes/toggle-row';
 import { Button } from '@/components/ui/button';
@@ -13,8 +14,10 @@ import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { parseTags } from '@/features/notes/types';
 import { useDeleteSavedItem, useSaveSavedItem } from '@/features/saved/hooks';
-import { SAVED_TYPES, hostOf, type SavedItem, type SavedType } from '@/features/saved/types';
+import { SAVED_TYPES, hostOf, isSavedType, type SavedItem, type SavedType } from '@/features/saved/types';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
 
@@ -31,6 +34,7 @@ const URL_PATTERN = /^https?:\/\/\S+$/i;
 export default function SavedItemScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('saved');
   const params = useLocalSearchParams<{ item?: string }>();
   const existing = useMemo(() => parseItem(params.item), [params.item]);
 
@@ -48,9 +52,11 @@ export default function SavedItemScreen() {
   const { mutateAsync: deleteItem, isPending: deleting } = useDeleteSavedItem();
 
   const cleanUrl = url.trim();
-  const titleError = showProblems && !title.trim() ? 'Give it a title.' : null;
-  const urlError = showProblems && cleanUrl && !URL_PATTERN.test(cleanUrl) ? 'The link must start with http:// or https://' : null;
+  const titleError = showProblems && !title.trim() ? t('item.titleField.error') : null;
+  const urlError = showProblems && cleanUrl && !URL_PATTERN.test(cleanUrl) ? t('item.url.error') : null;
   const host = hostOf(existing?.url ?? null);
+
+  const fail = (e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline')));
 
   async function submit() {
     if (!title.trim() || (cleanUrl && !URL_PATTERN.test(cleanUrl))) {
@@ -71,23 +77,25 @@ export default function SavedItemScreen() {
           isFavorite,
         },
       });
-      notify.success(existing ? 'Changes saved' : 'Added to saved');
+      if (!existing) analytics.track('link_saved');
+      notify.success(existing ? t('item.toast.saved') : t('item.toast.created'));
       router.back();
     } catch (e) {
-      notify.error(e);
+      fail(e, t('errors.save'));
     }
   }
 
   async function confirmDelete() {
     if (!existing) return;
-    const ok = await notify.confirm({ title: 'Delete this item?', message: existing.title, confirmLabel: 'Delete', destructive: true });
+    const ok = await notify.confirm({ title: t('item.confirmDelete.title'), message: existing.title, confirmLabel: t('item.confirmDelete.confirm'), destructive: true });
     if (!ok) return;
     try {
       await deleteItem(existing.id);
-      notify.success('Item deleted');
+      analytics.track('link_removed');
+      notify.success(t('item.toast.deleted'));
       router.back();
     } catch (e) {
-      notify.error(e);
+      fail(e, t('errors.removeFromDetails'));
     }
   }
 
@@ -96,7 +104,7 @@ export default function SavedItemScreen() {
     try {
       await Linking.openURL(existing.url);
     } catch {
-      notify.error("Can't open this link.");
+      notify.error(t('errors.openLink'));
     }
   }
 
@@ -104,15 +112,15 @@ export default function SavedItemScreen() {
     if (!existing?.url) return;
     try {
       await Clipboard.setStringAsync(existing.url);
-      notify.success('Link copied');
+      notify.success(t('item.copied'));
     } catch {
-      notify.error("Couldn't copy the link.");
+      notify.error(t('errors.copyLink'));
     }
   }
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Saved item' : 'Add saved item' }} />
+      <Stack.Screen options={{ title: existing ? t('item.titleEdit') : t('item.titleNew') }} />
 
       {existing ? (
         <Card padding="none" style={{ overflow: 'hidden' }}>
@@ -124,16 +132,16 @@ export default function SavedItemScreen() {
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
                 {host ? <Tag label={host} accent="saved" icon="link-outline" /> : null}
-                <Tag label={SAVED_TYPES.find((t) => t.value === existing.type)?.label ?? 'Other'} tone="neutral" />
+                <Tag label={t(`type.${isSavedType(existing.type) ? existing.type : 'other'}`)} tone="neutral" />
               </View>
             </View>
             {existing.url ? (
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Button title="Open link" size="sm" leftIcon="open-outline" onPress={openLink} />
+                  <Button title={t('item.open')} size="sm" leftIcon="open-outline" onPress={openLink} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Button title="Copy link" size="sm" variant="secondary" leftIcon="copy-outline" onPress={copyLink} />
+                  <Button title={t('item.copy')} size="sm" variant="secondary" leftIcon="copy-outline" onPress={copyLink} />
                 </View>
               </View>
             ) : null}
@@ -142,23 +150,23 @@ export default function SavedItemScreen() {
       ) : null}
 
       <View style={{ gap: spacing.sm }}>
-        <Text variant="label" color="textSecondary">
-          Type
+        <Text variant="label" color="textSecondary" accessibilityRole="header">
+          {t('item.type')}
         </Text>
         <ChipGroup>
           {SAVED_TYPES.map((option) => (
-            <Chip key={option.value} label={option.label} accent="saved" selected={type === option.value} onPress={() => setType(option.value)} />
+            <Chip key={option} label={t(`type.${option}`)} accent="saved" selected={type === option} onPress={() => setType(option)} />
           ))}
         </ChipGroup>
       </View>
 
       <View style={{ gap: spacing.lg }}>
         <Input
-          label="Title"
+          label={t('item.titleField.label')}
           value={title}
           onChangeText={setTitle}
           error={titleError}
-          placeholder="Title or headline"
+          placeholder={t('item.titleField.placeholder')}
           autoFocus={!existing}
           autoCapitalize="sentences"
           returnKeyType="next"
@@ -166,11 +174,11 @@ export default function SavedItemScreen() {
         />
         <Input
           ref={urlRef}
-          label="Link (optional)"
+          label={t('item.url.label')}
           value={url}
           onChangeText={setUrl}
           error={urlError}
-          placeholder="https://…"
+          placeholder={t('item.url.placeholder')}
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="off"
@@ -182,19 +190,19 @@ export default function SavedItemScreen() {
         />
         <Input
           ref={descriptionRef}
-          label="Description (optional)"
+          label={t('item.description.label')}
           value={description}
           onChangeText={setDescription}
           multiline
-          placeholder="Key takeaways, highlights…"
+          placeholder={t('item.description.placeholder')}
           style={{ minHeight: spacing.xxxl * 2 }}
         />
         <Input
-          label="Tags (optional)"
-          helper="Separate tags with commas."
+          label={t('item.tags.label')}
+          helper={t('item.tags.helper')}
           value={tagsText}
           onChangeText={setTagsText}
-          placeholder="tech, reading, design"
+          placeholder={t('item.tags.placeholder')}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="done"
@@ -202,12 +210,19 @@ export default function SavedItemScreen() {
       </View>
 
       <Card padding="sm">
-        <ToggleRow accent="saved" icon={isFavorite ? 'heart' : 'heart-outline'} label="Favourite" description="Show it under Favourites." value={isFavorite} onChange={setIsFavorite} />
+        <ToggleRow
+          accent="saved"
+          icon={isFavorite ? 'heart' : 'heart-outline'}
+          label={t('item.favourite.label')}
+          description={t('item.favourite.description')}
+          value={isFavorite}
+          onChange={setIsFavorite}
+        />
       </Card>
 
       <View style={{ gap: spacing.sm }}>
-        <Button title={existing ? 'Save changes' : 'Add to saved'} leftIcon="checkmark" onPress={submit} loading={saving} />
-        {existing ? <Button title="Delete item" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={deleting} /> : null}
+        <Button title={existing ? t('item.save') : t('item.create')} leftIcon="checkmark" onPress={submit} loading={saving} />
+        {existing ? <Button title={t('item.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={deleting} /> : null}
       </View>
     </Screen>
   );

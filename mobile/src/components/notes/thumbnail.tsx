@@ -18,15 +18,22 @@ export function Thumbnail({ uri, aspectRatio = 16 / 9 }: { uri: string; aspectRa
   return (
     <View
       onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
+      // Decorative: the title next to the picture says what the item is.
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={{ aspectRatio, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       {state === 'loading' && height > 0 ? <Skeleton rounded={0} height={height} style={StyleSheet.absoluteFill} /> : null}
       {state === 'failed' ? (
-        <Ionicons name="image-outline" size={32} color={colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+        <Ionicons name="image-outline" size={32} color={colors.textMuted} />
       ) : (
         <Image
           source={{ uri }}
-          style={StyleSheet.absoluteFill}
+          recyclingKey={uri}
+          style={{ width: '100%', aspectRatio }}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          accessible={false}
           transition={reduceMotion ? 0 : duration.fast}
           onLoad={() => setState('ready')}
           onError={() => setState('failed')}

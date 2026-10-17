@@ -6,6 +6,7 @@ import Animated from 'react-native-reanimated';
 import { ActionSheet, type SheetAction } from '@/components/notes/action-sheet';
 import { CollapsingList } from '@/components/notes/collapsing-list';
 import { EmptyHero } from '@/components/notes/empty-hero';
+import { friendlyError } from '@/components/notes/friendly-error';
 import { Thumbnail } from '@/components/notes/thumbnail';
 import { useUndoableRemove } from '@/components/notes/use-undoable-remove';
 import { Card } from '@/components/ui/card';
@@ -21,18 +22,21 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteSavedItem, useSavedItems, useToggleFavorite } from '@/features/saved/hooks';
 import { SAVED_TYPES, hostOf, type SavedItem } from '@/features/saved/types';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing } from '@/theme';
 
 type Filter = 'all' | 'favorites' | SavedItem['type'];
 
-const typeLabel = (type: SavedItem['type']) => SAVED_TYPES.find((t) => t.value === type)?.label ?? 'Other';
+const keyOf = (item: SavedItem) => item.id;
 
 export default function SavedScreen() {
   const router = useRouter();
   const notify = useNotify();
-  const { data, isPending, isError, error, refetch } = useSavedItems();
+  const { t } = useTranslation('saved');
+  const { data, isPending, isError, error, refetch, isRefetching } = useSavedItems();
   const { mutate: setFavorite } = useToggleFavorite();
   const { mutateAsync: deleteItem } = useDeleteSavedItem();
   const [filter, setFilter] = useState<Filter>('all');
@@ -40,7 +44,18 @@ export default function SavedScreen() {
   const [menuItem, setMenuItem] = useState<SavedItem | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { hiddenIds, remove } = useUndoableRemove({ commit: deleteItem, message: 'Removed from saved' });
+  /** A friendly toast for a failed action: offline copy when the server was unreachable, never raw server text. */
+  const fail = useCallback((e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline'))), [notify, t]);
+
+  const { hiddenIds, remove } = useUndoableRemove({
+    commit: async (id) => {
+      await deleteItem(id);
+      analytics.track('link_removed');
+    },
+    message: t('toast.removed'),
+    undoLabel: t('toast.undo'),
+    onError: (e) => fail(e, t('errors.remove')),
+  });
 
   const items = useMemo(() => (data ?? []).filter((item) => !hiddenIds.has(item.id)), [data, hiddenIds]);
 
@@ -71,14 +86,14 @@ export default function SavedScreen() {
   const open = useCallback(
     (item: SavedItem) => {
       if (!item.url) return edit(item);
-      Linking.openURL(item.url).catch(() => notify.error("Can't open this link."));
+      Linking.openURL(item.url).catch(() => notify.error(t('errors.openLink')));
     },
-    [edit, notify],
+    [edit, notify, t],
   );
 
   const toggleFavorite = useCallback(
-    (item: SavedItem) => setFavorite({ id: item.id, isFavorite: !item.isFavorite }, { onError: (e) => notify.error(e) }),
-    [setFavorite, notify],
+    (item: SavedItem) => setFavorite({ id: item.id, isFavorite: !item.isFavorite }, { onError: (e) => fail(e, t('errors.favourite')) }),
+    [setFavorite, fail, t],
   );
 
   const removeWithUndo = useCallback((item: SavedItem) => remove(item.id), [remove]);
@@ -92,12 +107,17 @@ export default function SavedScreen() {
   const menuActions = useMemo<SheetAction[]>(() => {
     if (!menuItem) return [];
     return [
-      ...(menuItem.url ? [{ key: 'open', label: 'Open link', icon: 'open-outline' as const, onPress: () => open(menuItem) }] : []),
-      { key: 'edit', label: 'Edit details', icon: 'create-outline', onPress: () => edit(menuItem) },
-      { key: 'favorite', label: menuItem.isFavorite ? 'Remove from favourites' : 'Add to favourites', icon: menuItem.isFavorite ? 'heart-dislike-outline' : 'heart-outline', onPress: () => toggleFavorite(menuItem) },
-      { key: 'remove', label: 'Remove', icon: 'trash-outline', destructive: true, onPress: () => removeWithUndo(menuItem) },
+      ...(menuItem.url ? [{ key: 'open', label: t('action.open'), icon: 'open-outline' as const, onPress: () => open(menuItem) }] : []),
+      { key: 'edit', label: t('action.edit'), icon: 'create-outline', onPress: () => edit(menuItem) },
+      {
+        key: 'favorite',
+        label: menuItem.isFavorite ? t('action.unfavourite') : t('action.favourite'),
+        icon: menuItem.isFavorite ? 'heart-dislike-outline' : 'heart-outline',
+        onPress: () => toggleFavorite(menuItem),
+      },
+      { key: 'remove', label: t('action.remove'), icon: 'trash-outline', destructive: true, onPress: () => removeWithUndo(menuItem) },
     ];
-  }, [menuItem, open, edit, toggleFavorite, removeWithUndo]);
+  }, [menuItem, t, open, edit, toggleFavorite, removeWithUndo]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: SavedItem; index: number }) => (
@@ -111,16 +131,32 @@ export default function SavedScreen() {
     setSearch('');
   };
 
+  // Refreshing failed but there is something to show: say so in a row above the list instead of replacing it.
+  const refreshFailed = isError && !!data;
+
   const header = (
     <View style={{ gap: spacing.md }}>
-      <SearchBar placeholder="Search saved items" value={search} onChangeText={setSearch} debounceMs={200} />
+      <SearchBar placeholder={t('search.placeholder')} accessibilityLabel={t('search.placeholder')} value={search} onChangeText={setSearch} debounceMs={200} />
       <ChipRow>
-        <Chip label="All" accent="saved" count={counts.all} selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Chip label="Favourites" accent="saved" count={counts.favorites} selected={filter === 'favorites'} onPress={() => setFilter('favorites')} />
+        <Chip label={t('filter.all')} accent="saved" count={counts.all} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Chip label={t('filter.favourites')} accent="saved" count={counts.favorites} selected={filter === 'favorites'} onPress={() => setFilter('favorites')} />
         {SAVED_TYPES.map((type) => (
-          <Chip key={type.value} label={type.label} accent="saved" count={counts.byType.get(type.value) ?? 0} selected={filter === type.value} onPress={() => setFilter(type.value)} />
+          <Chip key={type} label={t(`type.${type}`)} accent="saved" count={counts.byType.get(type) ?? 0} selected={filter === type} onPress={() => setFilter(type)} />
         ))}
       </ChipRow>
+
+      {refreshFailed ? (
+        <ErrorState size="inline" error={error} title={t('refreshError.title')} message={t('refreshError.message')} retrying={isRefetching} onRetry={() => refetch()} />
+      ) : null}
+
+      {/* Announces how many items match when a search or filter changes. */}
+      {filtering && visible.length > 0 ? (
+        <View accessible accessibilityLiveRegion="polite">
+          <Text variant="caption" color="textSecondary">
+            {t('results', { count: visible.length })}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -133,17 +169,17 @@ export default function SavedScreen() {
       </View>
     );
   } else if (isError && !data) {
-    empty = <ErrorState error={error} onRetry={() => refetch()} />;
+    empty = <ErrorState error={error} retrying={isRefetching} onRetry={() => refetch()} />;
   } else if (filtering) {
-    empty = <EmptyState variant="noResults" accent="saved" title="No matching items" description="Try a different search or another filter." onClearFilters={clearFilters} />;
+    empty = <EmptyState variant="noResults" accent="saved" title={t('empty.noMatchTitle')} description={t('empty.noMatchDescription')} onClearFilters={clearFilters} />;
   } else {
     empty = (
       <EmptyHero
         accent="saved"
         icon="bookmark-outline"
-        title="Nothing saved yet"
-        description="Keep articles, videos, recipes and products to come back to later."
-        actionTitle="Save a link"
+        title={t('empty.title')}
+        description={t('empty.description')}
+        actionTitle={t('empty.action')}
         onAction={() => router.push('/saved/add')}
       />
     );
@@ -152,14 +188,14 @@ export default function SavedScreen() {
   return (
     <>
       <CollapsingList<SavedItem>
-        title="Saved items"
+        title={t('title')}
         data={visible}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyOf}
         header={header}
         empty={empty}
         onRefresh={() => refetch()}
-        fab={<FloatingAction accent="saved" accessibilityLabel="Save a link" onPress={() => router.push('/saved/add')} />}
+        fab={<FloatingAction accent="saved" accessibilityLabel={t('fab')} onPress={() => router.push('/saved/add')} />}
       />
       <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={menuItem?.title} actions={menuActions} />
     </>
@@ -177,18 +213,21 @@ type CardProps = {
 };
 
 const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorite, onMenu, onRemove, onEdit }: CardProps) {
+  const { t } = useTranslation('saved');
   // Enter + exit live on the row; the list animates the reflow on the FlatList cell.
   const { entering, exiting } = useListMotion(index);
   const host = hostOf(item.url);
   const favorite = !!item.isFavorite;
   const tags = item.tags ?? [];
   const shownTags = tags.slice(0, 4);
+  const type = t(`type.${item.type}`);
+  const labelKind = host ? (favorite ? 'hostFavourite' : 'host') : favorite ? 'favourite' : 'plain';
 
   const accessibilityActions = [
-    { name: 'favorite', label: favorite ? 'Remove from favourites' : 'Add to favourites' },
-    { name: 'edit', label: 'Edit details' },
-    { name: 'remove', label: 'Remove' },
-    { name: 'more', label: 'More options' },
+    { name: 'favorite', label: favorite ? t('action.unfavourite') : t('action.favourite') },
+    { name: 'edit', label: t('action.edit') },
+    { name: 'remove', label: t('action.remove') },
+    { name: 'more', label: t('action.more') },
   ];
   const onAccessibilityAction = (event: AccessibilityActionEvent) => {
     switch (event.nativeEvent.actionName) {
@@ -215,8 +254,8 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs }}>
             <PressableScale
               accessibilityRole="button"
-              accessibilityLabel={[item.title, typeLabel(item.type), host, favorite ? 'favourite' : null].filter(Boolean).join(', ')}
-              accessibilityHint={item.url ? 'Opens the link. More actions are available.' : 'Opens the details. More actions are available.'}
+              accessibilityLabel={t(`card.label.${labelKind}`, { title: item.title, type, host: host ?? '' })}
+              accessibilityHint={item.url ? t('card.hintLink') : t('card.hintDetails')}
               accessibilityActions={accessibilityActions}
               onAccessibilityAction={onAccessibilityAction}
               scaleTo={1}
@@ -229,17 +268,17 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
                 {host ? <Tag label={host} accent="saved" icon="link-outline" /> : null}
-                <Tag label={typeLabel(item.type)} tone="neutral" />
+                <Tag label={type} tone="neutral" />
               </View>
             </PressableScale>
             <IconButton
               size="sm"
               icon={favorite ? 'heart' : 'heart-outline'}
-              accessibilityLabel={favorite ? 'Remove from favourites' : 'Add to favourites'}
+              accessibilityLabel={favorite ? t('card.unfavouriteItem', { title: item.title }) : t('card.favouriteItem', { title: item.title })}
               selected={favorite}
               onPress={() => onToggleFavorite(item)}
             />
-            <IconButton size="sm" icon="ellipsis-horizontal" accessibilityLabel="More options" onPress={() => onMenu(item)} />
+            <IconButton size="sm" icon="ellipsis-horizontal" accessibilityLabel={t('card.moreOptions', { title: item.title })} onPress={() => onMenu(item)} />
           </View>
           {item.description ? (
             <Text variant="body" color="textSecondary" numberOfLines={3}>
@@ -251,7 +290,7 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
               {shownTags.map((tag) => (
                 <Tag key={tag} label={`#${tag}`} tone="neutral" />
               ))}
-              {tags.length > shownTags.length ? <Tag label={`+${tags.length - shownTags.length}`} tone="neutral" /> : null}
+              {tags.length > shownTags.length ? <Tag label={t('card.moreTags', { count: tags.length - shownTags.length })} tone="neutral" /> : null}
             </View>
           ) : null}
         </View>

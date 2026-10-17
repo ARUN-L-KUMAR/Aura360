@@ -1,1 +1,144 @@
-{}
+{
+  "title": "Notes",
+  "search": {
+    "placeholder": "Search notes"
+  },
+  "layout": {
+    "list": "List view",
+    "grid": "Grid view"
+  },
+  "filter": {
+    "all": "All",
+    "pinned": "Pinned",
+    "archived": "Archived"
+  },
+  "results_one": "{{count}} note",
+  "results_other": "{{count}} notes",
+  "fab": "New note",
+  "empty": {
+    "title": "No notes yet",
+    "description": "Capture thoughts, lists and ideas. They stay on your phone when you are offline.",
+    "action": "Write a note",
+    "noMatchTitle": "No matching notes",
+    "noMatchDescription": "Try a different search or another filter."
+  },
+  "refreshError": {
+    "title": "Couldn't refresh your notes",
+    "message": "You're seeing the last version we saved."
+  },
+  "action": {
+    "open": "Open note",
+    "pin": "Pin to top",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "restore": "Restore from archive",
+    "delete": "Delete",
+    "more": "More options"
+  },
+  "swipe": {
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "restore": "Restore",
+    "delete": "Delete"
+  },
+  "card": {
+    "label": {
+      "plain": "{{title}}, {{meta}}",
+      "pinned": "{{title}}, pinned, {{meta}}",
+      "archived": "{{title}}, archived, {{meta}}",
+      "pinnedArchived": "{{title}}, pinned, archived, {{meta}}"
+    },
+    "hint": "Opens the note. More actions are available.",
+    "meta": "{{date}}",
+    "metaChecklist": "{{date}} · {{done}} of {{total}} done",
+    "moreItems_one": "+ {{count}} more item",
+    "moreItems_other": "+ {{count}} more items",
+    "moreTags": "+{{count}}",
+    "pinNote": "Pin {{title}}",
+    "unpinNote": "Unpin {{title}}",
+    "moreOptions": "More options for {{title}}"
+  },
+  "toast": {
+    "archived": "Note archived",
+    "restored": "Note restored",
+    "deleted": "Note deleted",
+    "undo": "Undo"
+  },
+  "errors": {
+    "offline": "You're offline. Try again once you're connected.",
+    "update": "Couldn't update your note. Please try again.",
+    "delete": "Couldn't delete the note. It's back in your list.",
+    "save": "Couldn't save your note. Please try again.",
+    "deleteFromEditor": "Couldn't delete the note. Please try again.",
+    "lastChanges": "Your last changes couldn't be saved."
+  },
+  "editor": {
+    "titleNew": "New note",
+    "titleEdit": "Edit note",
+    "titleField": {
+      "label": "Title",
+      "placeholder": "What is this note about?"
+    },
+    "type": {
+      "label": "Note type",
+      "text": "Text",
+      "checklist": "Checklist"
+    },
+    "body": {
+      "label": "Note text",
+      "placeholder": "Write your thoughts, ideas or a list…"
+    },
+    "item": {
+      "placeholder": "List item",
+      "label": "Item {{n}}",
+      "check": "Mark item {{n}} done",
+      "remove": "Remove item {{n}}",
+      "add": "Add item"
+    },
+    "category": {
+      "label": "Category",
+      "placeholder": "e.g. Work, Ideas, Personal"
+    },
+    "tags": {
+      "label": "Tags",
+      "helper": "Separate tags with commas.",
+      "placeholder": "ideas, roadmap, client",
+      "remove": "Remove tag {{tag}}",
+      "addHint": "Adds this tag"
+    },
+    "pin": {
+      "label": "Pin to top",
+      "description": "Pinned notes stay at the top of your list."
+    },
+    "archive": {
+      "label": "Archive",
+      "description": "Hide this note from your main list."
+    },
+    "create": "Create note",
+    "save": "Save changes",
+    "delete": "Delete note",
+    "problem": {
+      "title": "Give your note a title.",
+      "items": "Add at least one item, or switch to a text note."
+    },
+    "status": {
+      "new": "New note. Tap Create note to save it.",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "offline": "You're offline, so your changes aren't saved yet. Keep this screen open and we'll retry.",
+      "error": "Couldn't save. Edit the note or tap Save changes to try again.",
+      "blocked": "{{problem}} Changes are saved once this is fixed.",
+      "unsaved": "Unsaved changes"
+    },
+    "toast": {
+      "saved": "Note saved",
+      "created": "Note created",
+      "deleted": "Note deleted"
+    },
+    "confirmDelete": {
+      "title": "Delete this note?",
+      "confirm": "Delete"
+    }
+  }
+}

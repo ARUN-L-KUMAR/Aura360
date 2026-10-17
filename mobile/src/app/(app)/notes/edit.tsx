@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
+import { friendlyError } from '@/components/notes/friendly-error';
 import { ToggleRow } from '@/components/notes/toggle-row';
 import { useLatest } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
@@ -17,8 +18,10 @@ import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { useDeleteNote, useNotes, useSaveNote } from '@/features/notes/hooks';
 import { checklistOf, newItemId, parseTags, type ChecklistItem, type Note, type NoteInput } from '@/features/notes/types';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, spring, useTheme } from '@/theme';
 
@@ -50,10 +53,10 @@ function parseNote(raw?: string): Note | null {
 
 const cleanItems = (items: ChecklistItem[]) => items.map((item) => ({ ...item, text: item.text.trim() })).filter((item) => item.text);
 
-/** Why the form cannot be saved yet, or null. */
-function problemWith(form: Form): { field: 'title' | 'items'; message: string } | null {
-  if (!form.title.trim()) return { field: 'title', message: 'Give your note a title.' };
-  if (form.mode === 'checklist' && cleanItems(form.items).length === 0) return { field: 'items', message: 'Add at least one item, or switch to a text note.' };
+/** Why the form cannot be saved yet (the field it belongs to; its message is `editor.problem.<field>`), or null. */
+function problemWith(form: Form): 'title' | 'items' | null {
+  if (!form.title.trim()) return 'title';
+  if (form.mode === 'checklist' && cleanItems(form.items).length === 0) return 'items';
   return null;
 }
 
@@ -76,6 +79,7 @@ type Failure = { kind: 'offline' | 'error'; key: string };
 export default function NoteEditorScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('notes');
   const { colors, accent } = useTheme();
   const a = accent('notes');
   const params = useLocalSearchParams<{ note?: string }>();
@@ -101,6 +105,7 @@ export default function NoteEditorScreen() {
   const form: Form = { title, mode, content, items, category, tagsText, isPinned, isArchived };
   const formKey = JSON.stringify(toInput(form, existing));
   const problem = problemWith(form);
+  const problemMessage = problem ? t(`editor.problem.${problem}`) : null;
 
   // Autosave bookkeeping (existing notes only). `savedKey` is the form as last stored on the server.
   const [savedKey, setSavedKey] = useState<string | null>(() => (existing ? formKey : null));
@@ -110,6 +115,8 @@ export default function NoteEditorScreen() {
   const lastError = useRef<unknown>(null);
   /** True once the note is being deleted or has been saved and closed: nothing more may be sent. */
   const finished = useRef(false);
+  /** Whether the server has this note archived: so `note_archived` is sent once, when an autosave archives it. */
+  const archivedOnServer = useRef(!!existing?.isArchived);
   const latest = useLatest({ form, formKey, problem, savedKey });
 
   const persist = useCallback(async (): Promise<'saved' | 'skipped' | 'failed'> => {
@@ -124,6 +131,8 @@ export default function NoteEditorScreen() {
         await saveNote({ id: existing.id, input: toInput(current.form, existing) });
         setSavedKey(current.formKey);
         setFailure(null);
+        if (current.form.isArchived && !archivedOnServer.current) analytics.track('note_archived');
+        archivedOnServer.current = current.form.isArchived;
         return 'saved' as const;
       } catch (e) {
         lastError.current = e;
@@ -156,10 +165,10 @@ export default function NoteEditorScreen() {
     () => () => {
       if (!existing || finished.current) return;
       void persist().then((result) => {
-        if (result === 'failed') notify.error("Your last changes couldn't be saved.");
+        if (result === 'failed') notify.error(t('errors.lastChanges'));
       });
     },
-    [existing, persist, notify],
+    [existing, persist, notify, t],
   );
 
   const knownCategories = useMemo(
@@ -197,6 +206,9 @@ export default function NoteEditorScreen() {
     setTagsText(next.join(', '));
   }
 
+  /** A friendly toast for a failed action: offline copy when the server was unreachable, never raw server text. */
+  const fail = (e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline')));
+
   async function submit() {
     if (problem) {
       setShowProblems(true);
@@ -206,51 +218,53 @@ export default function NoteEditorScreen() {
     if (existing) {
       const result = await persist();
       if (result === 'failed') {
-        notify.error(lastError.current);
+        fail(lastError.current, t('errors.save'));
         return;
       }
     } else {
       try {
         await saveNote({ input: toInput(form, null) });
       } catch (e) {
-        notify.error(e);
+        fail(e, t('errors.save'));
         return;
       }
+      analytics.track('note_created');
     }
     finished.current = true;
-    notify.success(existing ? 'Note saved' : 'Note created');
+    notify.success(existing ? t('editor.toast.saved') : t('editor.toast.created'));
     router.back();
   }
 
   async function confirmDelete() {
     if (!existing) return;
-    const ok = await notify.confirm({ title: 'Delete this note?', message: existing.title, confirmLabel: 'Delete', destructive: true });
+    const ok = await notify.confirm({ title: t('editor.confirmDelete.title'), message: existing.title, confirmLabel: t('editor.confirmDelete.confirm'), destructive: true });
     if (!ok) return;
     finished.current = true; // stop autosave from racing the delete
     try {
       await deleteNote(existing.id);
-      notify.success('Note deleted');
+      analytics.track('note_deleted');
+      notify.success(t('editor.toast.deleted'));
       router.back();
     } catch (e) {
       finished.current = false;
-      notify.error(e);
+      fail(e, t('errors.deleteFromEditor'));
     }
   }
 
-  const titleError = showProblems && problem?.field === 'title' ? problem.message : null;
-  const itemsError = showProblems && problem?.field === 'items' ? problem.message : null;
+  const titleError = showProblems && problem === 'title' ? problemMessage : null;
+  const itemsError = showProblems && problem === 'items' ? problemMessage : null;
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit note' : 'New note' }} />
+      <Stack.Screen options={{ title: existing ? t('editor.titleEdit') : t('editor.titleNew') }} />
 
-      <SaveStatus existing={!!existing} saving={saving} failed={failed} dirty={dirty} problem={problem?.message ?? null} />
+      <SaveStatus existing={!!existing} saving={saving} failed={failed} dirty={dirty} problem={problemMessage} />
 
       <Input
-        label="Title"
+        label={t('editor.titleField.label')}
         value={title}
         onChangeText={setTitle}
-        placeholder="What is this note about?"
+        placeholder={t('editor.titleField.placeholder')}
         error={titleError}
         autoFocus={!existing}
         autoCapitalize="sentences"
@@ -259,10 +273,10 @@ export default function NoteEditorScreen() {
       />
 
       <Segmented
-        accessibilityLabel="Note type"
+        accessibilityLabel={t('editor.type.label')}
         options={[
-          { value: 'text', label: 'Text' },
-          { value: 'checklist', label: 'Checklist' },
+          { value: 'text', label: t('editor.type.text') },
+          { value: 'checklist', label: t('editor.type.checklist') },
         ]}
         value={mode}
         onChange={switchMode}
@@ -271,10 +285,10 @@ export default function NoteEditorScreen() {
       {mode === 'text' ? (
         <Input
           ref={bodyRef}
-          accessibilityLabel="Note text"
+          accessibilityLabel={t('editor.body.label')}
           value={content}
           onChangeText={setContent}
-          placeholder="Write your thoughts, ideas or a list…"
+          placeholder={t('editor.body.placeholder')}
           multiline
           scrollEnabled={false}
           style={{ minHeight: layout.minTouchTarget * 5 }}
@@ -285,7 +299,7 @@ export default function NoteEditorScreen() {
             <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <PressableScale
                 accessibilityRole="checkbox"
-                accessibilityLabel={`Mark item ${index + 1} done`}
+                accessibilityLabel={t('editor.item.check', { n: index + 1 })}
                 accessibilityState={{ checked: item.completed }}
                 haptic="select"
                 scaleTo={1}
@@ -299,32 +313,32 @@ export default function NoteEditorScreen() {
                   itemRefs.current[item.id] = node;
                 }}
                 containerStyle={{ flex: 1 }}
-                accessibilityLabel={`Item ${index + 1}`}
+                accessibilityLabel={t('editor.item.label', { n: index + 1 })}
                 value={item.text}
                 onChangeText={(text) => updateItem(item.id, { text })}
-                placeholder="List item"
+                placeholder={t('editor.item.placeholder')}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => addItem(item.id)}
                 style={{ textDecorationLine: item.completed ? 'line-through' : 'none' }}
               />
-              <IconButton icon="close-circle-outline" accessibilityLabel={`Remove item ${index + 1}`} onPress={() => setItems((current) => current.filter((entry) => entry.id !== item.id))} />
+              <IconButton icon="close-circle-outline" accessibilityLabel={t('editor.item.remove', { n: index + 1 })} onPress={() => setItems((current) => current.filter((entry) => entry.id !== item.id))} />
             </View>
           ))}
           {itemsError ? (
-            <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              <Ionicons name="alert-circle" size={14} color={colors.errorText} />
+            <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <Ionicons name="alert-circle" size={14} color={colors.errorText} accessibilityElementsHidden importantForAccessibility="no" />
               <Text variant="caption" color="errorText" style={{ flex: 1 }}>
                 {itemsError}
               </Text>
             </View>
           ) : null}
-          <Button title="Add item" variant="tertiary" leftIcon="add" onPress={() => addItem()} />
+          <Button title={t('editor.item.add')} variant="tertiary" leftIcon="add" onPress={() => addItem()} />
         </View>
       )}
 
       <View style={{ gap: spacing.sm }}>
-        <Input label="Category" value={category} onChangeText={setCategory} placeholder="e.g. Work, Ideas, Personal" autoCapitalize="words" returnKeyType="next" />
+        <Input label={t('editor.category.label')} value={category} onChangeText={setCategory} placeholder={t('editor.category.placeholder')} autoCapitalize="words" returnKeyType="next" />
         {knownCategories.length > 0 ? (
           <ChipGroup>
             {knownCategories.slice(0, 8).map((name) => (
@@ -336,11 +350,11 @@ export default function NoteEditorScreen() {
 
       <View style={{ gap: spacing.sm }}>
         <Input
-          label="Tags"
-          helper="Separate tags with commas."
+          label={t('editor.tags.label')}
+          helper={t('editor.tags.helper')}
           value={tagsText}
           onChangeText={setTagsText}
-          placeholder="ideas, roadmap, client"
+          placeholder={t('editor.tags.placeholder')}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="done"
@@ -348,23 +362,30 @@ export default function NoteEditorScreen() {
         {tags.length > 0 || suggestedTags.length > 0 ? (
           <ChipGroup>
             {tags.map((tag) => (
-              <Chip key={`on-${tag}`} label={`#${tag}`} size="sm" accent="notes" selected onRemove={() => setTags(tags.filter((t) => t !== tag))} removeLabel={`Remove tag ${tag}`} />
+              <Chip key={`on-${tag}`} label={`#${tag}`} size="sm" accent="notes" selected onRemove={() => setTags(tags.filter((t) => t !== tag))} removeLabel={t('editor.tags.remove', { tag })} />
             ))}
             {suggestedTags.map((tag) => (
-              <Chip key={`add-${tag}`} label={`#${tag}`} size="sm" accent="notes" onPress={() => setTags([...tags, tag])} accessibilityHint="Adds this tag" />
+              <Chip key={`add-${tag}`} label={`#${tag}`} size="sm" accent="notes" onPress={() => setTags([...tags, tag])} accessibilityHint={t('editor.tags.addHint')} />
             ))}
           </ChipGroup>
         ) : null}
       </View>
 
       <Card padding="sm" style={{ gap: spacing.xs }}>
-        <ToggleRow accent="notes" icon={isPinned ? 'pin' : 'pin-outline'} label="Pin to top" description="Pinned notes stay at the top of your list." value={isPinned} onChange={setIsPinned} />
-        <ToggleRow accent="notes" icon="archive-outline" label="Archive" description="Hide this note from your main list." value={isArchived} onChange={setIsArchived} />
+        <ToggleRow
+          accent="notes"
+          icon={isPinned ? 'pin' : 'pin-outline'}
+          label={t('editor.pin.label')}
+          description={t('editor.pin.description')}
+          value={isPinned}
+          onChange={setIsPinned}
+        />
+        <ToggleRow accent="notes" icon="archive-outline" label={t('editor.archive.label')} description={t('editor.archive.description')} value={isArchived} onChange={setIsArchived} />
       </Card>
 
       <View style={{ gap: spacing.sm }}>
-        <Button title={existing ? 'Save changes' : 'Create note'} leftIcon="checkmark" onPress={submit} loading={creating || (!!existing && saving)} />
-        {existing ? <Button title="Delete note" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={deleting} /> : null}
+        <Button title={existing ? t('editor.save') : t('editor.create')} leftIcon="checkmark" onPress={submit} loading={creating || (!!existing && saving)} />
+        {existing ? <Button title={t('editor.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={deleting} /> : null}
       </View>
     </Screen>
   );
@@ -372,6 +393,7 @@ export default function NoteEditorScreen() {
 
 /** Autosave indicator: icon + words, never colour alone. New notes are only saved by the button. */
 function SaveStatus({ existing, saving, failed, dirty, problem }: { existing: boolean; saving: boolean; failed: Failure['kind'] | null; dirty: boolean; problem: string | null }) {
+  const { t } = useTranslation('notes');
   const { colors, reduceMotion } = useTheme();
   const settled = existing && !saving && !failed && !dirty;
 
@@ -388,32 +410,32 @@ function SaveStatus({ existing, saving, failed, dirty, problem }: { existing: bo
   const iconStyle = useAnimatedStyle(() => ({ opacity: 0.4 + 0.6 * Math.min(1, pop.get()), transform: [{ scale: 0.7 + 0.3 * pop.get() }] }));
 
   let icon: React.ComponentProps<typeof Ionicons>['name'] = 'checkmark-circle';
-  let text = 'Saved';
+  let text: string = t('editor.status.saved');
   let color: 'successText' | 'warningText' | 'errorText' | 'textSecondary' = 'successText';
 
   if (!existing) {
     icon = 'create-outline';
-    text = 'New note. Tap Create note to save it.';
+    text = t('editor.status.new');
     color = 'textSecondary';
   } else if (saving) {
     icon = 'sync-outline';
-    text = 'Saving…';
+    text = t('editor.status.saving');
     color = 'textSecondary';
   } else if (failed === 'offline') {
     icon = 'cloud-offline-outline';
-    text = 'Offline - changes not saved yet. Keep this screen open and we will retry.';
+    text = t('editor.status.offline');
     color = 'warningText';
   } else if (failed === 'error') {
     icon = 'alert-circle-outline';
-    text = "Couldn't save. Edit or tap Save changes to retry.";
+    text = t('editor.status.error');
     color = 'errorText';
   } else if (dirty && problem) {
     icon = 'information-circle-outline';
-    text = `${problem} Changes are saved once this is fixed.`;
+    text = t('editor.status.blocked', { problem });
     color = 'textSecondary';
   } else if (dirty) {
     icon = 'ellipsis-horizontal-circle-outline';
-    text = 'Unsaved changes';
+    text = t('editor.status.unsaved');
     color = 'textSecondary';
   }
 

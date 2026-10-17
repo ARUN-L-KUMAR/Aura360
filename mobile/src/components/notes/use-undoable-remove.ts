@@ -11,6 +11,10 @@ type Options = {
   commit: (id: string) => Promise<unknown>;
   /** Toast text, e.g. `Note deleted`. */
   message: string;
+  /** Label of the toast's action button. */
+  undoLabel: string;
+  /** Called when `commit` fails (the row has already been brought back). Defaults to a generic error toast. */
+  onError?: (error: unknown) => void;
 };
 
 /**
@@ -19,9 +23,10 @@ type Options = {
  * or close). A delete still pending when the screen unmounts is committed immediately, and a failed commit brings the
  * row back with an error toast.
  */
-export function useUndoableRemove({ commit, message }: Options) {
+export function useUndoableRemove({ commit, message, undoLabel, onError }: Options) {
   const notify = useNotify();
   const commitRef = useLatest(commit);
+  const onErrorRef = useLatest(onError);
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(() => new Set());
   /** Ids hidden and waiting for either Undo or the toast closing. */
   const pending = useRef(new Set<string>());
@@ -41,10 +46,11 @@ export function useUndoableRemove({ commit, message }: Options) {
         await commitRef.current(id);
       } catch (e) {
         unhide(id);
-        notify.error(e);
+        if (onErrorRef.current) onErrorRef.current(e);
+        else notify.error(e);
       }
     },
-    [commitRef, notify, unhide],
+    [commitRef, notify, onErrorRef, unhide],
   );
 
   const remove = useCallback(
@@ -57,7 +63,7 @@ export function useUndoableRemove({ commit, message }: Options) {
         severity: 'info',
         duration: UNDO_MS,
         action: {
-          label: 'Undo',
+          label: undoLabel,
           onPress: () => {
             if (pending.current.delete(id)) unhide(id);
           },
@@ -68,7 +74,7 @@ export function useUndoableRemove({ commit, message }: Options) {
         },
       });
     },
-    [message, notify, run, unhide],
+    [message, undoLabel, notify, run, unhide],
   );
 
   // Leaving the screen with a delete still waiting: send it now rather than silently dropping it.
