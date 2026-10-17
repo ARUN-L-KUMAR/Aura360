@@ -189,3 +189,38 @@ export function progressLevel(percent: number, automatic: boolean): ProgressLeve
 export function clampPercent(percent: number): number {
   return Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Style splitting for PressableScale
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Style keys that decide how a control is sized and placed by ITS PARENT. PressableScale wraps its content in an inner
+ * animated view, so these must go on the outer touchable, otherwise `flexBasis: '45%'` or `flex: 1` is resolved
+ * against a shrink-wrapped parent and the control collapses to its content width. (Physical left / right keys are
+ * deliberately absent: the app uses start / end.)
+ */
+const OUTER_LAYOUT_KEYS: ReadonlySet<string> = new Set([
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'width', 'minWidth', 'maxWidth', 'alignSelf', 'aspectRatio',
+  'position', 'top', 'bottom', 'start', 'end', 'zIndex',
+  'margin', 'marginTop', 'marginBottom', 'marginStart', 'marginEnd', 'marginHorizontal', 'marginVertical',
+]);
+
+function flattenStyle(style: unknown, into: Record<string, unknown>) {
+  if (!style) return;
+  if (Array.isArray(style)) {
+    for (const item of style) flattenStyle(item, into);
+    return;
+  }
+  if (typeof style === 'object') Object.assign(into, style);
+}
+
+/** Splits a style into what the parent lays out (`outer`) and everything else (`inner`). Later styles win, like StyleSheet.flatten. */
+export function splitLayoutStyle(style: unknown): { outer: Record<string, unknown>; inner: Record<string, unknown> } {
+  const flat: Record<string, unknown> = {};
+  flattenStyle(style, flat);
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(flat)) (OUTER_LAYOUT_KEYS.has(key) ? outer : inner)[key] = value;
+  return { outer, inner };
+}

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type GestureResponderEvent, type Insets, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+import { splitLayoutStyle } from '@/components/ui/logic';
 import { instant } from '@/components/ui/motion';
 import { haptics } from '@/lib/haptics';
 import { duration, pressScale, radius, spring, useTheme } from '@/theme';
@@ -73,9 +74,13 @@ export function PressableScale({
     else progress.value = to ? withTiming(1, { duration: duration.fast / 2 }) : withSpring(0, spring.gentle);
   };
 
+  // Sizing and placement belong to the outer touchable (see splitLayoutStyle); the look belongs to the inner view.
+  const { outer, inner } = splitLayoutStyle(style);
+
   return (
     <Pressable
       {...rest}
+      style={outer as ViewStyle}
       disabled={disabled}
       hitSlop={hitSlop ?? 4}
       onPressIn={(e: GestureResponderEvent) => {
@@ -103,7 +108,9 @@ export function PressableScale({
       <Animated.View
         style={[
           animated,
-          style,
+          // Fill the outer touchable when it has been given a size by its parent.
+          { flexGrow: 1 },
+          inner as ViewStyle,
           disabled ? { opacity: DISABLED_OPACITY } : null,
         ]}>
         {typeof children === 'function' ? children({ pressed, focused }) : children}
