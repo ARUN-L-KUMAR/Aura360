@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -11,7 +12,9 @@ import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
+import { AnimatedNumber } from '@/components/viz/animated-number';
 import { useCreateFitnessEntry, useUpdateFitnessEntry } from '@/features/fitness/hooks';
+import { volumeOf } from '@/features/fitness/stats';
 import type { Exercise, FitnessEntry, WorkoutIntensity } from '@/features/fitness/types';
 import { useErrorMessage } from '@/features/fitness/use-error-message';
 import { useTranslation } from '@/i18n';
@@ -19,9 +22,11 @@ import { todayIso } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
-import { spacing } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 
+
+const SUMMARY_CHIP = spacing.xxl + spacing.md; // 44
 
 const blankExercise = (): Exercise => ({ name: '', sets: 3, reps: 10, weight: 0 });
 
@@ -46,6 +51,8 @@ export default function WorkoutModalScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { t } = useTranslation('fitness');
+  const { accent } = useTheme();
+  const fitness = accent('fitness');
   const errorMessage = useErrorMessage();
   const typeOptions = [
     { value: 'strength', label: t('workoutTypes.strength') },
@@ -79,6 +86,9 @@ export default function WorkoutModalScreen() {
   const createMutation = useCreateFitnessEntry();
   const updateMutation = useUpdateFitnessEntry();
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const namedExercises = exercises.filter((e) => e.name.trim().length > 0).length;
+  const totalVolume = Math.round(volumeOf(exercises.filter((e) => e.name.trim().length > 0)));
 
   const addExercise = () => {
     haptics.tap();
@@ -154,6 +164,32 @@ export default function WorkoutModalScreen() {
   return (
     <Screen topInset={false}>
       <Stack.Screen options={{ title: isEditing ? t('workout.editTitle') : t('workout.newTitle') }} />
+
+      <Card
+        variant="tinted"
+        accent="fitness"
+        gradient="fitness"
+        accessible
+        accessibilityLabel={t('workout.summarySpoken', { count: namedExercises, volume: totalVolume })}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View style={{ width: SUMMARY_CHIP, height: SUMMARY_CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.solid }}>
+          <Ionicons name="barbell-outline" size={spacing.xl} color={fitness.onSolid} />
+        </View>
+        <View style={{ flex: 1, gap: spacing.xs / 2 }}>
+          <Text variant="title" numberOfLines={2}>
+            {workoutName.trim() || (isEditing ? t('workout.editTitle') : t('workout.newTitle'))}
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            {t('workout.summaryExercises', { count: namedExercises })}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <AnimatedNumber value={totalVolume} variant="title" />
+          <Text variant="caption" color="textSecondary">
+            {t('workout.summaryVolume')}
+          </Text>
+        </View>
+      </Card>
 
       <Card style={{ gap: spacing.md }}>
         <DateField label={t('entry.date')} value={date} onChange={setDate} />

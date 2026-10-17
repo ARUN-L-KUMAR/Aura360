@@ -7,6 +7,7 @@ import Animated from 'react-native-reanimated';
 import { LiveRestTimer } from '@/components/fitness/live-rest-timer';
 import { RestTimer } from '@/components/fitness/rest-timer';
 import { QueryError } from '@/components/fitness/section-kit';
+import { StartCta } from '@/components/fitness/start-cta';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
@@ -15,12 +16,14 @@ import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
-import { useListMotion } from '@/components/ui/motion';
+import { useListMotion, usePop } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { useRecentFitness, useSaveFitness, useSubstitutes } from '@/features/fitness/hooks';
 import {
   buildExercise,
@@ -101,7 +104,7 @@ function StartWorkout({ header }: { header: ReactNode }) {
           returnKeyType="done"
           onSubmitEditing={startEmpty}
         />
-        <Button title={t('train.startEmpty')} leftIcon="play" haptic={false} onPress={startEmpty} />
+        <StartCta title={t('train.startEmpty')} subtitle={title.trim() || t('train.defaultTitle')} icon="play" haptic={false} onPress={startEmpty} />
       </Card>
 
       {lastWorkout?.exercises ? (
@@ -192,9 +195,9 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
     <Screen>
       {header}
 
-      <Card style={{ gap: spacing.md }}>
-        <Input label={t('train.workoutName')} value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
+      <Card variant="tinted" accent="fitness" gradient="fitness" style={{ gap: spacing.lg }}>
         <LiveSummary session={session} />
+        <Input label={t('train.workoutName')} value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
       </Card>
 
       <LiveRest session={session} />
@@ -219,18 +222,26 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
   );
 }
 
+/** Size of the ring that shows how many of the planned sets are done. */
+const SETS_RING = spacing.xxxl + spacing.xl + spacing.sm; // 88
+
 /** Elapsed time, pause control and running totals. Owns the one-second clock so the exercise list does not re-render. */
 function LiveSummary({ session }: { session: LiveSession }) {
   const { t } = useTranslation('fitness');
+  const { accent } = useTheme();
+  const fitness = accent('fitness');
   const now = useNow(true);
   const seconds = elapsedSeconds(session, now);
   const { doneSets, totalSets, volume } = sessionTotals(session);
   const paused = !!session.pausedAt;
 
   return (
-    <View style={{ gap: spacing.md }}>
+    <View style={{ gap: spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
         <View style={{ flexShrink: 1, gap: spacing.xs }}>
+          <Text variant="caption" weight="semiBold" style={{ color: fitness.text, textTransform: 'uppercase' }}>
+            {t('train.elapsedLabel')}
+          </Text>
           {/* Not a live region: a clock that spoke every second would drown out everything else. */}
           <Text variant="display" numeric accessibilityLabel={t('train.elapsed', { time: formatDuration(seconds) })}>
             {formatDuration(seconds)}
@@ -245,10 +256,23 @@ function LiveSummary({ session }: { session: LiveSession }) {
           onPress={() => sessionActions.togglePause()}
         />
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.sm }}>
-        <Metric label={t('train.sets')} value={`${doneSets}/${totalSets}`} />
-        <Metric label={t('train.volume')} value={t('units.kg', { value: Math.round(volume).toLocaleString(getDeviceLocale()) })} />
-        <Metric label={t('train.burnEstimated')} value={t('units.kcal', { value: Math.round((seconds / 60) * 7.5 + doneSets * 4) })} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: spacing.lg, rowGap: spacing.md }}>
+        <ProgressRing
+          value={doneSets}
+          max={Math.max(1, totalSets)}
+          size={SETS_RING}
+          thickness={spacing.sm}
+          accent="fitness"
+          label={t('train.setsProgress')}
+          valueText={t('train.setsProgressSpoken', { done: doneSets, total: totalSets })}>
+          <Text variant="label" weight="semiBold" numeric>
+            {doneSets}/{totalSets}
+          </Text>
+        </ProgressRing>
+        <View style={{ flex: 1, flexBasis: 140, flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.sm }}>
+          <Metric label={t('train.volume')} value={t('units.kg', { value: Math.round(volume).toLocaleString(getDeviceLocale()) })} />
+          <Metric label={t('train.burnEstimated')} value={t('units.kcal', { value: Math.round((seconds / 60) * 7.5 + doneSets * 4) })} />
+        </View>
       </View>
     </View>
   );
@@ -285,8 +309,13 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Leading icon tile of an exercise. */
+const EXERCISE_CHIP = layout.minTouchTarget - spacing.xs; // 40
+
 /** Same height as an Input, so a set row lines up. */
 const SET_BUTTON = layout.minTouchTarget + spacing.xs;
+/** The tick inside a set button. */
+const SET_CHECK = spacing.xl + spacing.xs; // 28
 
 const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exercise: LiveExercise; last?: Exercise; index: number }) {
   const { t } = useTranslation('fitness');
@@ -294,6 +323,11 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
   const substitutes = useSubstitutes();
   const [swapOpen, setSwapOpen] = useState(false);
   const motion = useListMotion(index);
+  const { accent, colors } = useTheme();
+  const fitness = accent('fitness');
+  const doneSets = exercise.sets.filter((set) => set.done).length;
+  const allDone = exercise.sets.length > 0 && doneSets === exercise.sets.length;
+  const chipPop = usePop(allDone);
 
   function openSwap() {
     setSwapOpen(true);
@@ -317,12 +351,24 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
     <Animated.View {...motion}>
       <Card style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
-          <View style={{ flex: 1, gap: 2 }}>
+          <Animated.View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              { width: EXERCISE_CHIP, height: EXERCISE_CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: allDone ? fitness.solid : fitness.soft },
+              chipPop,
+            ]}>
+            <Ionicons name={allDone ? 'checkmark' : 'barbell-outline'} size={spacing.xl} color={allDone ? fitness.onSolid : fitness.text} />
+          </Animated.View>
+          <View style={{ flex: 1, gap: spacing.xs / 2 }}>
             <Text variant="title" numberOfLines={2} accessibilityRole="header">
               {exercise.name}
             </Text>
             <Text variant="caption" color="textSecondary">
               {[exercise.category, t('units.secondsRest', { value: exercise.restSeconds }), lastText].filter(Boolean).join(' · ')}
+            </Text>
+            <Text variant="caption" weight="semiBold" numeric style={{ color: allDone ? fitness.text : colors.textSecondary }}>
+              {t('train.setsDone', { done: doneSets, total: exercise.sets.length })}
             </Text>
           </View>
           <IconButton icon="swap-horizontal" size="sm" accessibilityLabel={t('train.swap', { name: exercise.name })} onPress={openSwap} />
@@ -405,12 +451,25 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
   const { t } = useTranslation('fitness');
   const fitness = accent('fitness');
   const motion = useListMotion(0);
+  // True only for a set ticked off while this row is on screen: that one gets the pop. Sets that were already done when the row appeared just show the tick.
+  const [justCompleted, setJustCompleted] = useState(false);
   // Keep what is being typed as text so "7." or an empty box does not jump while editing.
   const [weightText, setWeightText] = useState(String(weight));
   const [repsText, setRepsText] = useState(String(reps));
 
   return (
-    <Animated.View {...motion} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+    <Animated.View
+      {...motion}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        borderRadius: radius.md,
+        backgroundColor: done ? fitness.soft : undefined,
+        marginHorizontal: -spacing.xs,
+        paddingHorizontal: spacing.xs,
+        paddingVertical: spacing.xs / 2,
+      }}>
       <Text variant="label" numeric color="textSecondary" style={{ width: spacing.xxl }} accessibilityElementsHidden importantForAccessibility="no">
         {index + 1}
       </Text>
@@ -452,7 +511,9 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
         haptic={false}
         ringRadius={radius.md}
         onPress={() => {
-          if (sessionActions.toggleSet(exerciseId, index)) haptics.impact();
+          const completed = sessionActions.toggleSet(exerciseId, index);
+          setJustCompleted(completed);
+          if (completed) haptics.success();
         }}
         onLongPress={() => sessionActions.removeSet(exerciseId, index)}
         style={{
@@ -461,11 +522,21 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: done ? fitness.solid : colors.cardMuted,
+          backgroundColor: done ? fitness.soft : colors.cardMuted,
           borderWidth: 1,
           borderColor: done ? fitness.solid : colors.borderStrong,
         }}>
-        <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={done ? fitness.onSolid : colors.textMuted} />
+        {done ? (
+          justCompleted ? (
+            <SuccessCheck size={SET_CHECK} accent="fitness" accessibilityLabel={null} />
+          ) : (
+            <View style={{ width: SET_CHECK, height: SET_CHECK, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.solid }}>
+              <Ionicons name="checkmark" size={Math.round(SET_CHECK * 0.6)} color={fitness.onSolid} />
+            </View>
+          )
+        ) : (
+          <Ionicons name="ellipse-outline" size={SET_CHECK} color={colors.textMuted} />
+        )}
       </PressableScale>
     </Animated.View>
   );
