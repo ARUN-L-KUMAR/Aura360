@@ -4,10 +4,11 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { ApiError } from '@/lib/api';
 import { analytics } from '@/lib/telemetry';
+import { isExpectedFailure } from '@/lib/telemetry/expected';
 
-/** Report only failures that point at a bug or an outage: not 4xx (the user's input) and not plain offline. */
+/** Report only failures that point at a bug or a server outage: being offline, timeouts and 4xx are expected. */
 function report(error: unknown, where: string) {
-  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return;
+  if (isExpectedFailure(error)) return;
   analytics.captureException(error, { where });
 }
 
