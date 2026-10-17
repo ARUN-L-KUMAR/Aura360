@@ -3,9 +3,32 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 
+import { getDeviceLocale, i18n } from '@/i18n';
 import { api } from '@/lib/api';
+import { error as errorRamp, moduleColors } from '@/theme/colors';
 
 const NOTIF_PREFS_KEY = 'aura.notification_preferences';
+
+type Clock = { hour: number; minute: number };
+
+/** When the phone's own habit reminders fire. Shared with the Settings screen, which shows them. */
+export const HABIT_TIMES = {
+  morningSkincare: { hour: 8, minute: 0 },
+  eveningSkincare: { hour: 22, minute: 0 },
+  dailyReview: { hour: 20, minute: 0 },
+  water: [
+    { hour: 11, minute: 0 },
+    { hour: 14, minute: 30 },
+    { hour: 17, minute: 30 },
+  ],
+} as const satisfies Record<string, Clock | readonly Clock[]>;
+
+/** "8:00 AM" or "08:00", following the phone's region. */
+export function formatClock({ hour, minute }: Clock): string {
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+  return date.toLocaleTimeString(getDeviceLocale(), { hour: 'numeric', minute: '2-digit' });
+}
 
 export interface NotificationPreferences {
   enabled: boolean;
@@ -117,16 +140,16 @@ export const notificationService = {
 
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('habits', {
-          name: 'Habit & Daily Reminders',
+          name: i18n.t('notifications:local.channels.habits'),
           importance: Notifications.AndroidImportance.HIGH,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#a855f7',
+          lightColor: moduleColors.ai,
         });
         await Notifications.setNotificationChannelAsync('finance', {
-          name: 'Budget & Finance Alerts',
+          name: i18n.t('notifications:local.channels.finance'),
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 300, 200, 300],
-          lightColor: '#ef4444',
+          lightColor: errorRamp[500],
         });
       }
 
@@ -152,75 +175,70 @@ export const notificationService = {
 
     const serverHasSkincare = await serverSendsSkincare();
 
-    // 1. Morning Skincare at 8:00 AM
+    // 1. Morning skincare
     if (activePrefs.morningSkincare && !serverHasSkincare) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '☀️ Morning Skincare',
-          body: 'Rise and shine! Complete your AM routine on Aura360.',
+          title: i18n.t('notifications:local.morningSkincare.title'),
+          body: i18n.t('notifications:local.morningSkincare.body'),
           data: { route: '/skincare' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: 8,
-          minute: 0,
+          hour: HABIT_TIMES.morningSkincare.hour,
+          minute: HABIT_TIMES.morningSkincare.minute,
           channelId: 'habits',
         },
       });
     }
 
-    // 2. Evening Skincare at 10:00 PM
+    // 2. Evening skincare
     if (activePrefs.eveningSkincare && !serverHasSkincare) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🌙 Evening Skincare & Wind Down',
-          body: 'Time to unwind. Check off your PM routine.',
+          title: i18n.t('notifications:local.eveningSkincare.title'),
+          body: i18n.t('notifications:local.eveningSkincare.body'),
           data: { route: '/skincare' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: 22,
-          minute: 0,
+          hour: HABIT_TIMES.eveningSkincare.hour,
+          minute: HABIT_TIMES.eveningSkincare.minute,
           channelId: 'habits',
         },
       });
     }
 
-    // 3. Daily Review at 8:00 PM
+    // 3. Daily review
     if (activePrefs.dailyReview) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '✨ Daily Aura Review',
-          body: 'Log your workouts, meals, and track your daily spending.',
+          title: i18n.t('notifications:local.dailyReview.title'),
+          body: i18n.t('notifications:local.dailyReview.body'),
           data: { route: '/' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: 20,
-          minute: 0,
+          hour: HABIT_TIMES.dailyReview.hour,
+          minute: HABIT_TIMES.dailyReview.minute,
           channelId: 'habits',
         },
       });
     }
 
-    // 4. Hydration Reminders (11:00 AM, 2:30 PM, 5:30 PM)
+    // 4. Hydration reminders
     if (activePrefs.waterReminders) {
-      const times = [
-        { hour: 11, minute: 0 },
-        { hour: 14, minute: 30 },
-        { hour: 17, minute: 30 },
-      ];
-      for (const t of times) {
+      for (const time of HABIT_TIMES.water) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: '💧 Hydration Check',
-            body: 'Drink a glass of water and keep your macro rings glowing!',
+            title: i18n.t('notifications:local.hydration.title'),
+            body: i18n.t('notifications:local.hydration.body'),
             data: { route: '/food' },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DAILY,
-            hour: t.hour,
-            minute: t.minute,
+            hour: time.hour,
+            minute: time.minute,
             channelId: 'habits',
           },
         });
@@ -235,8 +253,8 @@ export const notificationService = {
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '⚡ Aura360 Test Alert',
-        body: 'Notifications are working perfectly on this device!',
+        title: i18n.t('notifications:local.test.title'),
+        body: i18n.t('notifications:local.test.body'),
         data: { test: true },
       },
       trigger: { channelId: 'habits' },
@@ -252,8 +270,8 @@ export const notificationService = {
     await this.requestPermission();
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '⚠️ Budget Limit Alert',
-        body: `You've reached ${percent}% of your ${category} monthly budget!`,
+        title: i18n.t('notifications:local.budget.title'),
+        body: i18n.t('notifications:local.budget.body', { percent, category }),
         data: { route: '/finance' },
       },
       trigger: { channelId: 'finance' },

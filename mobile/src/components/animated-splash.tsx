@@ -1,7 +1,7 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,7 +12,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colorShades, typography } from '@/theme';
+import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
+import { palettes, spacing, useReducedMotion } from '@/theme';
 
 /**
  * The launch screen after the native splash.
@@ -31,11 +33,10 @@ const GLOW = require('../../assets/images/logo-glow.png');
 
 // Must match the "expo-splash-screen" plugin in app.json, so the two screens line up pixel for pixel.
 const LOGO_BOX = 300;
-const COLORS = {
-  dark: { background: colorShades.slate[950], text: colorShades.slate[50], muted: colorShades.slate[400], glow: 0.45 },
-  light: { background: colorShades.slate[50], text: colorShades.slate[900], muted: colorShades.slate[500], glow: 0.35 },
-} as const;
-
+/** Colours come from the light / dark palettes for the phone's scheme (the saved in-app theme is not loaded yet). */
+const GLOW_OPACITY = { dark: 0.45, light: 0.35 } as const;
+/** How far the name block overlaps the bottom of the logo box (the artwork has empty margin there). */
+const TEXT_OVERLAP = spacing.xxl + spacing.xs;
 
 /** Shortest time on screen, so a fast start doesn't flash the splash for a few frames. */
 const MIN_VISIBLE_MS = 900;
@@ -51,10 +52,11 @@ type Props = {
 };
 
 export function AnimatedSplash({ ready, onFinish }: Props) {
+  const { t } = useTranslation('auth');
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const palette = COLORS[scheme];
+  const palette = palettes[scheme];
 
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [slow, setSlow] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -74,10 +76,6 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
   const slowHint = useSharedValue(0);
   const overlay = useSharedValue(1);
   const logoZoom = useSharedValue(1);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
-  }, []);
 
   useEffect(() => {
     const min = setTimeout(() => setMinTimePassed(true), MIN_VISIBLE_MS);
@@ -144,7 +142,7 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
   const overlayStyle = useAnimatedStyle(() => ({ opacity: overlay.value }));
   const logoStyle = useAnimatedStyle(() => ({ transform: [{ scale: breathe.value * logoZoom.value }] }));
   const glowStyle = useAnimatedStyle(() => ({
-    opacity: glow.value * palette.glow,
+    opacity: glow.value * GLOW_OPACITY[scheme],
     transform: [{ scale: 0.9 + 0.1 * glow.value + (breathe.value - 1) * 3 }],
   }));
   const nameStyle = useAnimatedStyle(() => ({ opacity: name.value, transform: [{ translateY: (1 - name.value) * 10 }] }));
@@ -155,8 +153,10 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
     <Animated.View
       onLayout={onLayout}
       pointerEvents={leaving ? 'none' : 'auto'}
-      accessibilityLabel="Aura360 is loading"
+      accessible
+      accessibilityLabel={slow && !ready ? t('splash.loadingSlow') : t('splash.loading')}
       accessibilityRole="progressbar"
+      accessibilityLiveRegion="polite"
       style={[StyleSheet.absoluteFill, styles.root, { backgroundColor: palette.background }, overlayStyle]}>
       {/* soft glow behind the logo */}
       <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]}>
@@ -170,12 +170,22 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
 
       {/* below the logo, so the logo itself stays exactly where the native splash had it */}
       <View pointerEvents="none" style={styles.textBlock}>
-        <Animated.Text style={[styles.name, { color: palette.text }, nameStyle]}>Aura360</Animated.Text>
-        <Animated.Text style={[styles.tagline, { color: palette.muted }, taglineStyle]}>Your whole life, in sync</Animated.Text>
+        <Animated.View style={nameStyle}>
+          <Text variant="display" color={palette.text} style={styles.name}>
+            {t('splash.name')}
+          </Text>
+        </Animated.View>
+        <Animated.View style={taglineStyle}>
+          <Text variant="label" color={palette.textMuted} style={styles.tagline}>
+            {t('splash.tagline')}
+          </Text>
+        </Animated.View>
       </View>
 
       <Animated.View pointerEvents="none" style={[styles.slow, slowStyle]}>
-        <Text style={{ color: palette.muted, fontSize: 12 }}>Getting your workspace ready…</Text>
+        <Text variant="caption" color={palette.textMuted}>
+          {t('splash.slow')}
+        </Text>
       </Animated.View>
     </Animated.View>
   );
@@ -199,24 +209,14 @@ const styles = StyleSheet.create({
   textBlock: {
     position: 'absolute',
     top: '50%',
-    marginTop: LOGO_BOX / 2 - 36,
+    marginTop: LOGO_BOX / 2 - TEXT_OVERLAP,
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.xs,
   },
-  name: {
-    fontFamily: typography.fallback.sans,
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  tagline: {
-    fontFamily: typography.fallback.sans,
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0.6,
-  },
+  name: { letterSpacing: 1.5 },
+  tagline: { letterSpacing: 0.6 },
   slow: {
     position: 'absolute',
-    bottom: 56,
+    bottom: spacing.xxxl + spacing.sm,
   },
 });

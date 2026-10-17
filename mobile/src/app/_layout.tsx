@@ -1,17 +1,12 @@
-import { Stack, useRouter } from 'expo-router';
+import '@/i18n';
+
+import { Stack, useRouter, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import {
-  useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+import { useFonts } from 'expo-font';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -20,26 +15,33 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { AnimatedSplash } from '@/components/animated-splash';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
+import { installGlobalErrorHandler } from '@/lib/global-errors';
+import { isNotificationPermissionGranted } from '@/lib/notification-permission';
 import { registerForServerPush } from '@/lib/push';
+import { analytics } from '@/lib/telemetry';
 import { AuthProvider, useAuth } from '@/providers/auth';
+import { NotifyProvider } from '@/providers/notify';
 import { OfflineProvider } from '@/providers/offline';
 import { BiometricsProvider, useBiometrics } from '@/providers/biometrics';
 import { QueryProvider } from '@/providers/query';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
+installGlobalErrorHandler();
 
 function RootStack() {
   const { status } = useAuth();
+  const { reduceMotion } = useTheme();
 
   if (status === 'loading') return null;
 
   const signedIn = status === 'signedIn';
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'fade' }}>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
@@ -50,7 +52,16 @@ function RootStack() {
   );
 }
 
+/** Reports each screen the user opens (route path only: no params, no content). */
+function useScreenTracking() {
+  const pathname = usePathname();
+  useEffect(() => {
+    analytics.screen(pathname);
+  }, [pathname]);
+}
+
 function RootContent() {
+  useScreenTracking();
   const router = useRouter();
   const { scheme } = useTheme();
   const { status } = useAuth();
@@ -60,11 +71,6 @@ function RootContent() {
   const finishSplash = useCallback(() => setSplashDone(true), []);
 
   const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -85,11 +91,19 @@ function RootContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Keep reminders and push registration in sync at launch, but never trigger the system permission prompt from here:
+  // the first request is made by the permissions screen (after sign-in) or from Settings, with an explanation.
   useEffect(() => {
-    if (signedIn) {
+    if (!signedIn) return;
+    let cancelled = false;
+    void isNotificationPermissionGranted().then((granted) => {
+      if (cancelled || !granted) return;
       void notificationService.rescheduleAll();
       void registerForServerPush();
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [signedIn]);
 
   useEffect(() => {
@@ -116,17 +130,21 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <ErrorBoundary>
         <QueryProvider>
           <AuthProvider>
             <OfflineProvider>
               <ThemeProvider>
-                <BiometricsProvider>
-                  <RootContent />
-                </BiometricsProvider>
+                <NotifyProvider>
+                  <BiometricsProvider>
+                    <RootContent />
+                  </BiometricsProvider>
+                </NotifyProvider>
               </ThemeProvider>
             </OfflineProvider>
           </AuthProvider>
         </QueryProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

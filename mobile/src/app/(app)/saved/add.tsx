@@ -1,74 +1,101 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
+import { friendlyError } from '@/components/notes/friendly-error';
+import { Thumbnail } from '@/components/notes/thumbnail';
 import { Button } from '@/components/ui/button';
-import { Chip, ChipGroup } from '@/components/ui/chip';
-import { GlassCard } from '@/components/ui/glass-card';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
+import { SkeletonCard } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useLinkPreview, useSaveLink } from '@/features/saved/hooks';
-import { MODULE_LABEL, extractUrl, hostOf, type Destination, type IngestPreview } from '@/features/saved/types';
-import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { extractUrl, hostOf, isSavedType, placeOf, type Destination, type IngestPreview, type PlaceKey } from '@/features/saved/types';
+import { getDeviceLocale, useTranslation } from '@/i18n';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { spacing, useTheme } from '@/theme';
 
-const DESTINATIONS: { value: Destination; label: string }[] = [
-  { value: 'auto', label: 'Best fit (AI)' },
-  { value: 'saved', label: 'Saved' },
-  { value: 'notes', label: 'Notes' },
-  { value: 'fashion', label: 'Fashion Wishlist' },
-];
+/** How long the "saved" confirmation stays before the screen closes (shorter under reduce-motion, where it does not pop). */
+const CONFIRM_MS = 800;
+const CONFIRM_REDUCED_MS = 450;
+
+const DESTINATIONS: Destination[] = ['auto', 'saved', 'notes', 'fashion'];
 
 export default function AddSavedScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
+  const { t } = useTranslation('saved');
+  const { accent, reduceMotion } = useTheme();
   const preview = useLinkPreview();
   const saveLink = useSaveLink();
 
   const [url, setUrl] = useState('');
   const [destination, setDestination] = useState<Destination>('auto');
   const [result, setResult] = useState<IngestPreview | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  /** Where the link went, once saved: swaps the form for a confirmation, then the screen closes. */
+  const [savedTo, setSavedTo] = useState<PlaceKey | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+
+  const fail = (e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline')));
+  const destinationLabel = (value: Destination) => (value === 'auto' ? t('add.destination.auto') : t(`place.${value}`));
 
   async function paste() {
-    const text = await Clipboard.getStringAsync();
+    let text = '';
+    try {
+      text = await Clipboard.getStringAsync();
+    } catch {
+      // clipboard unavailable: handled as "nothing found" below
+    }
     const found = extractUrl(text);
     if (found) {
       setUrl(found);
       setResult(null);
-      setError(null);
+      setUrlError(null);
     } else {
-      setError('No valid link found on your clipboard.');
+      setUrlError(t('add.errors.noLink'));
     }
   }
 
   async function fetchDetails(nextDestination = destination) {
     const clean = extractUrl(url.trim()) ?? url.trim();
-    if (!/^https?:\/\//i.test(clean)) return setError('Enter a link starting with http:// or https://');
-    setError(null);
+    if (!clean) return setUrlError(t('add.errors.empty'));
+    if (!/^https?:\/\//i.test(clean)) return setUrlError(t('add.errors.scheme'));
+    setUrlError(null);
     try {
       setResult(await preview.mutateAsync({ url: clean, destination: nextDestination }));
       setUrl(clean);
     } catch (e) {
       setResult(null);
-      setError(e instanceof ApiError ? e.message : 'Could not fetch metadata for that URL.');
+      fail(e, t('add.errors.preview'));
     }
   }
 
   async function save() {
     if (!result) return;
-    setError(null);
     try {
       const saved = await saveLink.mutateAsync({ url: result.url, destination });
-      Alert.alert('Saved', `Added to ${MODULE_LABEL[saved.persistedTo ?? 'saved'] ?? 'Saved'}.`);
-      router.back();
+      const place = placeOf(saved.persistedTo);
+      analytics.track('link_saved');
+      // The toast already gives the success haptic; the check is the visual half of the same moment.
+      notify.success(t('add.added', { place: t(`place.${place}`) }));
+      setSavedTo(place);
+      closeTimer.current = setTimeout(() => router.back(), reduceMotion ? CONFIRM_REDUCED_MS : CONFIRM_MS);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      fail(e, t('add.errors.save'));
     }
   }
 
@@ -77,141 +104,107 @@ export default function AddSavedScreen() {
     if (result) void fetchDetails(value);
   }
 
-  const resolvedLabel = result ? MODULE_LABEL[result.resolvedDestination] ?? 'Saved' : null;
+  if (savedTo) {
+    return (
+      <Screen topInset={false}>
+        <Stack.Screen options={{ title: t('add.title') }} />
+        <View accessibilityLiveRegion="polite" style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xxxl }}>
+          <SuccessCheck size={spacing.xxxl + spacing.xl} accent="saved" accessibilityLabel={null} />
+          <Text variant="title" accessibilityRole="header">
+            {t('add.added', { place: t(`place.${savedTo}`) })}
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  const resolvedPlace = result ? t(`place.${placeOf(result.resolvedDestination)}`) : '';
+  const matchPercent = result ? new Intl.NumberFormat(getDeviceLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(result.confidence) : '';
+  const resultHost = result ? hostOf(result.url) : null;
+  const resultType = result ? t(`type.${isSavedType(result.type) ? result.type : 'other'}`) : '';
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: 'Save a link' }} />
+      <Stack.Screen options={{ title: t('add.title') }} />
 
-      {/* URL Input & Quick Paste */}
-      <GlassCard
-        glowColor={moduleColors.saved}
-        style={{
-          gap: spacing.md,
-          padding: spacing.md,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
+      <View style={{ gap: spacing.md }}>
         <Input
-          label="URL Address"
+          label={t('add.link.label')}
           value={url}
           onChangeText={(text) => {
             setUrl(text);
+            if (urlError) setUrlError(null);
             if (result) setResult(null);
           }}
-          placeholder="https://example.com/article"
+          error={urlError}
+          placeholder={t('add.link.placeholder')}
           autoCapitalize="none"
           autoCorrect={false}
+          autoComplete="off"
           keyboardType="url"
+          textContentType="URL"
           returnKeyType="go"
+          clearable
           onSubmitEditing={() => fetchDetails()}
         />
-
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
           <View style={{ flex: 1 }}>
-            <Button title="Paste" variant="secondary" onPress={paste} />
+            <Button title={t('add.paste')} variant="secondary" leftIcon="clipboard-outline" onPress={paste} />
           </View>
-          <View style={{ flex: 2 }}>
-            <Button title="Inspect Link" onPress={() => fetchDetails()} loading={preview.isPending} />
+          <View style={{ flex: 1 }}>
+            <Button title={t('add.preview')} leftIcon="search" onPress={() => fetchDetails()} loading={preview.isPending} />
           </View>
         </View>
-      </GlassCard>
+      </View>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
+      {preview.isPending && !result ? (
+        <View accessible accessibilityLabel={t('add.loading')} accessibilityLiveRegion="polite">
+          <SkeletonCard media lines={2} />
         </View>
       ) : null}
 
-      {/* Metadata Preview Result Card */}
       {result ? (
         <>
-          <GlassCard style={{ padding: 0, overflow: 'hidden' }}>
-            {result.image ? (
-              <Image
-                source={{ uri: result.image }}
-                style={{ width: '100%', height: 180, backgroundColor: colors.cardMuted }}
-                contentFit="cover"
-                accessibilityIgnoresInvertColors
-              />
-            ) : null}
-            <View style={{ padding: spacing.lg, gap: spacing.xs }}>
-              <Text variant="heading" numberOfLines={3}>
+          <Card padding="none" style={{ overflow: 'hidden' }}>
+            {result.image ? <Thumbnail uri={result.image} /> : null}
+            <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+              <Text variant="title" numberOfLines={3}>
                 {result.title}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
-                <View
-                  style={{
-                    paddingHorizontal: spacing.sm,
-                    paddingVertical: 2,
-                    borderRadius: radius.pill,
-                    backgroundColor: `${moduleColors.saved}20`,
-                  }}>
-                  <Text variant="caption" style={{ color: moduleColors.saved, fontWeight: '700' }}>
-                    {hostOf(result.url)}
-                  </Text>
-                </View>
-                {result.type ? (
-                  <Text variant="caption" muted>
-                    · {result.type}
-                  </Text>
-                ) : null}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
+                {resultHost ? <Tag label={resultHost} accent="saved" icon="link-outline" /> : null}
+                {result.type ? <Tag label={resultType} tone="neutral" /> : null}
               </View>
               {result.description ? (
-                <Text muted numberOfLines={3} style={{ marginTop: spacing.xs }}>
+                <Text variant="body" color="textSecondary" numberOfLines={3}>
                   {result.description}
                 </Text>
               ) : null}
             </View>
-          </GlassCard>
+          </Card>
 
-          {/* Destination Selector */}
-          <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-            <Text variant="label" muted>
-              Save Destination
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="label" color="textSecondary" accessibilityRole="header">
+              {t('add.saveTo')}
             </Text>
             <ChipGroup>
               {DESTINATIONS.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  selected={destination === option.value}
-                  color={moduleColors.saved}
-                  onPress={() => pickDestination(option.value)}
-                />
+                <Chip key={option} label={destinationLabel(option)} accent="saved" selected={destination === option} onPress={() => pickDestination(option)} />
               ))}
             </ChipGroup>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: spacing.xs }}>
-              <Ionicons name="sparkles" size={14} color={moduleColors.ai} />
-              <Text variant="caption" muted>
-                {destination === 'auto'
-                  ? `AI predicts destination: ${resolvedLabel} (${Math.round(result.confidence * 100)}% match)`
-                  : `Saving directly to ${resolvedLabel}`}
+            <View accessible accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <Ionicons name="sparkles" size={14} color={accent('ai').text} />
+              <Text variant="caption" color="textSecondary" style={{ flex: 1 }}>
+                {destination === 'auto' ? t('add.suggested', { place: resolvedPlace, match: matchPercent }) : t('add.direct', { place: resolvedPlace })}
               </Text>
             </View>
-          </GlassCard>
+          </View>
 
-          <Button title={`Save to ${resolvedLabel}`} onPress={save} loading={saveLink.isPending} />
+          <Button title={t('add.saveButton', { place: resolvedPlace })} leftIcon="bookmark" onPress={save} loading={saveLink.isPending} />
         </>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.replace('/saved/item')}
-        hitSlop={8}
-        style={{ alignSelf: 'center', paddingVertical: spacing.sm }}>
-        <Text variant="label" muted style={{ textDecorationLine: 'underline' }}>
-          Enter details manually instead
-        </Text>
-      </Pressable>
+      <Button title={t('add.manual')} variant="ghost" onPress={() => router.replace('/saved/item')} />
     </Screen>
   );
 }

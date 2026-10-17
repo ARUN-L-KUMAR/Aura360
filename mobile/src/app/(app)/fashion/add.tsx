@@ -1,23 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo, useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Chip, ChipRow } from '@/components/ui/chip';
-import { GlassCard } from '@/components/ui/glass-card';
+import { FashionImage, parseAmount } from '@/components/fashion/shared';
+import { conditionLabel } from '@/components/fashion/condition';
+import { categoryLabel, occasionLabel, seasonLabel } from '@/components/fashion/labels';
+import { failureMessage } from '@/components/finance/failure-message';
+import { LoadError, OfflineState } from '@/components/finance/load-error';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipGroup } from '@/components/ui/chip';
+import { ErrorState } from '@/components/ui/error-state';
+import { IconButton } from '@/components/ui/icon-button';
+import { Input } from '@/components/ui/input';
+import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useFashionItems, useSaveFashionItem } from '@/features/fashion/hooks';
 import {
@@ -29,29 +30,63 @@ import {
   type FashionItem,
   type FashionStatus,
 } from '@/features/fashion/types';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { useTranslation } from '@/i18n';
+import { CURRENCY_SYMBOL } from '@/lib/config';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme } from '@/theme';
+
+/** Not copy: the start of a web address. */
+const URL_HINT = 'https://';
+
+const PIECE_CATEGORIES = CATEGORIES.filter((c) => c !== 'All');
 
 export default function FashionAddScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { t } = useTranslation('fashion');
   const params = useLocalSearchParams<{ id?: string; defaultStatus?: FashionStatus }>();
+  const { data, isPending, fetchStatus, isError, error, refetch, isRefetching } = useFashionItems();
 
-  const { data: allItems = [] } = useFashionItems();
+  const isEdit = !!params.id;
+  const existingItem = useMemo(() => (params.id ? (data?.find((i) => i.id === params.id) ?? null) : null), [data, params.id]);
+
+  if (isEdit && !existingItem) {
+    return (
+      <Screen topInset={false}>
+        <Stack.Screen options={{ title: t('add.titleEdit') }} />
+        {isPending && fetchStatus !== 'paused' ? (
+          <>
+            <Skeleton height={layout.minTouchTarget} rounded="lg" />
+            <SkeletonCard media lines={3} />
+          </>
+        ) : isPending ? (
+          <OfflineState description={t('offline.item')} onRetry={() => void refetch()} />
+        ) : isError ? (
+          <LoadError error={error} title={t('errors.loadItems')} onRetry={() => void refetch()} retrying={isRefetching} />
+        ) : (
+          <ErrorState kind="notFound" message={t('add.notFound')} onRetry={() => router.back()} retryLabel={t('common.goBack')} />
+        )}
+      </Screen>
+    );
+  }
+
+  const defaultStatus: 'wardrobe' | 'wishlist' = params.defaultStatus === 'wishlist' ? 'wishlist' : 'wardrobe';
+  return <AddForm key={existingItem?.id ?? 'new'} existingItem={existingItem} defaultStatus={defaultStatus} />;
+}
+
+function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | null; defaultStatus: FashionStatus }) {
+  const router = useRouter();
+  const notify = useNotify();
+  const { t } = useTranslation('fashion');
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const saveMutation = useSaveFashionItem();
 
-  const existingItem = useMemo(() => {
-    if (!params.id) return null;
-    return allItems.find((i) => i.id === params.id) ?? null;
-  }, [allItems, params.id]);
-
-  const [status, setStatus] = useState<FashionStatus>(
-    existingItem?.status ?? (params.defaultStatus || 'wardrobe')
-  );
+  const [status, setStatus] = useState<FashionStatus>(existingItem?.status ?? defaultStatus);
   const [name, setName] = useState(existingItem?.name ?? '');
   const [brand, setBrand] = useState(existingItem?.brand ?? '');
   const [category, setCategory] = useState<string>(existingItem?.category ?? 'Tops');
-  const [subcategory, setSubcategory] = useState(existingItem?.subcategory ?? '');
+  const subcategory = existingItem?.subcategory ?? '';
   const [color, setColor] = useState(existingItem?.color ?? '');
   const [size, setSize] = useState(existingItem?.size ?? '');
   const [price, setPrice] = useState(existingItem?.price ? String(existingItem.price) : '');
@@ -59,62 +94,47 @@ export default function FashionAddScreen() {
   const [imageUrl, setImageUrl] = useState(existingItem?.imageUrl ?? '');
   const [notes, setNotes] = useState(existingItem?.notes ?? existingItem?.description ?? '');
   const [buyingLink, setBuyingLink] = useState((existingItem?.metadata?.buyingLink as string) ?? '');
+  const [selectedSeasons, setSelectedSeasons] = useState<string[]>(existingItem?.season ?? ['All']);
+  const [selectedOccasions, setSelectedOccasions] = useState<string[]>(existingItem?.occasion ?? ['Casual']);
 
-  const [selectedSeasons, setSelectedSeasons] = useState<string[]>(
-    existingItem?.season ?? ['All']
-  );
-  const [selectedOccasions, setSelectedOccasions] = useState<string[]>(
-    existingItem?.occasion ?? ['Casual']
-  );
+  const [submitted, setSubmitted] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const pickImage = async (useCamera = false) => {
+  const brandRef = useRef<TextInput>(null);
+  const priceRef = useRef<TextInput>(null);
+  const colorRef = useRef<TextInput>(null);
+  const sizeRef = useRef<TextInput>(null);
+  const linkRef = useRef<TextInput>(null);
+  const notesRef = useRef<TextInput>(null);
+
+  const parsedPrice = parseAmount(price);
+  const nameError = submitted && !name.trim() ? t('add.nameNeeded') : undefined;
+  const priceError = submitted && !parsedPrice.valid ? t('add.priceInvalid') : undefined;
+
+  const pickImage = async (useCamera: boolean) => {
+    setPhotoError(null);
     try {
-      const permission = useCamera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
+      const permission = useCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission Denied', 'Please allow camera/photos access to upload clothing images.');
+        setPhotoError(t('add.photoDenied'));
         return;
       }
-
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          });
-
-      if (!result.canceled && result.assets[0]?.uri) {
-        setImageUrl(result.assets[0].uri);
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Could not open image picker.');
+      const options = { allowsEditing: true, aspect: [1, 1] as [number, number], quality: 0.8 };
+      const result = useCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+      if (!result.canceled && result.assets[0]?.uri) setImageUrl(result.assets[0].uri);
+    } catch {
+      setPhotoError(t('add.photoFailed'));
     }
   };
 
-  const toggleSeason = (s: string) => {
-    setSelectedSeasons((prev) =>
-      prev.includes(s) ? prev.filter((item) => item !== s) : [...prev, s]
-    );
-  };
-
-  const toggleOccasion = (occ: string) => {
-    setSelectedOccasions((prev) =>
-      prev.includes(occ) ? prev.filter((item) => item !== occ) : [...prev, occ]
-    );
-  };
+  const toggleSeason = (s: string) => setSelectedSeasons((prev) => (prev.includes(s) ? prev.filter((item) => item !== s) : [...prev, s]));
+  const toggleOccasion = (occ: string) => setSelectedOccasions((prev) => (prev.includes(occ) ? prev.filter((item) => item !== occ) : [...prev, occ]));
 
   const handleSave = () => {
-    if (!name.trim()) {
-      Alert.alert('Missing Name', 'Please provide a name for this clothing item.');
-      return;
-    }
+    setSubmitted(true);
+    setSaveError(null);
+    if (!name.trim() || !parsedPrice.valid) return;
 
     const payload: Partial<FashionItem> & { id?: string } = {
       ...(existingItem ? { id: existingItem.id } : {}),
@@ -124,7 +144,7 @@ export default function FashionAddScreen() {
       subcategory: subcategory.trim() || null,
       color: color.trim() || null,
       size: size.trim() || null,
-      price: price ? Number(price) : null,
+      price: parsedPrice.value,
       status,
       condition,
       imageUrl: imageUrl || null,
@@ -139,333 +159,226 @@ export default function FashionAddScreen() {
 
     saveMutation.mutate(payload, {
       onSuccess: () => {
+        analytics.track('fashion_item_saved', { mode: existingItem ? 'edit' : 'create' });
+        notify.success(existingItem ? t('add.saved') : status === 'wishlist' ? t('add.addedWishlist') : t('add.addedWardrobe'));
         router.back();
       },
       onError: (err) => {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Could not save clothing item.');
+        const message = failureMessage(err, t('errors.saveItem'));
+        setSaveError(message);
+        notify.error(message);
       },
     });
   };
 
+  const saveLabel = existingItem ? t('add.saveChanges') : status === 'wishlist' ? t('add.saveWishlist') : t('add.saveWardrobe');
+  const statusOptions: { value: 'wardrobe' | 'wishlist'; label: string }[] = [
+    { value: 'wardrobe', label: t('add.inWardrobe') },
+    { value: 'wishlist', label: t('add.onWishlist') },
+  ];
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-        {/* Status Selector: Wardrobe vs Wishlist */}
-        <Segmented
-          options={[
-            { value: 'wardrobe', label: 'Wardrobe (Owned)' },
-            { value: 'wishlist', label: 'Wishlist (Plan to buy)' },
-          ]}
-          value={status}
-          onChange={(val) => setStatus(val as FashionStatus)}
+    <Screen
+      topInset={false}
+      footer={
+        <View
+          style={{
+            paddingHorizontal: layout.screenPadding,
+            paddingTop: spacing.md,
+            paddingBottom: insets.bottom + spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            backgroundColor: colors.background,
+          }}>
+          <Button title={saveLabel} leftIcon="checkmark" loading={saveMutation.isPending} onPress={handleSave} />
+        </View>
+      }>
+      <Stack.Screen options={{ title: existingItem ? t('add.titleEdit') : t('add.titleNew') }} />
+
+      {saveError ? <ErrorState size="inline" title={t('errors.saveTitle')} message={saveError} /> : null}
+
+      <Segmented options={statusOptions} value={status === 'wishlist' ? 'wishlist' : 'wardrobe'} onChange={setStatus} accessibilityLabel={t('add.where')} />
+
+      <Card style={{ gap: spacing.md }}>
+        <SectionHeader title={t('add.photoTitle')} />
+        {imageUrl ? (
+          <View style={{ alignSelf: 'center', width: '60%', aspectRatio: 1 }}>
+            <FashionImage uri={imageUrl} accessibilityLabel={t('add.photoSelected')} style={{ flex: 1, borderRadius: radius.md }} iconSize={48} />
+            <View style={{ position: 'absolute', top: spacing.xs, end: spacing.xs }}>
+              <IconButton icon="trash-outline" variant="filled" destructive size="sm" accessibilityLabel={t('add.removePhoto')} onPress={() => setImageUrl('')} />
+            </View>
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Button title={t('add.choosePhoto')} variant="secondary" leftIcon="images-outline" onPress={() => pickImage(false)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button title={t('add.takePhoto')} variant="secondary" leftIcon="camera-outline" onPress={() => pickImage(true)} />
+            </View>
+          </View>
+        )}
+        <Input
+          label={t('add.pasteLink')}
+          placeholder={URL_HINT}
+          value={imageUrl}
+          onChangeText={(value) => {
+            setImageUrl(value);
+            setPhotoError(null);
+          }}
+          error={photoError}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          textContentType="URL"
+          returnKeyType="done"
+          clearable
+        />
+      </Card>
+
+      <Card style={{ gap: spacing.lg }}>
+        <Input
+          label={t('add.nameLabel')}
+          placeholder={t('add.namePlaceholder')}
+          value={name}
+          onChangeText={setName}
+          error={nameError}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => brandRef.current?.focus()}
+        />
+        <Input
+          ref={brandRef}
+          label={t('add.brandLabel')}
+          placeholder={t('add.brandPlaceholder')}
+          value={brand}
+          onChangeText={setBrand}
+          autoCapitalize="words"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => priceRef.current?.focus()}
         />
 
-        {/* Image Picker Box */}
-        <GlassCard style={styles.imageBox}>
-          {imageUrl ? (
-            <View style={styles.previewWrap}>
-              <Image source={{ uri: imageUrl }} style={styles.imagePreview} contentFit="cover" />
-              <Pressable
-                onPress={() => setImageUrl('')}
-                style={[styles.removeImgBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-                <Ionicons name="trash" size={16} color="#ffffff" />
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.uploadButtonsRow}>
-              <Pressable
-                onPress={() => pickImage(false)}
-                style={[styles.photoActionBtn, { backgroundColor: colors.accent }]}>
-                <Ionicons name="images-outline" size={24} color={moduleColors.fashion} />
-                <Text style={{ fontSize: 12, fontWeight: '700' }}>Choose Photo</Text>
-              </Pressable>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.category')}
+          </Text>
+          <ChipGroup>
+            {PIECE_CATEGORIES.map((cat) => (
+              <Chip key={cat} label={categoryLabel(cat)} accent="fashion" selected={category === cat} onPress={() => setCategory(cat)} />
+            ))}
+          </ChipGroup>
+        </View>
 
-              <Pressable
-                onPress={() => pickImage(true)}
-                style={[styles.photoActionBtn, { backgroundColor: colors.accent }]}>
-                <Ionicons name="camera-outline" size={24} color={moduleColors.fashion} />
-                <Text style={{ fontSize: 12, fontWeight: '700' }}>Take Photo</Text>
-              </Pressable>
-            </View>
-          )}
-
-          <TextInput
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            placeholder="Or enter image URL..."
-            placeholderTextColor={colors.textMuted}
-            style={[styles.urlInput, { borderColor: colors.border, color: colors.text }]}
+        <Input
+          ref={priceRef}
+          label={t('add.priceLabel')}
+          placeholder={t('add.pricePlaceholder')}
+          value={price}
+          onChangeText={setPrice}
+          error={priceError}
+          leftAdornment={
+            <Text variant="body" color="textSecondary">
+              {CURRENCY_SYMBOL}
+            </Text>
+          }
+          keyboardType="decimal-pad"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => colorRef.current?.focus()}
+        />
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          <Input
+            ref={colorRef}
+            containerStyle={{ flex: 1 }}
+            label={t('add.colourLabel')}
+            placeholder={t('add.colourPlaceholder')}
+            value={color}
+            onChangeText={setColor}
+            autoCapitalize="words"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => sizeRef.current?.focus()}
           />
-        </GlassCard>
-
-        {/* Core Fields */}
-        <GlassCard style={{ gap: spacing.md, padding: spacing.lg }}>
-          <View style={{ gap: 4 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>ITEM NAME *</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Linen Blend Overshirt"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-            />
-          </View>
-
-          <View style={{ gap: 4 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>BRAND / STORE</Text>
-            <TextInput
-              value={brand}
-              onChangeText={setBrand}
-              placeholder="e.g. Zara, Uniqlo, Nike"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-            />
-          </View>
-
-          {/* Category Selector */}
-          <View style={{ gap: 6 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>CATEGORY</Text>
-            <ChipRow>
-              {CATEGORIES.filter((c) => c !== 'All').map((cat) => (
-                <Chip
-                  key={cat}
-                  label={cat}
-                  selected={category === cat}
-                  color={moduleColors.fashion}
-                  onPress={() => setCategory(cat)}
-                />
-              ))}
-            </ChipRow>
-          </View>
-
-          {/* Price, Color & Size */}
-          <View style={styles.formRow}>
-            <View style={[styles.formCol, { flex: 1 }]}>
-              <Text variant="caption" muted style={styles.fieldLabel}>PRICE (₹)</Text>
-              <TextInput
-                value={price}
-                onChangeText={setPrice}
-                keyboardType="numeric"
-                placeholder="2499"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-              />
-            </View>
-
-            <View style={[styles.formCol, { flex: 1 }]}>
-              <Text variant="caption" muted style={styles.fieldLabel}>COLOR</Text>
-              <TextInput
-                value={color}
-                onChangeText={setColor}
-                placeholder="e.g. Navy, Black"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-              />
-            </View>
-
-            <View style={[styles.formCol, { flex: 0.8 }]}>
-              <Text variant="caption" muted style={styles.fieldLabel}>SIZE</Text>
-              <TextInput
-                value={size}
-                onChangeText={setSize}
-                placeholder="M / 32"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-              />
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* Condition Selector */}
-        {status === 'wardrobe' ? (
-          <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>CONDITION & LAUNDRY</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {CONDITIONS.map((cond) => (
-                <Chip
-                  key={cond.value}
-                  label={cond.label}
-                  selected={condition === cond.value}
-                  color={cond.color}
-                  onPress={() => setCondition(cond.value as FashionCondition)}
-                />
-              ))}
-            </View>
-          </GlassCard>
-        ) : null}
-
-        {/* Seasons & Occasion */}
-        <GlassCard style={{ gap: spacing.md, padding: spacing.lg }}>
-          <View style={{ gap: 6 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>SEASON ROTATION</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {SEASONS.map((s) => (
-                <Chip
-                  key={s}
-                  label={s}
-                  selected={selectedSeasons.includes(s)}
-                  color="#38bdf8"
-                  onPress={() => toggleSeason(s)}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ gap: 6 }}>
-            <Text variant="caption" muted style={styles.fieldLabel}>OCCASIONS</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {OCCASIONS.map((occ) => (
-                <Chip
-                  key={occ}
-                  label={occ}
-                  selected={selectedOccasions.includes(occ)}
-                  color="#a855f7"
-                  onPress={() => toggleOccasion(occ)}
-                />
-              ))}
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* Shopping Link (Wishlist) */}
-        <GlassCard style={{ gap: spacing.sm, padding: spacing.lg }}>
-          <Text variant="caption" muted style={styles.fieldLabel}>STORE / BUYING LINK</Text>
-          <TextInput
-            value={buyingLink}
-            onChangeText={setBuyingLink}
-            placeholder="https://myntra.com/..."
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            style={[styles.textInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+          <Input
+            ref={sizeRef}
+            containerStyle={{ flex: 1 }}
+            label={t('add.sizeLabel')}
+            placeholder={t('add.sizePlaceholder')}
+            value={size}
+            onChangeText={setSize}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => linkRef.current?.focus()}
           />
-        </GlassCard>
+        </View>
+      </Card>
 
-        {/* Notes */}
-        <GlassCard style={{ gap: spacing.sm, padding: spacing.lg }}>
-          <Text variant="caption" muted style={styles.fieldLabel}>NOTES / FIT ADVICE</Text>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Pair with white sneakers, fits slightly oversized..."
-            placeholderTextColor={colors.textMuted}
-            multiline
-            numberOfLines={3}
-            style={[styles.textArea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-          />
-        </GlassCard>
+      {status === 'wardrobe' ? (
+        <Card style={{ gap: spacing.md }}>
+          <SectionHeader title={t('add.conditionTitle')} subtitle={t('add.conditionHint')} />
+          <ChipGroup>
+            {CONDITIONS.map((cond) => (
+              <Chip key={cond.value} label={conditionLabel(cond.value)} accent="fashion" selected={condition === cond.value} onPress={() => setCondition(cond.value)} />
+            ))}
+          </ChipGroup>
+        </Card>
+      ) : null}
 
-        {/* Submit Button */}
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSave}
-          disabled={saveMutation.isPending}
-          style={[styles.submitBtn, { backgroundColor: moduleColors.fashion }]}>
-          {saveMutation.isPending ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark" size={20} color="#ffffff" />
-              <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 15 }}>
-                {existingItem ? 'Update Clothing Item' : 'Save to Wardrobe'}
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Card style={{ gap: spacing.lg }}>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.seasons')}
+          </Text>
+          <ChipGroup>
+            {SEASONS.map((s) => (
+              <Chip key={s} label={seasonLabel(s)} accent="fashion" selected={selectedSeasons.includes(s)} onPress={() => toggleSeason(s)} />
+            ))}
+          </ChipGroup>
+        </View>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.occasions')}
+          </Text>
+          <ChipGroup>
+            {OCCASIONS.map((occ) => (
+              <Chip key={occ} label={occasionLabel(occ)} accent="fashion" selected={selectedOccasions.includes(occ)} onPress={() => toggleOccasion(occ)} />
+            ))}
+          </ChipGroup>
+        </View>
+      </Card>
+
+      <Card style={{ gap: spacing.lg }}>
+        <Input
+          ref={linkRef}
+          label={t('add.linkLabel')}
+          placeholder={t('add.linkPlaceholder')}
+          value={buyingLink}
+          onChangeText={setBuyingLink}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          textContentType="URL"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => notesRef.current?.focus()}
+        />
+        <Input
+          ref={notesRef}
+          label={t('add.notesLabel')}
+          placeholder={t('add.notesPlaceholder')}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={3}
+          autoCapitalize="sentences"
+        />
+      </Card>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-    gap: spacing.md,
-    paddingBottom: spacing.xxl + 20,
-  },
-  imageBox: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  previewWrap: {
-    position: 'relative',
-    width: 160,
-    height: 160,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-  },
-  removeImgBtn: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  uploadButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    width: '100%',
-  },
-  photoActionBtn: {
-    flex: 1,
-    paddingVertical: 18,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  urlInput: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    fontSize: 12,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    fontSize: 13,
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  formCol: {
-    gap: 4,
-  },
-  submitBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 15,
-    borderRadius: radius.md,
-    marginTop: spacing.xs,
-  },
-});

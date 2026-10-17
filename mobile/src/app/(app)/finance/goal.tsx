@@ -1,22 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 
+import { failureMessage } from '@/components/finance/failure-message';
+import { FormCard, cleanAmount, parseAmount } from '@/components/finance/form-parts';
+import { categoryLabel } from '@/components/finance/labels';
 import { Button } from '@/components/ui/button';
-import { Chip, ChipGroup } from '@/components/ui/chip';
+import { Card, readableOn } from '@/components/ui/card';
+import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { DateField } from '@/components/ui/date-field';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useDeleteGoal, useSaveGoal } from '@/features/finance/hooks';
 import { GOAL_CATEGORIES, GOAL_COLORS, type Goal } from '@/features/finance/types';
-import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
-import { radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { layout, neutral, radius, spacing, tabularNums, useTheme } from '@/theme';
+
+/** Catalog keys for the spoken names of the swatches in GOAL_COLORS, in the same order. */
+const COLOR_NAME_KEYS = ['indigo', 'green', 'purple', 'amber', 'red', 'pink', 'teal'] as const;
 
 function parseGoal(raw?: string): Goal | null {
   try {
@@ -28,8 +38,9 @@ function parseGoal(raw?: string): Goal | null {
 
 export default function GoalScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
+  const { colors } = useTheme();
+  const { t } = useTranslation('finance');
   const params = useLocalSearchParams<{ goal?: string }>();
   const existing = useMemo(() => parseGoal(params.goal), [params.goal]);
 
@@ -40,23 +51,30 @@ export default function GoalScreen() {
   const [color, setColor] = useState(existing?.color ?? GOAL_COLORS[0]);
   const [targetDate, setTargetDate] = useState(existing?.targetDate?.slice(0, 10) ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
+  const targetRef = useRef<TextInput>(null);
+  const savedRef = useRef<TextInput>(null);
   const save = useSaveGoal();
   const remove = useDeleteGoal();
 
-  const targetVal = Number.parseFloat(target.replace(/,/g, '')) || 0;
-  const savedVal = Number.parseFloat(saved.replace(/,/g, '')) || 0;
+  const targetValue = parseAmount(target);
+  const savedValue = saved.trim() ? parseAmount(saved) : 0;
+  const targetVal = Number.isFinite(targetValue) ? targetValue : 0;
+  const savedVal = Number.isFinite(savedValue) ? savedValue : 0;
   const progressPercent = targetVal > 0 ? Math.min(100, Math.round((savedVal / targetVal) * 100)) : 0;
 
-  async function submit() {
-    const targetValue = Number.parseFloat(target.replace(/,/g, ''));
-    const savedValue = saved.trim() ? Number.parseFloat(saved.replace(/,/g, '')) : 0;
-    if (!title.trim()) return setError('Give your goal a name.');
-    if (!Number.isFinite(targetValue) || targetValue <= 0) return setError('Enter a target amount greater than 0.');
-    if (!Number.isFinite(savedValue) || savedValue < 0) return setError('Saved amount cannot be negative.');
+  const titleError = title.trim() ? null : t('goal.nameNeeded');
+  const targetError = !Number.isFinite(targetValue) || targetValue <= 0 ? t('goal.targetInvalid') : null;
+  const savedError = !Number.isFinite(savedValue) ? t('goal.savedInvalid') : savedValue < 0 ? t('goal.savedNegative') : null;
 
-    setError(null);
+  async function submit() {
+    setSubmitted(true);
+    if (titleError || targetError || savedError) {
+      haptics.warning();
+      return;
+    }
+
     try {
       await save.mutateAsync({
         id: existing?.id,
@@ -70,198 +88,166 @@ export default function GoalScreen() {
           notes: notes.trim() || null,
         },
       });
+      analytics.track('goal_saved');
+      notify.success(existing ? t('goal.updated') : t('goal.created'));
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      notify.error(failureMessage(e, t('errors.save')));
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete goal?', `"${existing.title}" will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remove.mutateAsync(existing.id);
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({
+      title: t('goal.deleteTitle'),
+      message: t('goal.deleteMessage', { title: existing.title }),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(existing.id);
+      notify.success(t('goal.deleted'));
+      router.back();
+    } catch (e) {
+      notify.error(failureMessage(e, t('errors.delete')));
+    }
   }
+
+  const symbol = (
+    <Text variant="body" color="textSecondary" accessibilityElementsHidden importantForAccessibility="no">
+      {CURRENCY_SYMBOL}
+    </Text>
+  );
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit goal' : 'New goal' }} />
+      <Stack.Screen options={{ title: existing ? t('goal.titleEdit') : t('goal.titleNew') }} />
 
-      {/* Goal Preview Card */}
-      <GlassCard
-        glowColor={color}
-        style={{
-          gap: spacing.sm,
-          padding: spacing.lg,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-            <Text variant="label" style={{ fontWeight: '700', color }}>
-              {category.toUpperCase()}
-            </Text>
-          </View>
-          <Text variant="caption" style={{ fontWeight: '700', color }}>
+      {/* Live preview of the goal card. It repeats what the fields below already say, so screen readers skip it. */}
+      <Card tintColor={color} style={{ gap: spacing.sm }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+          <Tag label={categoryLabel(category)} color={color} tone="accent" />
+          <Text variant="title" numeric>
             {progressPercent}%
           </Text>
         </View>
-
-        <Text variant="heading" numberOfLines={1}>
-          {title.trim() || 'Goal title'}
+        <Text variant="title" numberOfLines={1}>
+          {title.trim() || t('goal.namePlaceholder')}
         </Text>
-
-        <ProgressBar percent={progressPercent} color={color} height={6} />
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text variant="caption" muted>
-            Saved: {formatMoney(savedVal)}
+        <ProgressBar percent={progressPercent} color={color} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
+          <Text variant="caption" numeric color="textSecondary">
+            {t('goal.saved', { amount: formatMoney(savedVal) })}
           </Text>
-          <Text variant="caption" muted>
-            Target: {formatMoney(targetVal)}
+          <Text variant="caption" numeric color="textSecondary">
+            {t('goal.target', { amount: formatMoney(targetVal) })}
           </Text>
         </View>
-      </GlassCard>
+      </Card>
 
-      {/* Basic Inputs */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
+      <FormCard>
         <Input
-          label="Goal Name"
+          label={t('goal.nameLabel')}
           value={title}
           onChangeText={setTitle}
-          placeholder="e.g. Dream Vacation, Mac Mini M4"
+          placeholder={t('goal.nameExample')}
           autoFocus={!existing}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          error={submitted ? titleError : null}
+          onSubmitEditing={() => targetRef.current?.focus()}
         />
-
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+          <View style={{ flex: 1, minWidth: 150 }}>
             <Input
-              label={`Target (${CURRENCY_SYMBOL})`}
+              ref={targetRef}
+              label={t('goal.targetLabel')}
               value={target}
-              onChangeText={setTarget}
+              onChangeText={(text) => setTarget(cleanAmount(text))}
+              leftAdornment={symbol}
               keyboardType="decimal-pad"
+              inputMode="decimal"
               placeholder="0"
+              returnKeyType="next"
+              style={{ fontVariant: tabularNums }}
+              error={submitted ? targetError : null}
+              onSubmitEditing={() => savedRef.current?.focus()}
             />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 150 }}>
             <Input
-              label={`Saved so far (${CURRENCY_SYMBOL})`}
+              ref={savedRef}
+              label={t('goal.savedLabel')}
               value={saved}
-              onChangeText={setSaved}
+              onChangeText={(text) => setSaved(cleanAmount(text))}
+              leftAdornment={symbol}
               keyboardType="decimal-pad"
+              inputMode="decimal"
               placeholder="0"
+              returnKeyType="done"
+              style={{ fontVariant: tabularNums }}
+              error={submitted ? savedError : null}
             />
           </View>
         </View>
-      </GlassCard>
+      </FormCard>
 
-      {/* Category Selection */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="pricetags-outline" size={16} color={colors.textMuted} />
-          <Text variant="label" muted>
-            Category
-          </Text>
-        </View>
+      <FormCard title={t('goal.category')} icon="pricetags-outline">
         <ChipGroup>
           {GOAL_CATEGORIES.map((name) => (
-            <Chip
-              key={name}
-              label={name}
-              selected={category === name}
-              color={color}
-              onPress={() => setCategory(name)}
-            />
+            <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
           ))}
         </ChipGroup>
-      </GlassCard>
+      </FormCard>
 
-      {/* Color Picker */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="color-palette-outline" size={16} color={colors.textMuted} />
-          <Text variant="label" muted>
-            Accent Colour
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
-          {GOAL_COLORS.map((value) => {
+      <FormCard title={t('goal.colour')} icon="color-palette-outline">
+        <View accessibilityRole="radiogroup" accessibilityLabel={t('goal.colour')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+          {GOAL_COLORS.map((value, i) => {
             const isSelected = color === value;
+            const nameKey = COLOR_NAME_KEYS[i];
             return (
-              <Pressable
+              <PressableScale
                 key={value}
-                accessibilityRole="button"
-                accessibilityLabel={`Colour ${value}`}
-                accessibilityState={{ selected: isSelected }}
+                accessibilityRole="radio"
+                accessibilityLabel={nameKey ? t(`goal.colours.${nameKey}` as const) : t('goal.colours.fallback', { index: i + 1 })}
+                accessibilityState={{ checked: isSelected }}
+                haptic="select"
                 onPress={() => setColor(value)}
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
+                ringRadius={radius.pill}
+                style={{
+                  width: layout.minTouchTarget,
+                  height: layout.minTouchTarget,
                   borderRadius: radius.pill,
                   backgroundColor: value,
                   borderWidth: isSelected ? 3 : 1,
-                  borderColor: isSelected ? colors.text : 'rgba(255,255,255,0.2)',
-                  transform: [{ scale: pressed ? 0.92 : isSelected ? 1.1 : 1 }],
+                  borderColor: isSelected ? colors.text : colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
-                })}>
-                {isSelected ? <Ionicons name="checkmark" size={18} color="#ffffff" /> : null}
-              </Pressable>
+                }}>
+                {isSelected ? <Ionicons name="checkmark" size={22} color={readableOn(value, neutral[50])} /> : null}
+              </PressableScale>
             );
           })}
         </View>
-      </GlassCard>
+      </FormCard>
 
-      {/* Target Date & Notes */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <DateField
-          label="Target date (optional)"
-          value={targetDate}
-          onChange={setTargetDate}
-          clearable
-          placeholder="No deadline set"
-          minimumDate={new Date()}
-        />
-
+      <FormCard>
+        <DateField label={t('goal.dateLabel')} value={targetDate} onChange={setTargetDate} clearable placeholder={t('goal.dateNone')} minimumDate={new Date()} />
         <Input
-          label="Notes (optional)"
+          label={t('goal.notesLabel')}
           value={notes}
           onChangeText={setNotes}
           multiline
-          placeholder="Why are you saving for this?"
+          autoCapitalize="sentences"
+          placeholder={t('goal.notesPlaceholder')}
           style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: spacing.md }}
         />
-      </GlassCard>
+      </FormCard>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <Button title={existing ? 'Save changes' : 'Create goal'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete goal" variant="ghost" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <Button title={existing ? t('goal.saveChanges') : t('goal.create')} onPress={submit} loading={save.isPending} />
+      {existing ? <Button title={t('goal.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );
 }

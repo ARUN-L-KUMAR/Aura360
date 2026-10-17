@@ -1,3 +1,6 @@
+import { i18n } from '@/i18n';
+import { categoryRamps, neutral, primary, secondary, tertiary } from '@/theme';
+
 export type TimeLog = {
   id: string;
   date: string; // YYYY-MM-DD
@@ -23,16 +26,18 @@ export type TimeLogInput = {
   productivityScore?: number;
 };
 
+/** Stored values (the API keeps them in English). Show them with `timeCategoryLabel`, never raw. */
 export const TIME_CATEGORIES = ['Work', 'Study', 'Personal', 'Exercise', 'Social', 'Rest', 'Other'];
 
+/** Static mid-tones from the theme ramps, one per category (used for chips, bars and tiles). */
 export const CATEGORY_COLORS: Record<string, string> = {
-  Work: '#6366f1',
-  Study: '#0ea5e9',
-  Personal: '#ec4899',
-  Exercise: '#f97316',
-  Social: '#eab308',
-  Rest: '#14b8a6',
-  Other: '#64748b',
+  Work: primary[500],
+  Study: secondary[500],
+  Personal: tertiary[500],
+  Exercise: categoryRamps.fitness[500],
+  Social: categoryRamps.food[500],
+  Rest: categoryRamps.skincare[500],
+  Other: neutral[500],
 };
 
 export const DURATION_PRESETS = [15, 30, 45, 60, 90, 120];
@@ -40,14 +45,39 @@ export const DURATION_PRESETS = [15, 30, 45, 60, 90, 120];
 export const UNCATEGORISED = 'Uncategorised';
 
 export function categoryColor(category: string | null | undefined) {
-  return (category && CATEGORY_COLORS[category]) || '#8b5cf6';
+  return (category && CATEGORY_COLORS[category]) || categoryRamps.notes[500];
 }
 
+/** "45m", "2h", "1h 30m", worded by the catalog so other languages can reorder or rename the units. */
 export function formatMinutes(total: number) {
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
-  if (hours === 0) return `${minutes}m`;
-  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+  if (hours === 0) return i18n.t('time:duration.minutes', { minutes });
+  return minutes === 0 ? i18n.t('time:duration.hours', { hours }) : i18n.t('time:duration.hoursMinutes', { hours, minutes });
+}
+
+/** The name to show for a stored category: translated when it is one of ours, as typed when it is custom. */
+export function timeCategoryLabel(category: string) {
+  switch (category) {
+    case 'Work':
+      return i18n.t('time:categories.work');
+    case 'Study':
+      return i18n.t('time:categories.study');
+    case 'Personal':
+      return i18n.t('time:categories.personal');
+    case 'Exercise':
+      return i18n.t('time:categories.exercise');
+    case 'Social':
+      return i18n.t('time:categories.social');
+    case 'Rest':
+      return i18n.t('time:categories.rest');
+    case 'Other':
+      return i18n.t('time:categories.other');
+    case UNCATEGORISED:
+      return i18n.t('time:categories.uncategorised');
+    default:
+      return category;
+  }
 }
 
 export function totalMinutes(logs: TimeLog[]) {

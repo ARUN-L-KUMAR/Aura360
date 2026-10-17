@@ -1,0 +1,97 @@
+{
+  "errors": {
+    "network": "Can't reach the server. Check your connection and try again.",
+    "timeout": "The server took too long to respond. Try again in a moment.",
+    "sessionExpired": "Your session expired. Sign in again to continue.",
+    "generic": "Something went wrong. Try again."
+  },
+  "account": {
+    "title": "Account",
+    "fallbackName": "Aura user"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "footer": "System follows your phone's light or dark setting.",
+    "themeLabel": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "preview": {
+      "system": {
+        "light": "Following your phone: light theme",
+        "dark": "Following your phone: dark theme"
+      },
+      "fixed": {
+        "light": "Using the light theme",
+        "dark": "Using the dark theme"
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "footerOn": "Habit reminders are scheduled on this phone. Alerts and reminders from the server arrive even when the app is closed.",
+    "footerOff": "Turn on habit reminders to get scheduled water, skincare and daily review alerts.",
+    "alertsTitle": "Alerts and reminders",
+    "alertsSubtitle": "Budget alerts, renewals, workout, meals and more",
+    "habitsTitle": "Daily habit reminders",
+    "habitsSubtitle": "Reminders on this phone",
+    "hydrationTitle": "Hydration check",
+    "hydrationSubtitle": "{{first}}, {{second}} and {{third}}",
+    "morningTitle": "Morning skincare",
+    "morningSubtitle": "Daily routine alert at {{time}}",
+    "eveningTitle": "Evening skincare",
+    "eveningSubtitle": "Night routine at {{time}}",
+    "reviewTitle": "Evening review",
+    "reviewSubtitle": "Workout and finance tallies at {{time}}",
+    "budgetTitle": "Budget threshold alerts",
+    "budgetSubtitle": "When spending crosses a limit",
+    "testTitle": "Send a test notification",
+    "testSubtitle": "See how reminders look on this phone",
+    "testSent": "Test notification sent. Check your notification tray.",
+    "testFailed": "Couldn't send the test notification.",
+    "saveFailed": "Couldn't save your reminder settings.",
+    "expoGoTitle": "Notifications in Expo Go",
+    "expoGoMessage": "Android notifications in Expo SDK 53 and later need a development build (npx expo run:android) to show system notifications."
+  },
+  "security": {
+    "title": "Security",
+    "footerUnavailable": "Biometric hardware is not enrolled or available on this device.",
+    "requireTitle": "Require {{method}}",
+    "requireSubtitle": "Lock Aura360 when you open it or switch back to it",
+    "unavailable": "Not available on this device",
+    "notConfirmed": "We couldn't confirm it's you, so {{method}} is still off."
+  },
+  "privacy": {
+    "title": "Privacy",
+    "shareTitle": "Share usage data and crash reports",
+    "shareSubtitle": "Helps us fix bugs. Never includes your notes, amounts or messages.",
+    "saveFailed": "Couldn't update your privacy choice."
+  },
+  "data": {
+    "title": "Data and sync",
+    "online": "Online",
+    "offline": "Offline",
+    "failed_one": "{{count}} entry couldn't be saved",
+    "failed_other": "{{count}} entries couldn't be saved",
+    "pending_one": "{{count}} entry waiting to sync",
+    "pending_other": "{{count}} entries waiting to sync",
+    "allSaved": "Everything is saved to your account",
+    "savedOnPhone": "Changes are saved on this phone until you are back online",
+    "syncNow": "Sync now",
+    "syncing": "Syncing...",
+    "syncSubtitle": "Send the entries saved on this phone",
+    "syncFailed": "Couldn't sync your entries. Try again.",
+    "server": "Server",
+    "defaultServer": "Default local host"
+  },
+  "about": {
+    "title": "About",
+    "version": "App version"
+  },
+  "signOut": {
+    "button": "Sign out",
+    "confirmTitle": "Sign out?",
+    "confirmMessage": "You will need to sign in again to access your Aura360 workspace.",
+    "failed": "Couldn't sign you out. Try again."
+  }
+}

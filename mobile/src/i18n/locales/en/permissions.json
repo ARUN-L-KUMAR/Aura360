@@ -1,0 +1,37 @@
+{
+  "step": "Step {{current}} of {{total}}",
+  "notNow": "Not now",
+  "continue": "Continue",
+  "openSettings": "Open settings",
+  "notifications": {
+    "title": "Stay on top of things",
+    "reason": "Reminders for budgets, workouts and meals. You choose which ones in Settings.",
+    "allow": "Allow notifications",
+    "granted": "Notifications are on",
+    "denied": "No problem. You can turn notifications on any time in your phone's settings."
+  },
+  "biometrics": {
+    "title": "Unlock with {{method}}",
+    "reason": "Keep your data private. Unlock Aura360 with {{method}} instead of typing a password.",
+    "allow": "Use {{method}}",
+    "granted": "{{method}} is on",
+    "denied": "{{method}} was not turned on. You can turn it on any time in Settings."
+  },
+  "done": {
+    "title": "You're all set",
+    "body": "You can change any of this later in Settings.",
+    "cta": "Start exploring"
+  },
+  "rationale": {
+    "photos": {
+      "title": "Allow access to your photos?",
+      "reason": "Aura360 only reads the pictures you pick, so you can attach them to your items and notes. Nothing else is opened or uploaded."
+    },
+    "camera": {
+      "title": "Allow access to your camera?",
+      "reason": "Aura360 uses the camera only when you take a photo to attach to an item or note. Nothing is recorded in the background."
+    },
+    "continue": "Continue",
+    "notNow": "Not now"
+  }
+}

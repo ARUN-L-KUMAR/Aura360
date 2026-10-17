@@ -7,8 +7,11 @@
     "jsx": "react-jsx",
     "module": "preserve",
     "moduleResolution": "bundler",
-    "customConditions": ["react-native"],
+    "customConditions": [
+      "react-native"
+    ],
     "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "expo-router": [
         "./node_modules/expo-router/build/index.d.ts"
@@ -26,5 +29,8 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "tests"
   ]
 }

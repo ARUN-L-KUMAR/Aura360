@@ -1,226 +1,300 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, TextInput, View } from 'react-native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { Linking, View, type AccessibilityActionEvent } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { Chip, ChipRow } from '@/components/ui/chip';
+import { ActionSheet, type SheetAction } from '@/components/notes/action-sheet';
+import { CollapsingList } from '@/components/notes/collapsing-list';
+import { EmptyHero } from '@/components/notes/empty-hero';
+import { friendlyError } from '@/components/notes/friendly-error';
+import { Thumbnail } from '@/components/notes/thumbnail';
+import { useUndoableRemove } from '@/components/notes/use-undoable-remove';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipRow, Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Screen } from '@/components/ui/screen';
+import { ErrorState } from '@/components/ui/error-state';
+import { FloatingAction } from '@/components/ui/floating-action';
+import { IconButton } from '@/components/ui/icon-button';
+import { useListMotion } from '@/components/ui/motion';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SearchBar } from '@/components/ui/search-bar';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteSavedItem, useSavedItems, useToggleFavorite } from '@/features/saved/hooks';
 import { SAVED_TYPES, hostOf, type SavedItem } from '@/features/saved/types';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing } from '@/theme';
 
 type Filter = 'all' | 'favorites' | SavedItem['type'];
 
+const keyOf = (item: SavedItem) => item.id;
+
 export default function SavedScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const notify = useNotify();
+  const { t } = useTranslation('saved');
   const { data, isPending, isError, error, refetch, isRefetching } = useSavedItems();
+  const { mutate: setFavorite } = useToggleFavorite();
+  const { mutateAsync: deleteItem } = useDeleteSavedItem();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [menuItem, setMenuItem] = useState<SavedItem | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  /** A friendly toast for a failed action: offline copy when the server was unreachable, never raw server text. */
+  const fail = useCallback((e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline'))), [notify, t]);
+
+  const { hiddenIds, remove } = useUndoableRemove({
+    commit: async (id) => {
+      await deleteItem(id);
+      analytics.track('link_removed');
+    },
+    message: t('toast.removed'),
+    undoLabel: t('toast.undo'),
+    onError: (e) => fail(e, t('errors.remove')),
+  });
+
+  const items = useMemo(() => (data ?? []).filter((item) => !hiddenIds.has(item.id)), [data, hiddenIds]);
+
+  const counts = useMemo(() => {
+    const byType = new Map<string, number>();
+    let favorites = 0;
+    for (const item of items) {
+      byType.set(item.type, (byType.get(item.type) ?? 0) + 1);
+      if (item.isFavorite) favorites += 1;
+    }
+    return { all: items.length, favorites, byType };
+  }, [items]);
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return (data ?? []).filter((item) => {
+    return items.filter((item) => {
       if (filter === 'favorites' && !item.isFavorite) return false;
       if (filter !== 'all' && filter !== 'favorites' && item.type !== filter) return false;
       if (!query) return true;
       return [item.title, item.description, item.url, ...(item.tags ?? [])].join(' ').toLowerCase().includes(query);
     });
-  }, [data, filter, search]);
+  }, [items, filter, search]);
+
+  const filtering = search.trim().length > 0 || filter !== 'all';
+
+  const edit = useCallback((item: SavedItem) => router.push({ pathname: '/saved/item', params: { item: JSON.stringify(item) } }), [router]);
+
+  const open = useCallback(
+    (item: SavedItem) => {
+      if (!item.url) return edit(item);
+      Linking.openURL(item.url).catch(() => notify.error(t('errors.openLink')));
+    },
+    [edit, notify, t],
+  );
+
+  const toggleFavorite = useCallback(
+    (item: SavedItem) => setFavorite({ id: item.id, isFavorite: !item.isFavorite }, { onError: (e) => fail(e, t('errors.favourite')) }),
+    [setFavorite, fail, t],
+  );
+
+  const removeWithUndo = useCallback((item: SavedItem) => remove(item.id), [remove]);
+
+  const openMenu = useCallback((item: SavedItem) => {
+    haptics.impact();
+    setMenuItem(item);
+    setMenuOpen(true);
+  }, []);
+
+  const menuActions = useMemo<SheetAction[]>(() => {
+    if (!menuItem) return [];
+    return [
+      ...(menuItem.url ? [{ key: 'open', label: t('action.open'), icon: 'open-outline' as const, onPress: () => open(menuItem) }] : []),
+      { key: 'edit', label: t('action.edit'), icon: 'create-outline', onPress: () => edit(menuItem) },
+      {
+        key: 'favorite',
+        label: menuItem.isFavorite ? t('action.unfavourite') : t('action.favourite'),
+        icon: menuItem.isFavorite ? 'heart-dislike-outline' : 'heart-outline',
+        onPress: () => toggleFavorite(menuItem),
+      },
+      { key: 'remove', label: t('action.remove'), icon: 'trash-outline', destructive: true, onPress: () => removeWithUndo(menuItem) },
+    ];
+  }, [menuItem, t, open, edit, toggleFavorite, removeWithUndo]);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: SavedItem; index: number }) => (
+      <SavedCard item={item} index={index} onOpen={open} onToggleFavorite={toggleFavorite} onMenu={openMenu} onRemove={removeWithUndo} onEdit={edit} />
+    ),
+    [open, toggleFavorite, openMenu, removeWithUndo, edit],
+  );
+
+  const clearFilters = () => {
+    setFilter('all');
+    setSearch('');
+  };
+
+  // Refreshing failed but there is something to show: say so in a row above the list instead of replacing it.
+  const refreshFailed = isError && !!data;
+
+  const header = (
+    <View style={{ gap: spacing.md }}>
+      <SearchBar placeholder={t('search.placeholder')} accessibilityLabel={t('search.placeholder')} value={search} onChangeText={setSearch} debounceMs={200} />
+      <ChipRow>
+        <Chip label={t('filter.all')} accent="saved" count={counts.all} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Chip label={t('filter.favourites')} accent="saved" count={counts.favorites} selected={filter === 'favorites'} onPress={() => setFilter('favorites')} />
+        {SAVED_TYPES.map((type) => (
+          <Chip key={type} label={t(`type.${type}`)} accent="saved" count={counts.byType.get(type) ?? 0} selected={filter === type} onPress={() => setFilter(type)} />
+        ))}
+      </ChipRow>
+
+      {refreshFailed ? (
+        <ErrorState size="inline" error={error} title={t('refreshError.title')} message={t('refreshError.message')} retrying={isRefetching} onRetry={() => refetch()} />
+      ) : null}
+
+      {/* Announces how many items match when a search or filter changes. */}
+      {filtering && visible.length > 0 ? (
+        <View accessible accessibilityLiveRegion="polite">
+          <Text variant="caption" color="textSecondary">
+            {t('results', { count: visible.length })}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  let empty;
+  if (isPending) {
+    empty = (
+      <View style={{ gap: layout.itemGap }}>
+        <SkeletonCard media lines={2} />
+        <SkeletonCard lines={3} />
+      </View>
+    );
+  } else if (isError && !data) {
+    empty = <ErrorState error={error} retrying={isRefetching} onRetry={() => refetch()} />;
+  } else if (filtering) {
+    empty = <EmptyState variant="noResults" accent="saved" title={t('empty.noMatchTitle')} description={t('empty.noMatchDescription')} onClearFilters={clearFilters} />;
+  } else {
+    empty = (
+      <EmptyHero
+        accent="saved"
+        icon="bookmark-outline"
+        title={t('empty.title')}
+        description={t('empty.description')}
+        actionTitle={t('empty.action')}
+        onAction={() => router.push('/saved/add')}
+      />
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Screen onRefresh={() => refetch()} refreshing={isRefetching}>
-        <Text variant="title">Saved Items</Text>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: radius.md,
-            backgroundColor: colors.card,
-            paddingHorizontal: spacing.md,
-          }}>
-          <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search saved items"
-            placeholderTextColor={colors.textMuted}
-            returnKeyType="search"
-            autoCorrect={false}
-            style={{ flex: 1, minHeight: 44, color: colors.text, fontSize: 15 }}
-          />
-        </View>
-
-        <ChipRow>
-          <Chip label="All" selected={filter === 'all'} color={moduleColors.saved} onPress={() => setFilter('all')} />
-          <Chip label="Favourites" selected={filter === 'favorites'} color={moduleColors.saved} onPress={() => setFilter('favorites')} />
-          {SAVED_TYPES.map((type) => (
-            <Chip key={type.value} label={type.label} selected={filter === type.value} color={moduleColors.saved} onPress={() => setFilter(type.value)} />
-          ))}
-        </ChipRow>
-
-        {isPending ? <Text muted>Loading…</Text> : null}
-        {isError ? <Text muted>{error instanceof Error ? error.message : "Couldn't load saved items."}</Text> : null}
-        {!isPending && !isError && visible.length === 0 ? (
-          <EmptyState
-            icon="bookmark-outline"
-            title={search || filter !== 'all' ? 'No Saved Items Match' : 'Nothing Saved Yet'}
-            description={search || filter !== 'all' ? 'Try adjusting your search query or filters.' : 'Save bookmarks, articles, recipes, and videos to revisit later.'}
-            actionTitle={!search && filter === 'all' ? '+ Save a Link' : undefined}
-            onAction={!search && filter === 'all' ? () => router.push('/saved/add') : undefined}
-          />
-        ) : null}
-
-        {visible.map((item) => (
-          <SavedCard key={item.id} item={item} />
-        ))}
-      </Screen>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Save a link"
-        onPress={() => router.push('/saved/add')}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          right: spacing.lg,
-          bottom: spacing.lg,
-          width: 56,
-          height: 56,
-          borderRadius: radius.pill,
-          backgroundColor: moduleColors.saved,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.85 : 1,
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOpacity: 0.25,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 3 },
-        })}>
-        <Ionicons name="add" size={30} color="#ffffff" />
-      </Pressable>
-    </View>
+    <>
+      <CollapsingList<SavedItem>
+        title={t('title')}
+        data={visible}
+        renderItem={renderItem}
+        keyExtractor={keyOf}
+        header={header}
+        empty={empty}
+        onRefresh={() => refetch()}
+        fab={<FloatingAction accent="saved" accessibilityLabel={t('fab')} onPress={() => router.push('/saved/add')} />}
+      />
+      <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={menuItem?.title} actions={menuActions} />
+    </>
   );
 }
 
-function SavedCard({ item }: { item: SavedItem }) {
-  const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
-  const favorite = useToggleFavorite();
-  const remove = useDeleteSavedItem();
+type CardProps = {
+  item: SavedItem;
+  index: number;
+  onOpen: (item: SavedItem) => void;
+  onToggleFavorite: (item: SavedItem) => void;
+  onMenu: (item: SavedItem) => void;
+  onRemove: (item: SavedItem) => void;
+  onEdit: (item: SavedItem) => void;
+};
+
+const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorite, onMenu, onRemove, onEdit }: CardProps) {
+  const { t } = useTranslation('saved');
+  // Enter + exit live on the row; the list animates the reflow on the FlatList cell.
+  const { entering, exiting } = useListMotion(index);
   const host = hostOf(item.url);
+  const favorite = !!item.isFavorite;
+  const tags = item.tags ?? [];
+  const shownTags = tags.slice(0, 4);
+  const type = t(`type.${item.type}`);
+  const labelKind = host ? (favorite ? 'hostFavourite' : 'host') : favorite ? 'favourite' : 'plain';
 
-  function edit() {
-    router.push({ pathname: '/saved/item', params: { item: JSON.stringify(item) } });
-  }
-
-  function open() {
-    if (!item.url) return edit();
-    Linking.openURL(item.url).catch(() => Alert.alert("Can't open this link", item.url ?? undefined));
-  }
-
-  function openMenu() {
-    Alert.alert(item.title, host ?? undefined, [
-      ...(item.url ? [{ text: 'Open link', onPress: open }] : []),
-      { text: 'Edit', onPress: edit },
-      {
-        text: 'Delete',
-        style: 'destructive' as const,
-        onPress: () =>
-          Alert.alert('Delete this item?', item.title, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => remove.mutate(item.id) },
-          ]),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }
+  const accessibilityActions = [
+    { name: 'favorite', label: favorite ? t('action.unfavourite') : t('action.favourite') },
+    { name: 'edit', label: t('action.edit') },
+    { name: 'remove', label: t('action.remove') },
+    { name: 'more', label: t('action.more') },
+  ];
+  const onAccessibilityAction = (event: AccessibilityActionEvent) => {
+    switch (event.nativeEvent.actionName) {
+      case 'favorite':
+        return onToggleFavorite(item);
+      case 'edit':
+        return onEdit(item);
+      case 'remove':
+        return onRemove(item);
+      case 'more':
+        return onMenu(item);
+    }
+  };
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={item.title} onPress={open} onLongPress={openMenu} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
-      <GlassCard
-        glowColor={item.isFavorite ? '#ef4444' : undefined}
-        style={{ padding: 0, overflow: 'hidden' }}>
+    <Animated.View entering={entering} exiting={exiting}>
+      <Card padding="none" style={{ overflow: 'hidden' }}>
         {item.imageUrl ? (
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={{ width: '100%', height: 160, backgroundColor: colors.cardMuted }}
-            contentFit="cover"
-            transition={150}
-            accessibilityIgnoresInvertColors
-          />
+          <PressableScale accessible={false} scaleTo={1} focusRing={false} hitSlop={0} onPress={() => onOpen(item)} onLongPress={() => onMenu(item)}>
+            <Thumbnail uri={item.imageUrl} />
+          </PressableScale>
         ) : null}
-        <View style={{ padding: spacing.lg, gap: spacing.xs }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="heading" numberOfLines={2} style={{ fontSize: 16 }}>
+        <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs }}>
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={t(`card.label.${labelKind}`, { title: item.title, type, host: host ?? '' })}
+              accessibilityHint={item.url ? t('card.hintLink') : t('card.hintDetails')}
+              accessibilityActions={accessibilityActions}
+              onAccessibilityAction={onAccessibilityAction}
+              scaleTo={1}
+              ringRadius={radius.sm}
+              onPress={() => onOpen(item)}
+              onLongPress={() => onMenu(item)}
+              style={{ flex: 1, gap: spacing.sm, paddingVertical: spacing.xs }}>
+              <Text variant="title" numberOfLines={2}>
                 {item.title}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {host ? (
-                  <View
-                    style={{
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: radius.sm,
-                      backgroundColor: `${moduleColors.saved}20`,
-                    }}>
-                    <Text variant="caption" style={{ color: moduleColors.saved, fontWeight: '700', fontSize: 10 }}>
-                      {host}
-                    </Text>
-                  </View>
-                ) : null}
-                <Text variant="caption" muted numberOfLines={1}>
-                  {SAVED_TYPES.find((t) => t.value === item.type)?.label}
-                </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
+                {host ? <Tag label={host} accent="saved" icon="link-outline" /> : null}
+                <Tag label={type} tone="neutral" />
               </View>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={item.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
-              onPress={() => favorite.mutate({ id: item.id, isFavorite: !item.isFavorite })}
-              hitSlop={10}>
-              <Ionicons name={item.isFavorite ? 'heart' : 'heart-outline'} size={22} color={item.isFavorite ? '#ef4444' : colors.textMuted} />
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="More options" onPress={openMenu} hitSlop={10}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
-            </Pressable>
+            </PressableScale>
+            <IconButton
+              size="sm"
+              icon={favorite ? 'heart' : 'heart-outline'}
+              accessibilityLabel={favorite ? t('card.unfavouriteItem', { title: item.title }) : t('card.favouriteItem', { title: item.title })}
+              selected={favorite}
+              onPress={() => onToggleFavorite(item)}
+            />
+            <IconButton size="sm" icon="ellipsis-horizontal" accessibilityLabel={t('card.moreOptions', { title: item.title })} onPress={() => onMenu(item)} />
           </View>
           {item.description ? (
-            <Text muted numberOfLines={3} style={{ fontSize: 14, lineHeight: 20 }}>
+            <Text variant="body" color="textSecondary" numberOfLines={3}>
               {item.description}
             </Text>
           ) : null}
-          {item.tags && item.tags.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: spacing.xs }}>
-              {item.tags.map((tag) => (
-                <View
-                  key={tag}
-                  style={{
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    borderRadius: radius.sm,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                  }}>
-                  <Text variant="caption" muted style={{ fontSize: 11 }}>
-                    #{tag}
-                  </Text>
-                </View>
+          {shownTags.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+              {shownTags.map((tag) => (
+                <Tag key={tag} label={`#${tag}`} tone="neutral" />
               ))}
+              {tags.length > shownTags.length ? <Tag label={t('card.moreTags', { count: tags.length - shownTags.length })} tone="neutral" /> : null}
             </View>
           ) : null}
         </View>
-      </GlassCard>
-    </Pressable>
+      </Card>
+    </Animated.View>
   );
-}
+});

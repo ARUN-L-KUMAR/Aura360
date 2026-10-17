@@ -1,0 +1,356 @@
+{
+  "models": {
+    "flash": "Default. Fast, full tool support",
+    "flashLatest": "Fastest replies",
+    "gpt4oMini": "Fast and accurate with tools",
+    "gpt4o": "Deeper multi-step reasoning",
+    "qwen": "Very fast, runs on Groq",
+    "gptOss": "Large reasoning model on Groq"
+  },
+  "suggestions": {
+    "spending": {
+      "label": "Spending review",
+      "prompt": "Review my recent transactions and tell me where I'm spending most."
+    },
+    "workout": {
+      "label": "Workout plan",
+      "prompt": "Create a balanced 3-day workout routine focusing on core and strength."
+    },
+    "snacks": {
+      "label": "High-protein snacks",
+      "prompt": "Suggest 5 quick high-protein snack ideas under 250 calories."
+    },
+    "skincare": {
+      "label": "Evening skincare",
+      "prompt": "What is an ideal evening skincare sequence for glowing skin?"
+    },
+    "tasks": {
+      "label": "Prioritise tasks",
+      "prompt": "How can I better prioritize tasks when feeling overwhelmed?"
+    },
+    "log": {
+      "label": "Log something",
+      "prompt": "Log an expense of ₹350 for groceries today."
+    }
+  },
+  "tools": {
+    "fallbackRunning": "Working on {{tool}}…",
+    "fallbackCompleted": "Finished {{tool}}",
+    "running": {
+      "get_transactions": "Checking your transactions…",
+      "get_budgets": "Checking your budgets…",
+      "get_financial_goals": "Checking savings goals…",
+      "get_balances": "Checking account balances…",
+      "get_fitness_logs": "Looking up workout logs…",
+      "get_food_logs": "Checking food and meal logs…",
+      "get_notes": "Searching your notes…",
+      "get_wardrobe": "Checking your wardrobe…",
+      "get_wishlist": "Checking your wishlist…",
+      "get_skincare_routine": "Reviewing your skincare routine…",
+      "get_time_logs": "Checking your time logs…",
+      "get_saved_items": "Searching saved items…",
+      "create_transaction": "Recording transaction…",
+      "create_budget": "Setting budget…",
+      "log_workout": "Logging workout…",
+      "log_meal": "Logging meal…",
+      "create_note": "Creating note…",
+      "update_note": "Updating note…",
+      "add_fashion_item": "Adding fashion item…",
+      "log_time_entry": "Logging time entry…",
+      "save_item": "Saving item…"
+    },
+    "completed": {
+      "get_transactions": "Checked your transactions",
+      "get_budgets": "Checked your budgets",
+      "get_financial_goals": "Checked savings goals",
+      "get_balances": "Checked account balances",
+      "get_fitness_logs": "Checked workout logs",
+      "get_food_logs": "Checked food and meal logs",
+      "get_notes": "Searched your notes",
+      "get_wardrobe": "Checked your wardrobe",
+      "get_wishlist": "Checked your wishlist",
+      "get_skincare_routine": "Reviewed your skincare routine",
+      "get_time_logs": "Checked your time logs",
+      "get_saved_items": "Searched saved items",
+      "create_transaction": "Recorded transaction",
+      "create_budget": "Set budget",
+      "log_workout": "Logged workout",
+      "log_meal": "Logged meal",
+      "create_note": "Created note",
+      "update_note": "Updated note",
+      "add_fashion_item": "Added fashion item",
+      "log_time_entry": "Logged time entry",
+      "save_item": "Saved item"
+    }
+  },
+  "chat": {
+    "title": "Ask Aura",
+    "loading": "Loading conversation",
+    "replied": "Aura replied",
+    "emptyTitle": "Ask Aura anything",
+    "emptyDescription": "Aura can read your finances, workouts, meals, notes and more, and log things for you after you confirm. Pick a suggestion or write your own.",
+    "writeMessage": "Write a message",
+    "suggestedPrompts": "Suggested prompts",
+    "model": "Model: {{name}}",
+    "placeholder": "Message Aura",
+    "messageLabel": "Message",
+    "stop": "Stop generating",
+    "send": "Send message",
+    "newChat": "New chat",
+    "conversations": "Conversations and model",
+    "stopped": "Stopped.",
+    "done": "Done.",
+    "genericError": "Something went wrong while talking to Aura."
+  },
+  "history": {
+    "title": "Conversations",
+    "threadMeta_one": "{{date}} · {{count}} message",
+    "threadMeta_other": "{{date}} · {{count}} messages",
+    "current": "Current",
+    "openHint": "Opens this conversation",
+    "deleteLabel": "Delete conversation: {{title}}",
+    "deleteTitle": "Delete this conversation?",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleted": "Conversation deleted",
+    "deleteAllTitle": "Delete all conversations?",
+    "deleteAllMessage": "This only removes the chats stored on this phone.",
+    "deleteAll": "Delete all",
+    "allDeleted": "All conversations deleted",
+    "model": "Model",
+    "modelSubtitle": "Used for new messages in every conversation.",
+    "useModel": "Use this model",
+    "onThisPhone": "On this phone",
+    "deleteAllButton": "Delete all conversations",
+    "emptyTitle": "No conversations yet",
+    "emptyDescription": "Chats you have with Aura are stored on this phone.",
+    "startChat": "Start a chat"
+  },
+  "bubble": {
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy to the clipboard",
+    "youSaid": "You said: {{text}}",
+    "auraSaid": "Aura said: {{text}}",
+    "copyHint": "Long press to copy",
+    "copyMessage": "Copy message",
+    "copyReply": "Copy reply",
+    "thinking": "Aura is thinking",
+    "errorSpoken": "Aura couldn't reply: {{text}}",
+    "errorTitle": "Couldn't get a reply",
+    "needsConfirmation": "Needs your confirmation",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "toolsUsed_one": "Used {{count}} tool · {{names}}",
+    "toolsUsed_other": "Used {{count}} tools · {{names}}",
+    "tryAgain": "Try again",
+    "regenerate": "Regenerate reply"
+  },
+  "markdown": {
+    "code": "Code",
+    "copy": "Copy",
+    "copyLabel": "Copy {{language}} code"
+  },
+  "widgets": {
+    "defaultWorkout": "Workout",
+    "defaultFocus": "Strength",
+    "defaultExercise": "Exercise",
+    "defaultIngredient": "Ingredient",
+    "defaultMeal": "Meal",
+    "defaultBudget": "Budget plan",
+    "defaultCategory": "Category",
+    "defaultOutfit": "Outfit idea",
+    "replaceTitle": "Replace current workout?",
+    "replaceMessage": "\"{{title}}\" is still in progress.",
+    "replace": "Replace",
+    "keepCurrent": "Keep current",
+    "workoutSubtitle": "{{focus}} · about {{minutes}} min",
+    "exerciseSpoken": "{{name}}, {{sets}} sets of {{reps}}",
+    "startWorkout": "Start this workout",
+    "mealLogged": "Meal logged",
+    "mealFailed": "Couldn't log this meal. Try again.",
+    "kcal": "kcal",
+    "item": "• {{name}}",
+    "itemWithPortion": "• {{name}} ({{portion}})",
+    "logMeal": "Log this meal",
+    "logged": "Logged",
+    "basedOn": "Based on {{amount}}",
+    "categorySpoken": "{{name}}, {{amount}}{{percentage}} percent{{description}}",
+    "allocations": "Allocations add up to {{total}}%.",
+    "paletteSpoken": "Palette: {{names}}",
+    "itemSpoken": "{{name}}, {{category}}, {{color}}"
+  },
+  "fab": {
+    "label": "Ask Aura AI assistant",
+    "labelWithDrafts_one": "Ask Aura AI assistant, {{count}} draft waiting",
+    "labelWithDrafts_other": "Ask Aura AI assistant, {{count}} drafts waiting",
+    "hint": "Opens the assistant. Drag to move it, or use the actions menu.",
+    "moveLeft": "Move to left edge",
+    "moveRight": "Move to right edge",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
+  },
+  "sheet": {
+    "title": "Aura assistant",
+    "workingOn": "Working on {{page}}",
+    "newChat": "New chat",
+    "openFull": "Open full AI page",
+    "close": "Close",
+    "closeAssistant": "Close assistant",
+    "tabNew": "{{label}}, new suggestions",
+    "tabWaiting": "{{label}}, {{count}} waiting"
+  },
+  "tabs": {
+    "composerPlaceholder": "Message Aura about {{page}}…",
+    "composerLabel": "Message to Aura",
+    "stop": "Stop response",
+    "emptyTitle": "How can I help with {{page}}?",
+    "emptyBody": "Ask questions, request style recommendations, log transactions, or draft entries.",
+    "forYouSpoken": "{{title}}. {{desc}}",
+    "draftFallback": "Run {{tool}}",
+    "pending": "Pending confirmation",
+    "approve": "Approve",
+    "approveSpoken": "Approve: {{summary}}",
+    "cancelSpoken": "Cancel: {{summary}}",
+    "draftsEmptyTitle": "Nothing waiting for review",
+    "draftsEmptyBody": "When Aura drafts actions, transactions, or items for your approval, they appear here."
+  },
+  "widget": {
+    "tabs": {
+      "chat": "Chat",
+      "for_you": "For You",
+      "drafts": "Drafts"
+    },
+    "modules": {
+      "index": "Dashboard",
+      "finance": "Finance and expenses",
+      "fashion": "Fashion and style",
+      "saved": "Saved items",
+      "fitness": "Fitness and workouts",
+      "food": "Food and nutrition",
+      "skincare": "Skincare routine",
+      "notes": "Notes and ideas",
+      "time": "Time tracker",
+      "ai": "Ask Aura"
+    },
+    "context": {
+      "fashion": {
+        "outfit": {
+          "label": "What to wear?",
+          "prompt": "What outfit combination can I wear today based on my active wardrobe?"
+        },
+        "audit": {
+          "label": "Wardrobe audit",
+          "prompt": "Review my wardrobe asset valuation and tell me which items are worn most."
+        },
+        "laundry": {
+          "label": "Laundry status",
+          "prompt": "Which clothing items are marked as needing a wash right now?"
+        }
+      },
+      "finance": {
+        "spending": {
+          "label": "Spending breakdown",
+          "prompt": "Review my recent transactions and tell me my total spending this month."
+        },
+        "budget": {
+          "label": "Budget check",
+          "prompt": "Check all my active budgets and let me know if any are nearing limits."
+        },
+        "logMeal": {
+          "label": "Log ₹250 meal",
+          "prompt": "Log an expense of ₹250 for lunch today under Food."
+        }
+      },
+      "fitness": {
+        "today": {
+          "label": "Today’s workout",
+          "prompt": "Suggest a balanced 30-minute training routine for today."
+        },
+        "streak": {
+          "label": "Activity streak",
+          "prompt": "Check my recent workouts and summarize my active streak."
+        },
+        "log": {
+          "label": "Log workout",
+          "prompt": "Log a 45-minute strength training workout for today."
+        }
+      },
+      "food": {
+        "nutrition": {
+          "label": "Nutrition check",
+          "prompt": "Review my meals logged today and estimate my calorie pacing."
+        },
+        "idea": {
+          "label": "Quick meal idea",
+          "prompt": "Suggest a high-protein quick meal with under 500 calories."
+        },
+        "log": {
+          "label": "Log food",
+          "prompt": "Log breakfast: 2 boiled eggs and oatmeal."
+        }
+      },
+      "skincare": {
+        "routine": {
+          "label": "Routine sequence",
+          "prompt": "Review my morning and evening skincare steps."
+        },
+        "audit": {
+          "label": "Product audit",
+          "prompt": "Which skincare items do I currently own vs need to buy?"
+        }
+      },
+      "saved": {
+        "search": {
+          "label": "Search saved",
+          "prompt": "What links and articles have I saved recently?"
+        },
+        "favourites": {
+          "label": "Favourites review",
+          "prompt": "List all my favourited saved items."
+        }
+      },
+      "default": {
+        "summary": {
+          "label": "Day summary",
+          "prompt": "Summarize my activity and logs across Aura360 for today."
+        },
+        "note": {
+          "label": "Quick note",
+          "prompt": "Create a note titled \"Idea\" with details to be filled later."
+        },
+        "expense": {
+          "label": "Log expense",
+          "prompt": "Record a ₹150 expense for coffee."
+        }
+      }
+    },
+    "forYou": {
+      "style": {
+        "title": "Style and outfit suggestion",
+        "desc": "Get curated outfit ideas matching your wardrobe items",
+        "prompt": "Check my wardrobe and suggest a stylish outfit combination for today.",
+        "tag": "Fashion"
+      },
+      "expenses": {
+        "title": "Weekly expense review",
+        "desc": "Analyze where your money is going this month",
+        "prompt": "Review my recent transactions and tell me where I am spending most.",
+        "tag": "Finance"
+      },
+      "workout": {
+        "title": "30-minute workout plan",
+        "desc": "Quick, balanced training based on your routine",
+        "prompt": "Suggest a focused 30-minute workout routine for today.",
+        "tag": "Fitness"
+      },
+      "reflection": {
+        "title": "Daily reflection note",
+        "desc": "Draft key highlights and priorities for today",
+        "prompt": "Help me draft a concise daily recap note with today’s priorities.",
+        "tag": "Productivity"
+      }
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "appBar": {
+    "search": "Search",
+    "notifications": "Notifications",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "settings": "Open settings"
+  },
+  "greetingWithName": "{{greeting}}, {{name}}",
+  "loading": "Loading dashboard",
+  "error": {
+    "title": "Couldn't load your dashboard"
+  },
+  "offline": {
+    "description": "Connect to the internet to load your dashboard.",
+    "retry": "Try again"
+  },
+  "quickActions": {
+    "title": "Quick actions",
+    "note": { "label": "New note", "hint": "Opens the note editor" },
+    "transaction": { "label": "Transaction", "hint": "Opens the add transaction form" },
+    "meal": { "label": "Log meal", "hint": "Opens the meal form" },
+    "workout": { "label": "Workout", "hint": "Opens the workout form" }
+  },
+  "overview": {
+    "title": "Overview",
+    "total": { "label": "Total activities", "subtitle": "This month" },
+    "finance": { "label": "Finance logs" },
+    "fitness": { "label": "Fitness sessions" },
+    "food": { "label": "Meals tracked" }
+  },
+  "month": {
+    "title": "This month",
+    "seeAll": "See all",
+    "seeAllLabel": "See all finance",
+    "income": "Income",
+    "expense": "Spent",
+    "investment": "Invested",
+    "figureLabel": "{{label}} this month, {{amount}}"
+  },
+  "activity": {
+    "title": "Activity overview",
+    "subtitle": "Daily activity count for the last 7 days",
+    "chartLabel_one": "Activity for the last day: {{summary}}",
+    "chartLabel_other": "Activity over the last {{count}} days: {{summary}}",
+    "point": "{{day}} {{value}}",
+    "separator": ", "
+  },
+  "modules": {
+    "title": "Your modules",
+    "active": "{{active}} of {{total}} active",
+    "entries_one": "{{count}} entry",
+    "entries_other": "{{count}} entries",
+    "cardLabel": "{{label}}, {{entries}}. {{description}}",
+    "cardHint": "Opens {{label}}"
+  },
+  "recent": {
+    "title": "Recent transactions",
+    "seeAll": "See all",
+    "seeAllLabel": "See all transactions",
+    "income": "Income",
+    "expense": "Expense",
+    "rowLabel": "{{title}}, {{category}}, {{day}}, {{type}} {{amount}}",
+    "subtitle": "{{category}} · {{day}}",
+    "empty": {
+      "title": "No recent activity",
+      "description": "Your latest transactions will appear here.",
+      "action": "Add transaction"
+    }
+  },
+  "shortcuts": {
+    "title": "Shortcuts",
+    "targets": { "label": "Daily targets", "subtitle": "Workouts and goals" },
+    "insights": { "label": "Health insights", "subtitle": "Meals and nutrition" },
+    "ask": { "label": "Ask Aura", "subtitle": "Questions about your data" }
+  },
+  "module": {
+    "notFound": {
+      "title": "Section not found",
+      "message": "This section does not exist."
+    }
+  }
+}

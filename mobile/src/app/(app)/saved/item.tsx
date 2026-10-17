@@ -1,19 +1,25 @@
-import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Pressable, Switch, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { Linking, View, type TextInput } from 'react-native';
 
+import { friendlyError } from '@/components/notes/friendly-error';
+import { Thumbnail } from '@/components/notes/thumbnail';
+import { ToggleRow } from '@/components/notes/toggle-row';
 import { Button } from '@/components/ui/button';
-import { Chip, ChipGroup } from '@/components/ui/chip';
-import { GlassCard } from '@/components/ui/glass-card';
+import { Card } from '@/components/ui/card';
+import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { parseTags } from '@/features/notes/types';
 import { useDeleteSavedItem, useSaveSavedItem } from '@/features/saved/hooks';
-import { SAVED_TYPES, type SavedItem, type SavedType } from '@/features/saved/types';
-import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { SAVED_TYPES, hostOf, isSavedType, type SavedItem, type SavedType } from '@/features/saved/types';
+import { useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 
 function parseItem(raw?: string): SavedItem | null {
   try {
@@ -23,10 +29,12 @@ function parseItem(raw?: string): SavedItem | null {
   }
 }
 
+const URL_PATTERN = /^https?:\/\/\S+$/i;
+
 export default function SavedItemScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
+  const { t } = useTranslation('saved');
   const params = useLocalSearchParams<{ item?: string }>();
   const existing = useMemo(() => parseItem(params.item), [params.item]);
 
@@ -36,20 +44,29 @@ export default function SavedItemScreen() {
   const [description, setDescription] = useState(existing?.description ?? '');
   const [tagsText, setTagsText] = useState((existing?.tags ?? []).join(', '));
   const [isFavorite, setIsFavorite] = useState(!!existing?.isFavorite);
-  const [error, setError] = useState<string | null>(null);
+  const [showProblems, setShowProblems] = useState(false);
 
-  const save = useSaveSavedItem();
-  const remove = useDeleteSavedItem();
+  const urlRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const { mutateAsync: saveItem, isPending: saving } = useSaveSavedItem();
+  const { mutateAsync: deleteItem, isPending: deleting } = useDeleteSavedItem();
+
+  const cleanUrl = url.trim();
+  const titleError = showProblems && !title.trim() ? t('item.titleField.error') : null;
+  const urlError = showProblems && cleanUrl && !URL_PATTERN.test(cleanUrl) ? t('item.url.error') : null;
+  const host = hostOf(existing?.url ?? null);
+
+  const fail = (e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline')));
 
   async function submit() {
-    if (!title.trim()) return setError('Give it a title.');
-    const cleanUrl = url.trim();
-    if (cleanUrl && !/^https?:\/\/\S+$/i.test(cleanUrl)) return setError('The link must start with http:// or https://');
-
-    setError(null);
+    if (!title.trim() || (cleanUrl && !URL_PATTERN.test(cleanUrl))) {
+      setShowProblems(true);
+      haptics.warning();
+      return;
+    }
     const tags = parseTags(tagsText);
     try {
-      await save.mutateAsync({
+      await saveItem({
         id: existing?.id,
         input: {
           type,
@@ -60,103 +77,153 @@ export default function SavedItemScreen() {
           isFavorite,
         },
       });
+      if (!existing) analytics.track('link_saved');
+      notify.success(existing ? t('item.toast.saved') : t('item.toast.created'));
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      fail(e, t('errors.save'));
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete this item?', existing.title, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remove.mutateAsync(existing.id);
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({ title: t('item.confirmDelete.title'), message: existing.title, confirmLabel: t('item.confirmDelete.confirm'), destructive: true });
+    if (!ok) return;
+    try {
+      await deleteItem(existing.id);
+      analytics.track('link_removed');
+      notify.success(t('item.toast.deleted'));
+      router.back();
+    } catch (e) {
+      fail(e, t('errors.removeFromDetails'));
+    }
+  }
+
+  async function openLink() {
+    if (!existing?.url) return;
+    try {
+      await Linking.openURL(existing.url);
+    } catch {
+      notify.error(t('errors.openLink'));
+    }
+  }
+
+  async function copyLink() {
+    if (!existing?.url) return;
+    try {
+      await Clipboard.setStringAsync(existing.url);
+      notify.success(t('item.copied'));
+    } catch {
+      notify.error(t('errors.copyLink'));
+    }
   }
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit saved item' : 'Add saved item' }} />
+      <Stack.Screen options={{ title: existing ? t('item.titleEdit') : t('item.titleNew') }} />
 
-      {/* Type Selector */}
-      <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-        <Text variant="label" muted>
-          Content Type
+      {existing ? (
+        <Card padding="none" style={{ overflow: 'hidden' }}>
+          {existing.imageUrl ? <Thumbnail uri={existing.imageUrl} /> : null}
+          <View style={{ padding: spacing.lg, gap: spacing.md }}>
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="title" numberOfLines={3}>
+                {existing.title}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
+                {host ? <Tag label={host} accent="saved" icon="link-outline" /> : null}
+                <Tag label={t(`type.${isSavedType(existing.type) ? existing.type : 'other'}`)} tone="neutral" />
+              </View>
+            </View>
+            {existing.url ? (
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Button title={t('item.open')} size="sm" leftIcon="open-outline" onPress={openLink} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button title={t('item.copy')} size="sm" variant="secondary" leftIcon="copy-outline" onPress={copyLink} />
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </Card>
+      ) : null}
+
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="label" color="textSecondary" accessibilityRole="header">
+          {t('item.type')}
         </Text>
         <ChipGroup>
           {SAVED_TYPES.map((option) => (
-            <Chip
-              key={option.value}
-              label={option.label}
-              selected={type === option.value}
-              color={moduleColors.saved}
-              onPress={() => setType(option.value)}
-            />
+            <Chip key={option} label={t(`type.${option}`)} accent="saved" selected={type === option} onPress={() => setType(option)} />
           ))}
         </ChipGroup>
-      </GlassCard>
+      </View>
 
-      {/* Details Inputs */}
-      <GlassCard
-        glowColor={moduleColors.saved}
-        style={{
-          gap: spacing.md,
-          padding: spacing.md,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
-        <Input label="Title" value={title} onChangeText={setTitle} placeholder="Title or article headline" autoFocus={!existing} style={{ fontSize: 18, fontWeight: '700' }} />
-        <Input label="Web Link (optional)" value={url} onChangeText={setUrl} placeholder="https://…" autoCapitalize="none" autoCorrect={false} keyboardType="url" />
-        <Input label="Description (optional)" value={description} onChangeText={setDescription} multiline placeholder="Key takeaways, highlights…" style={{ minHeight: 72, textAlignVertical: 'top', paddingTop: spacing.md }} />
-        <Input label="Tags (optional)" value={tagsText} onChangeText={setTagsText} placeholder="tech, reading, design" autoCapitalize="none" />
-      </GlassCard>
+      <View style={{ gap: spacing.lg }}>
+        <Input
+          label={t('item.titleField.label')}
+          value={title}
+          onChangeText={setTitle}
+          error={titleError}
+          placeholder={t('item.titleField.placeholder')}
+          autoFocus={!existing}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          onSubmitEditing={() => urlRef.current?.focus()}
+        />
+        <Input
+          ref={urlRef}
+          label={t('item.url.label')}
+          value={url}
+          onChangeText={setUrl}
+          error={urlError}
+          placeholder={t('item.url.placeholder')}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          keyboardType="url"
+          textContentType="URL"
+          returnKeyType="next"
+          clearable
+          onSubmitEditing={() => descriptionRef.current?.focus()}
+        />
+        <Input
+          ref={descriptionRef}
+          label={t('item.description.label')}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          placeholder={t('item.description.placeholder')}
+          style={{ minHeight: spacing.xxxl * 2 }}
+        />
+        <Input
+          label={t('item.tags.label')}
+          helper={t('item.tags.helper')}
+          value={tagsText}
+          onChangeText={setTagsText}
+          placeholder={t('item.tags.placeholder')}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="done"
+        />
+      </View>
 
-      {/* Favorite Toggle Card */}
-      <GlassCard style={{ padding: spacing.md }}>
-        <Pressable
-          accessibilityRole="switch"
-          accessibilityState={{ checked: isFavorite }}
-          onPress={() => setIsFavorite(!isFavorite)}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? colors.danger : colors.textMuted} />
-            <Text style={{ fontWeight: '600' }}>Mark as Favourite</Text>
-          </View>
-          <Switch
-            value={isFavorite}
-            onValueChange={setIsFavorite}
-            trackColor={{ false: colors.border, true: moduleColors.saved }}
-          />
-        </Pressable>
-      </GlassCard>
+      <Card padding="sm">
+        <ToggleRow
+          accent="saved"
+          icon={isFavorite ? 'heart' : 'heart-outline'}
+          label={t('item.favourite.label')}
+          description={t('item.favourite.description')}
+          value={isFavorite}
+          onChange={setIsFavorite}
+        />
+      </Card>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <Button title={existing ? 'Save changes' : 'Add to saved'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete item" variant="ghost" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <View style={{ gap: spacing.sm }}>
+        <Button title={existing ? t('item.save') : t('item.create')} leftIcon="checkmark" onPress={submit} loading={saving} />
+        {existing ? <Button title={t('item.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={deleting} /> : null}
+      </View>
     </Screen>
   );
 }

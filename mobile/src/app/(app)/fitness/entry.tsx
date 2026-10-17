@@ -1,27 +1,38 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { useDeleteFitness, useSaveFitness } from '@/features/fitness/hooks';
 import { volumeOf } from '@/features/fitness/stats';
-import { INTENSITIES, MEASUREMENTS, MOODS, WORKOUT_TYPES, type EntryType, type FitnessEntry, type FitnessInput } from '@/features/fitness/types';
-import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import {
+  INTENSITIES,
+  MEASUREMENTS,
+  MOODS,
+  WORKOUT_TYPES,
+  intensityLabel,
+  measurementLabel,
+  moodLabel,
+  workoutTypeLabel,
+  type EntryType,
+  type FitnessEntry,
+  type FitnessInput,
+} from '@/features/fitness/types';
+import { useErrorMessage } from '@/features/fitness/use-error-message';
+import { getDeviceLocale, useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 
-const TYPE_OPTIONS: { value: EntryType; label: string }[] = [
-  { value: 'workout', label: 'Workout' },
-  { value: 'measurement', label: 'Measurement' },
-  { value: 'goal', label: 'Goal' },
-];
 
 function parseEntry(raw?: string): FitnessEntry | null {
   try {
@@ -39,10 +50,18 @@ function toOptionalNumber(text: string): number | undefined | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+type Errors = Partial<Record<'duration' | 'calories' | 'distance' | 'measurementValue' | 'notes', string>>;
+
 export default function FitnessEntryScreen() {
   const router = useRouter();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const notify = useNotify();
+  const { t } = useTranslation('fitness');
+  const errorMessage = useErrorMessage();
+  const typeOptions: { value: EntryType; label: string }[] = [
+    { value: 'workout', label: t('entry.typeWorkout') },
+    { value: 'measurement', label: t('entry.typeMeasurement') },
+    { value: 'goal', label: t('entry.typeGoal') },
+  ];
   const params = useLocalSearchParams<{ entry?: string }>();
   const existing = useMemo(() => parseEntry(params.entry), [params.entry]);
 
@@ -60,10 +79,16 @@ export default function FitnessEntryScreen() {
   const [measurementUnit, setMeasurementUnit] = useState(existing?.measurementUnit ?? 'kg');
   const [date, setDate] = useState(existing?.date.slice(0, 10) ?? toIsoDay(new Date()));
   const [notes, setNotes] = useState(existing?.notes ?? '');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Errors>({});
 
   const save = useSaveFitness();
   const remove = useDeleteFitness();
+
+  /** Edits a field and clears that field's error. */
+  const edit = (key: keyof Errors, set: (value: string) => void) => (value: string) => {
+    set(value);
+    if (errors[key]) setErrors((current) => ({ ...current, [key]: undefined }));
+  };
 
   function pickMeasurement(value: string) {
     setMeasurementType(value);
@@ -73,239 +98,216 @@ export default function FitnessEntryScreen() {
 
   async function submit() {
     const input: FitnessInput = { date, type, notes: notes.trim() || undefined };
+    const found: Errors = {};
 
     if (type === 'workout') {
       const numbers = { duration: toOptionalNumber(duration), caloriesBurned: toOptionalNumber(calories), distance: toOptionalNumber(distance) };
-      if (Object.values(numbers).some((value) => value === null)) return setError('Numbers must be 0 or more.');
+      if (numbers.duration === null) found.duration = t('entry.errorNonNegative');
+      if (numbers.caloriesBurned === null) found.calories = t('entry.errorNonNegative');
+      if (numbers.distance === null) found.distance = t('entry.errorNonNegative');
       input.workoutType = workoutType;
-      input.duration = numbers.duration === undefined ? undefined : Math.round(numbers.duration as number);
-      input.caloriesBurned = numbers.caloriesBurned === undefined ? undefined : Math.round(numbers.caloriesBurned as number);
-      input.distance = (numbers.distance as number | undefined) ?? undefined;
+      input.duration = numbers.duration == null ? undefined : Math.round(numbers.duration);
+      input.caloriesBurned = numbers.caloriesBurned == null ? undefined : Math.round(numbers.caloriesBurned);
+      input.distance = numbers.distance ?? undefined;
       input.intensity = intensity || undefined;
       input.mood = mood || undefined;
     } else if (type === 'measurement') {
       const value = toOptionalNumber(measurementValue);
-      if (value === undefined || value === null) return setError('Enter the measurement value.');
+      if (value === undefined) found.measurementValue = t('entry.errorMeasurementRequired');
+      else if (value === null) found.measurementValue = t('entry.errorNonNegative');
+      else input.measurementValue = value;
       input.measurementType = measurementType;
-      input.measurementValue = value;
       input.measurementUnit = measurementUnit.trim() || undefined;
     } else if (!notes.trim()) {
-      return setError('Describe your goal.');
+      found.notes = t('entry.errorGoalRequired');
     }
 
-    setError(null);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      haptics.warning();
+      return;
+    }
+
     try {
       await save.mutateAsync({ id: existing?.id, input });
+      notify.success(existing ? t('entry.updated') : t('entry.added'));
+      if (!existing) analytics.track('fitness_entry_logged');
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save. Try again.');
+      notify.error(errorMessage(e, t('entry.saveFailed')));
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete this entry?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remove.mutateAsync(existing.id);
-            router.back();
-          } catch (e) {
-            setError(e instanceof ApiError ? e.message : 'Could not delete. Try again.');
-          }
-        },
-      },
-    ]);
+    const ok = await notify.confirm({
+      title: t('entry.deleteTitle'),
+      message: t('entry.deleteMessage'),
+      confirmLabel: t('actions.delete'),
+      cancelLabel: t('actions.cancel'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(existing.id);
+      notify.success(t('entry.deleted'));
+      router.back();
+    } catch (e) {
+      notify.error(errorMessage(e, t('entry.deleteFailed')));
+    }
   }
 
   const volume = volumeOf(existing?.exercises);
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit entry' : 'New entry' }} />
+      <Stack.Screen options={{ title: existing ? t('entry.editTitle') : t('entry.newTitle') }} />
 
-      {existing ? null : <Segmented options={TYPE_OPTIONS} value={type} onChange={setType} />}
+      {existing ? null : <Segmented options={typeOptions} value={type} onChange={setType} accessibilityLabel={t('entry.typeLabel')} />}
 
       {type === 'workout' ? (
         <>
-          {/* Workout Type Chips */}
-          <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              <Ionicons name="barbell-outline" size={16} color={moduleColors.fitness} />
-              <Text variant="label" muted>
-                Activity Type
-              </Text>
-            </View>
+          <Card style={{ gap: spacing.md }}>
+            <SectionHeader title={t('entry.activity')} />
             <ChipGroup>
               {WORKOUT_TYPES.map((name) => (
-                <Chip
-                  key={name}
-                  label={name}
-                  selected={workoutType === name.toLowerCase()}
-                  color={moduleColors.fitness}
-                  onPress={() => setWorkoutType(name.toLowerCase())}
-                />
+                <Chip key={name} label={workoutTypeLabel(name)} selected={workoutType === name.toLowerCase()} accent="fitness" onPress={() => setWorkoutType(name.toLowerCase())} />
               ))}
             </ChipGroup>
-          </GlassCard>
+          </Card>
 
-          {/* Metrics Grid */}
-          <GlassCard
-            glowColor={moduleColors.fitness}
-            style={{
-              gap: spacing.md,
-              padding: spacing.md,
-              backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-            }}>
-            <Text variant="caption" muted style={{ fontWeight: '700', letterSpacing: 0.8 }}>
-              WORKOUT STATS
-            </Text>
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <View style={{ flex: 1 }}>
-                <Input label="Duration (min)" value={duration} onChangeText={setDuration} keyboardType="number-pad" placeholder="45" style={{ fontWeight: '700', fontSize: 18 }} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input label="Calories (kcal)" value={calories} onChangeText={setCalories} keyboardType="number-pad" placeholder="300" style={{ fontWeight: '700', fontSize: 18 }} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input label="Distance (km)" value={distance} onChangeText={setDistance} keyboardType="decimal-pad" placeholder="0" style={{ fontWeight: '700', fontSize: 18 }} />
-              </View>
+          <Card style={{ gap: spacing.md }}>
+            <SectionHeader title={t('entry.numbers')} subtitle={t('entry.allOptional')} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+              <Input
+                containerStyle={{ flexGrow: 1, flexBasis: 96 }}
+                label={t('entry.duration')}
+                value={duration}
+                onChangeText={edit('duration', setDuration)}
+                keyboardType="number-pad"
+                placeholder="45"
+                error={errors.duration}
+              />
+              <Input
+                containerStyle={{ flexGrow: 1, flexBasis: 96 }}
+                label={t('entry.calories')}
+                value={calories}
+                onChangeText={edit('calories', setCalories)}
+                keyboardType="number-pad"
+                placeholder="300"
+                error={errors.calories}
+              />
+              <Input
+                containerStyle={{ flexGrow: 1, flexBasis: 96 }}
+                label={t('entry.distance')}
+                value={distance}
+                onChangeText={edit('distance', setDistance)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                error={errors.distance}
+              />
             </View>
-          </GlassCard>
+          </Card>
 
-          {/* Intensity & Mood */}
-          <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-            <View style={{ gap: spacing.xs }}>
-              <Text variant="label" muted>
-                Intensity
+          <Card style={{ gap: spacing.lg }}>
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="label" color="textSecondary">
+                {t('entry.intensity')}
               </Text>
               <ChipGroup>
                 {INTENSITIES.map((value) => (
                   <Chip
                     key={value}
-                    label={value[0].toUpperCase() + value.slice(1)}
+                    label={intensityLabel(value)}
                     selected={intensity === value}
-                    color={moduleColors.fitness}
+                    accent="fitness"
                     onPress={() => setIntensity(intensity === value ? '' : value)}
                   />
                 ))}
               </ChipGroup>
             </View>
 
-            <View style={{ gap: spacing.xs }}>
-              <Text variant="label" muted>
-                How did it feel?
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="label" color="textSecondary">
+                {t('entry.mood')}
               </Text>
               <ChipGroup>
                 {MOODS.map((value) => (
-                  <Chip
-                    key={value}
-                    label={value}
-                    selected={mood === value}
-                    color={moduleColors.fitness}
-                    onPress={() => setMood(mood === value ? '' : value)}
-                  />
+                  <Chip key={value} label={moodLabel(value)} selected={mood === value} accent="fitness" onPress={() => setMood(mood === value ? '' : value)} />
                 ))}
               </ChipGroup>
             </View>
-          </GlassCard>
+          </Card>
 
           {existing?.exercises && existing.exercises.length > 0 ? (
-            <GlassCard style={{ gap: spacing.sm, padding: spacing.md }}>
-              <Text variant="label" muted>
-                Exercises{volume > 0 ? ` · ${Math.round(volume).toLocaleString()} kg total volume` : ''}
-              </Text>
-              {existing.exercises.map((ex) => (
-                <View key={ex.name} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.xs }}>
-                  <Text style={{ flex: 1, fontWeight: '600' }}>{ex.name}</Text>
-                  <Text muted>
+            <Card style={{ gap: spacing.sm }}>
+              <SectionHeader title={t('entry.exercises')} subtitle={volume > 0 ? t('entry.totalVolume', { value: Math.round(volume).toLocaleString(getDeviceLocale()) }) : undefined} />
+              {existing.exercises.map((ex, index) => (
+                <View
+                  key={`${ex.name}-${index}`}
+                  accessible
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.xs }}>
+                  <Text variant="body" weight="semiBold" style={{ flex: 1 }}>
+                    {ex.name}
+                  </Text>
+                  <Text variant="body" numeric color="textSecondary">
                     {ex.sets ?? '-'} × {ex.reps ?? '-'}
-                    {ex.weight ? ` @ ${ex.weight} kg` : ''}
+                    {ex.weight ? t('card.atWeight', { value: ex.weight }) : ''}
                   </Text>
                 </View>
               ))}
-            </GlassCard>
+            </Card>
           ) : null}
         </>
       ) : null}
 
       {type === 'measurement' ? (
-        <GlassCard
-          glowColor={moduleColors.fitness}
-          style={{
-            gap: spacing.md,
-            padding: spacing.md,
-            backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-          }}>
-          <View style={{ gap: spacing.xs }}>
-            <Text variant="label" muted>
-              Metric
+        <Card style={{ gap: spacing.lg }}>
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="label" color="textSecondary">
+              {t('entry.metric')}
             </Text>
             <ChipGroup>
               {MEASUREMENTS.map((item) => (
-                <Chip
-                  key={item.value}
-                  label={item.label}
-                  selected={measurementType === item.value}
-                  color={moduleColors.fitness}
-                  onPress={() => pickMeasurement(item.value)}
-                />
+                <Chip key={item.value} label={measurementLabel(item.value)} selected={measurementType === item.value} accent="fitness" onPress={() => pickMeasurement(item.value)} />
               ))}
             </ChipGroup>
           </View>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <View style={{ flex: 2 }}>
-              <Input
-                label="Value"
-                value={measurementValue}
-                onChangeText={setMeasurementValue}
-                keyboardType="decimal-pad"
-                placeholder="0"
-                autoFocus={!existing}
-                style={{ fontSize: 24, fontWeight: '700' }}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input label="Unit" value={measurementUnit} onChangeText={setMeasurementUnit} autoCapitalize="none" />
-            </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+            <Input
+              containerStyle={{ flexGrow: 2, flexBasis: 140 }}
+              label={t('entry.value')}
+              value={measurementValue}
+              onChangeText={edit('measurementValue', setMeasurementValue)}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              autoFocus={!existing}
+              error={errors.measurementValue}
+            />
+            <Input containerStyle={{ flexGrow: 1, flexBasis: 96 }} label={t('entry.unit')} value={measurementUnit} onChangeText={setMeasurementUnit} autoCapitalize="none" autoCorrect={false} />
           </View>
-        </GlassCard>
+        </Card>
       ) : null}
 
-      {/* Date & Notes */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <DateField label="Date" value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
+      <Card style={{ gap: spacing.md }}>
+        <DateField label={t('entry.date')} value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
 
         <Input
-          label={type === 'goal' ? 'Goal Target' : 'Notes (optional)'}
+          label={type === 'goal' ? t('entry.goalTarget') : t('entry.notesOptional')}
           value={notes}
-          onChangeText={setNotes}
+          onChangeText={edit('notes', setNotes)}
           multiline
-          placeholder={type === 'goal' ? 'e.g. Bench 80 kg by December, 10 pullups' : 'Rest intervals, form notes, comments…'}
-          style={{ minHeight: 72, textAlignVertical: 'top', paddingTop: spacing.md }}
+          placeholder={type === 'goal' ? t('entry.goalPlaceholder') : t('entry.notesPlaceholder')}
+          autoCapitalize="sentences"
+          error={errors.notes}
+          style={{ minHeight: 72 }}
         />
-      </GlassCard>
+      </Card>
 
-      {error ? (
-        <View
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: `${colors.danger}18`,
-            borderWidth: 1,
-            borderColor: `${colors.danger}40`,
-          }}>
-          <Text color="danger" style={{ fontWeight: '600' }}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-
-      <Button title={existing ? 'Save changes' : 'Add entry'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete entry" variant="ghost" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <View style={{ gap: spacing.sm }}>
+        <Button title={existing ? t('actions.saveChanges') : t('entry.add')} leftIcon="checkmark" onPress={submit} loading={save.isPending} />
+        {existing ? <Button title={t('entry.deleteButton')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      </View>
     </Screen>
   );
 }

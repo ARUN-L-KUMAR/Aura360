@@ -1,0 +1,89 @@
+{
+  "placeholder": "Search notes, money, workouts and more",
+  "searchLabel": "Search everything",
+  "cancel": "Cancel",
+  "cancelHint": "Closes search",
+  "filters": {
+    "label": "Filter results by section",
+    "all": "All"
+  },
+  "groups": {
+    "notes": "Notes",
+    "saved": "Saved items",
+    "transactions": "Transactions",
+    "budgets": "Budgets",
+    "goals": "Goals",
+    "wardrobe": "Wardrobe",
+    "wishlist": "Wishlist",
+    "outfits": "Outfits",
+    "meals": "Meals",
+    "fitness": "Fitness",
+    "products": "Skincare",
+    "timeLogs": "Time logs"
+  },
+  "suggestions": {
+    "title": "Search in",
+    "hint": "Browse a section by typing what you are looking for. Results come from your own data.",
+    "chipHint": "Starts a search limited to this section"
+  },
+  "recent": {
+    "title": "Recent searches",
+    "clearAll": "Clear all",
+    "clearAllLabel": "Clear all recent searches",
+    "remove": "Remove \"{{query}}\" from recent searches",
+    "use": "Search for \"{{query}}\"",
+    "confirmTitle": "Clear recent searches?",
+    "confirmMessage": "This only removes the list on this device. Your notes and other data are not affected.",
+    "confirmAction": "Clear",
+    "cleared": "Recent searches cleared"
+  },
+  "summary_one": "{{count}} result for \"{{query}}\"",
+  "summary_other": "{{count}} results for \"{{query}}\"",
+  "summarySection_one": "{{count}} result in {{section}}",
+  "summarySection_other": "{{count}} results in {{section}}",
+  "searching": "Searching",
+  "empty": {
+    "title": "No results for \"{{query}}\"",
+    "description": "Check the spelling, try fewer words, or search another section.",
+    "clear": "Clear search",
+    "searchAll": "Search all sections",
+    "titleSection": "No results in {{section}} for \"{{query}}\""
+  },
+  "offline": "Showing results from saved data. Connect to the internet to refresh.",
+  "loadError": {
+    "message": "Some sections could not be loaded, so results may be incomplete.",
+    "retry": "Try again"
+  },
+  "showAll": "Show all",
+  "showAllLabel": "Show all {{count}} results in {{section}}",
+  "openHint": "Opens this item",
+  "resultLabel": "{{title}}, {{section}}",
+  "item": {
+    "untitledNote": "Untitled note",
+    "overallBudget": "Overall budget",
+    "budgetSpent": "{{spent}} of {{limit}} spent",
+    "goalSaved": "{{percent}}% saved",
+    "workout": "Workout",
+    "measurement": "Measurement",
+    "goal": "Goal",
+    "entry": "Entry",
+    "calories": "{{value}} kcal",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "hours": "{{hours}} h",
+    "income": "Income",
+    "expense": "Expense",
+    "investment": "Investment",
+    "transfer": "Transfer",
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snack": "Snack",
+    "archived": "Archived"
+  },
+  "idle": {
+    "scope": "Searching only in {{section}}",
+    "scopeClear": "Search everywhere"
+  }
+}

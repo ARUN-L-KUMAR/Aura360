@@ -1,13 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import { ApiError } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/i18n';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
-import { radius, spacing, useTheme } from '@/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -17,13 +16,13 @@ const GOOGLE_CLIENT_ID =
   '879007995314-604j7n663sbg1fou4aakkq4suvmlgrfq.apps.googleusercontent.com';
 
 interface Props {
+  /** Called with a message when sign-in fails, and with an empty string when a new attempt starts (to clear it). */
   onError?: (error: string) => void;
 }
 
 export function GoogleSignInButton({ onError }: Props) {
+  const { t } = useTranslation('auth');
   const { signInWithGoogle } = useAuth();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
   const [loading, setLoading] = useState(false);
 
   const [request, , promptAsync] = Google.useAuthRequest({
@@ -42,83 +41,30 @@ export function GoogleSignInButton({ onError }: Props) {
         const idToken = res.params?.id_token || res.authentication?.idToken;
         if (idToken) {
           await signInWithGoogle(idToken);
+          // Google can create the account on first use, so this is reported as a sign-in either way.
+          analytics.track('sign_in', { method: 'google' });
         } else {
-          onError?.('No ID token received from Google.');
+          onError?.(t('social.googleNoToken'));
         }
       } else if (res.type === 'error') {
-        onError?.(res.error?.message || 'Google sign-in was cancelled or encountered an error.');
+        onError?.(t('social.googleFailed'));
       }
     } catch (e) {
-      onError?.(
-        e instanceof ApiError
-          ? e.message
-          : e instanceof Error
-            ? e.message
-            : 'Could not launch Google authentication window.'
-      );
+      onError?.(userErrorMessage(e, t('social.googleFailed'), { unauthorized: t('social.googleFailed') }));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Continue with Google"
-      disabled={!request || loading}
+    <Button
+      title={t('social.google')}
+      variant="tertiary"
+      leftIcon="logo-google"
+      loading={loading}
+      disabled={!request}
       onPress={handlePress}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : '#ffffff',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border,
-          opacity: pressed || !request ? 0.8 : 1,
-        },
-      ]}>
-      {loading ? (
-        <ActivityIndicator size="small" color={isDark ? '#ffffff' : '#1f2937'} />
-      ) : (
-        <View style={styles.content}>
-          <Ionicons name="logo-google" size={19} color="#ea4335" />
-          <Text
-            variant="label"
-            weight="semiBold"
-            style={[styles.text, { color: isDark ? colors.text : '#1f2937' }]}>
-            Continue with Google
-          </Text>
-        </View>
-      )}
-    </Pressable>
+      accessibilityHint={t('social.googleHint')}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  text: {
-    fontSize: 14,
-  },
-});

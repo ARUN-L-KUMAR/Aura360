@@ -1,50 +1,54 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
-import { GlassCard } from '@/components/ui/glass-card';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
+import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useParseMeal, useSaveMeals } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type MealType, type ParsedMeal, type ParsedMealItem } from '@/features/food/types';
-import { ApiError } from '@/lib/api';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { useErrorMessage } from '@/features/food/use-error-message';
+import { useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
+import { radius, spacing, useTheme } from '@/theme';
 
-const EXAMPLES = [
-  '2 scrambled eggs on toast with half an avocado and black coffee',
-  'Grilled chicken breast (200g) with rice and steamed broccoli',
-  'Whey protein shake with 1 banana and 20g peanut butter',
-];
+const EXAMPLE_KEYS = ['eggs', 'chicken', 'shake'] as const;
 
-const NUMERIC_FIELDS: { key: keyof ParsedMealItem; label: string }[] = [
-  { key: 'calories', label: 'kcal' },
-  { key: 'protein', label: 'Protein' },
-  { key: 'carbs', label: 'Carbs' },
-  { key: 'fats', label: 'Fats' },
-];
+const NUMERIC_KEYS = ['calories', 'protein', 'carbs', 'fats'] as const;
 
 export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged: () => void }) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { accent } = useTheme();
+  const notify = useNotify();
+  const { t } = useTranslation('food');
+  const errorMessage = useErrorMessage();
   const [text, setText] = useState('');
   const [mealType, setMealType] = useState<MealType>(suggestMealType());
   const [parsed, setParsed] = useState<ParsedMeal | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [textError, setTextError] = useState<string | null>(null);
 
   const parse = useParseMeal();
   const save = useSaveMeals();
 
   async function analyse() {
-    if (!text.trim()) return setError('Describe what you ate first.');
-    setError(null);
+    if (!text.trim()) {
+      haptics.warning();
+      return setTextError(t('aiLog.describeFirst'));
+    }
+    setTextError(null);
     try {
       setParsed(await parse.mutateAsync({ mealText: text.trim(), mealType }));
     } catch (e) {
-      setError(e instanceof ApiError || e instanceof Error ? e.message : 'Could not read that meal.');
+      notify.error(errorMessage(e, t('aiLog.parseFailed')));
     }
   }
 
@@ -58,8 +62,8 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
 
   async function logAll() {
     if (!parsed || parsed.items.length === 0) return;
-    setError(null);
     const date = toIsoDay(new Date());
+    const count = parsed.items.length;
     try {
       await save.mutateAsync(
         parsed.items.map((item) => ({
@@ -79,9 +83,11 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
       );
       setText('');
       setParsed(null);
+      notify.success(t('aiLog.logged', { count, slot: t(`mealsLower.${mealType}`) }));
+      analytics.track('meal_logged', { source: 'ai' });
       onLogged();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not save these meals. Try again.');
+      notify.error(errorMessage(e, t('aiLog.saveFailed')));
     }
   }
 
@@ -99,125 +105,121 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
     <Screen>
       {header}
 
-      <GlassCard glowColor={moduleColors.ai} style={{ gap: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+      <Card style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.md,
-              backgroundColor: `${moduleColors.ai}25`,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-            <Ionicons name="sparkles" size={16} color={moduleColors.ai} />
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: accent('ai').soft, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="sparkles" size={20} color={accent('ai').text} />
           </View>
-          <View>
-            <Text variant="heading" style={{ fontSize: 16 }}>
-              AI Food Intelligence
+          <View style={{ flex: 1 }}>
+            <Text variant="title" accessibilityRole="header">
+              {t('aiLog.title')}
             </Text>
-            <Text variant="caption" muted>
-              Type in natural language to parse nutritional macros
+            <Text variant="caption" color="textSecondary">
+              {t('aiLog.subtitle')}
             </Text>
           </View>
         </View>
 
         <Input
+          label={t('aiLog.whatDidYouEat')}
           value={text}
           onChangeText={(value) => {
             setText(value);
+            if (textError) setTextError(null);
             if (parsed) setParsed(null);
           }}
-          placeholder="e.g. 2 scrambled eggs on toast with black coffee"
+          placeholder={t('aiLog.placeholder')}
           multiline
-          style={{ minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md }}
+          autoCapitalize="sentences"
+          error={textError}
+          style={{ minHeight: 88 }}
         />
 
-        <ChipGroup>
-          {MEAL_TYPES.map((slot) => (
-            <Chip key={slot.value} label={slot.label} selected={mealType === slot.value} color={moduleColors.food} onPress={() => setMealType(slot.value)} />
-          ))}
-        </ChipGroup>
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="label" color="textSecondary">
+            {t('aiLog.meal')}
+          </Text>
+          <ChipGroup>
+            {MEAL_TYPES.map((slot) => (
+              <Chip key={slot.value} label={slot.label} icon={slot.icon} selected={mealType === slot.value} accent="food" onPress={() => setMealType(slot.value)} />
+            ))}
+          </ChipGroup>
+        </View>
 
         {!parsed ? (
-          <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
-            <Text variant="caption" muted style={{ fontWeight: '600' }}>
-              Tap an example to try:
+          <View style={{ gap: spacing.xs }}>
+            <Text variant="label" color="textSecondary">
+              {t('aiLog.tryExample')}
             </Text>
-            {EXAMPLES.map((example) => (
-              <Pressable
-                key={example}
-                accessibilityRole="button"
-                onPress={() => setText(example)}
-                hitSlop={4}
-                style={({ pressed }) => ({
-                  paddingVertical: 6,
-                  paddingHorizontal: 8,
-                  borderRadius: radius.sm,
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  opacity: pressed ? 0.7 : 1,
-                })}>
-                <Text variant="caption" style={{ color: colors.text }} numberOfLines={2}>
-                  “{example}”
-                </Text>
-              </Pressable>
-            ))}
+            {EXAMPLE_KEYS.map((key) => {
+              const example = t(`aiLog.examples.${key}`);
+              return <ListItem key={key} icon="sparkles-outline" accent="ai" title={example} titleLines={2} accessibilityHint={t('aiLog.exampleHint')} onPress={() => setText(example)} chevron={false} />;
+            })}
           </View>
         ) : null}
 
-        {error ? <Text color="danger">{error}</Text> : null}
-        <Button title={parsed ? 'Analyse again' : 'Analyse with AI'} variant={parsed ? 'secondary' : 'primary'} onPress={analyse} loading={parse.isPending} />
-      </GlassCard>
+        <Button title={parsed ? t('aiLog.analyseAgain') : t('aiLog.analyse')} leftIcon="sparkles" variant={parsed ? 'secondary' : 'primary'} onPress={analyse} loading={parse.isPending} />
+      </Card>
+
+      {parse.isPending ? <SkeletonCard lines={3} /> : null}
 
       {parsed && totals ? (
         <>
-          <GlassCard glowColor={moduleColors.food} style={{ gap: spacing.xs }}>
-            <Text variant="label" muted>
-              Estimated Total
+          <Card variant="tinted" accent="food" style={{ gap: spacing.xs }}>
+            <Text variant="label" color="textSecondary">
+              {t('aiLog.estimatedTotal')}
             </Text>
-            <Text variant="display" style={{ fontSize: 28, lineHeight: 32, color: moduleColors.food }}>
-              {Math.round(totals.calories)} kcal
+            <Text variant="display" numeric style={{ color: accent('food').text }}>
+              {t('units.kcal', { value: Math.round(totals.calories) })}
             </Text>
-            <Text style={{ fontWeight: '600' }}>
-              P {Math.round(totals.protein)}g · C {Math.round(totals.carbs)}g · F {Math.round(totals.fats)}g
+            <Text variant="body" weight="semiBold" numeric>
+              {[t('macros.protein', { value: Math.round(totals.protein) }), t('macros.carbs', { value: Math.round(totals.carbs) }), t('macros.fats', { value: Math.round(totals.fats) })].join(' · ')}
             </Text>
             {parsed.summary ? (
-              <Text variant="caption" muted style={{ marginTop: spacing.xs }}>
+              <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
                 {parsed.summary}
               </Text>
             ) : null}
-          </GlassCard>
+          </Card>
+
+          <SectionHeader title={t('aiLog.items')} count={parsed.items.length} subtitle={t('aiLog.itemsSubtitle')} />
+
+          {parsed.items.length === 0 ? (
+            <Text variant="body" color="textSecondary">
+              {t('aiLog.nothingLeft')}
+            </Text>
+          ) : null}
 
           {parsed.items.map((item, index) => (
-            <GlassCard key={`${item.foodName}-${index}`} style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <View style={{ flex: 1 }}>
-                  <Input value={item.foodName} onChangeText={(value) => updateItem(index, { foodName: value })} />
-                </View>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${item.foodName}`} onPress={() => removeItem(index)} hitSlop={8}>
-                  <Ionicons name="close-circle-outline" size={24} color={colors.textMuted} />
-                </Pressable>
+            <Card key={index} style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label={t('meal.food')}
+                  value={item.foodName}
+                  onChangeText={(value) => updateItem(index, { foodName: value })}
+                  autoCapitalize="sentences"
+                  returnKeyType="done"
+                />
+                <IconButton icon="close-circle-outline" accessibilityLabel={t('aiLog.removeItem', { name: item.foodName })} onPress={() => removeItem(index)} style={{ marginBottom: spacing.xs }} />
               </View>
-              <Text variant="caption" muted>
+              <Text variant="caption" color="textSecondary">
                 {item.quantity} {item.unit}
               </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                {NUMERIC_FIELDS.map((field) => (
-                  <View key={field.key} style={{ flex: 1 }}>
-                    <Input
-                      label={field.label}
-                      value={String(item[field.key] ?? '')}
-                      keyboardType="decimal-pad"
-                      onChangeText={(value) => updateItem(index, { [field.key]: Number.parseFloat(value) || 0 } as Partial<ParsedMealItem>)}
-                    />
-                  </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {NUMERIC_KEYS.map((key) => (
+                  <NumberField key={key} label={t(`aiLog.fields.${key}`)} value={item[key] ?? 0} onChange={(value) => updateItem(index, { [key]: value })} />
                 ))}
               </View>
-            </GlassCard>
+            </Card>
           ))}
 
           <Button
-            title={`Log ${parsed.items.length} ${parsed.items.length === 1 ? 'item' : 'items'} to ${MEAL_TYPES.find((slot) => slot.value === mealType)?.label}`}
+            title={t('aiLog.logAll', { count: parsed.items.length, slot: t(`mealsLower.${mealType}`) })}
+            leftIcon="checkmark"
             onPress={logAll}
             loading={save.isPending}
             disabled={parsed.items.length === 0}
@@ -228,3 +230,27 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
   );
 }
 
+/**
+ * Decimal field backed by a number. It keeps its own text so "7." survives while typing, and re-syncs only when the
+ * number is changed from outside (for example when an item above it is removed).
+ */
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if ((Number.parseFloat(text) || 0) !== value) setText(String(value));
+  }
+  return (
+    <Input
+      containerStyle={{ flexGrow: 1, flexBasis: 120 }}
+      label={label}
+      value={text}
+      keyboardType="decimal-pad"
+      onChangeText={(next) => {
+        setText(next);
+        onChange(Number.parseFloat(next) || 0);
+      }}
+    />
+  );
+}

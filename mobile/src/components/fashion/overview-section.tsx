@@ -1,292 +1,179 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, type ReactNode } from 'react';
+import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { GlassCard } from '@/components/ui/glass-card';
+import { LoadError, OfflineState } from '@/components/finance/load-error';
+import { Card } from '@/components/ui/card';
+import { Tag } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListItem } from '@/components/ui/list-item';
+import { useBlockMotion } from '@/components/ui/motion';
+import { Screen } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/stat-card';
 import { Text } from '@/components/ui/text';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { GRID_COLUMNS, GRID_GAP, SkeletonGrid, StaleNotice, useListPadding, type ItemsState } from './shared';
 
 interface OverviewSectionProps {
   items: FashionItem[];
-  header?: React.ReactNode;
+  state: ItemsState;
+  header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
+  onAddNew: () => void;
   onGoToWardrobe: () => void;
   onGoToWishlist: () => void;
   onGoToLaundry: () => void;
 }
 
-export function OverviewSection({
-  items,
-  header,
-  onSelectItem,
-  onGoToWardrobe,
-  onGoToWishlist,
-  onGoToLaundry,
-}: OverviewSectionProps) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+/** A short, fixed set of cards in rows of two (the full lists live in the Wardrobe and Wishlist sections). */
+function CardRows({ items, onSelectItem }: { items: FashionItem[]; onSelectItem: (item: FashionItem) => void }) {
+  const rows: FashionItem[][] = [];
+  for (let i = 0; i < items.length; i += GRID_COLUMNS) rows.push(items.slice(i, i + GRID_COLUMNS));
+  return (
+    <View style={{ gap: GRID_GAP }}>
+      {rows.map((row) => (
+        <View key={row[0].id} style={{ flexDirection: 'row', gap: GRID_GAP }}>
+          {row.map((item) => (
+            <FashionCard key={item.id} item={item} onPress={onSelectItem} />
+          ))}
+          {row.length < GRID_COLUMNS ? <View style={{ flex: 1 }} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function OverviewSkeleton() {
+  const { t } = useTranslation('fashion');
+  return (
+    <>
+      <SkeletonGroup label={t('loading.summary')} style={{ gap: spacing.md }}>
+        <Skeleton height={layout.minTouchTarget * 2.5} rounded="lg" />
+        <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
+          <View style={{ flex: 1 }}>
+            <Skeleton height={layout.minTouchTarget * 2} rounded="lg" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Skeleton height={layout.minTouchTarget * 2} rounded="lg" />
+          </View>
+        </View>
+      </SkeletonGroup>
+      <SkeletonGrid rows={1} />
+    </>
+  );
+}
+
+export function OverviewSection({ items, state, header, onSelectItem, onAddNew, onGoToWardrobe, onGoToWishlist, onGoToLaundry }: OverviewSectionProps) {
+  const { t } = useTranslation('fashion');
+  const blockMotion = useBlockMotion();
+  const { paddingBottom } = useListPadding();
 
   const wardrobeItems = useMemo(() => items.filter((i) => i.status === 'wardrobe'), [items]);
   const wishlistItems = useMemo(() => items.filter((i) => i.status === 'wishlist'), [items]);
   const laundryItems = useMemo(() => items.filter((i) => i.condition === 'needs_wash'), [items]);
 
-  const wardrobeValuation = useMemo(
-    () => wardrobeItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0),
-    [wardrobeItems]
-  );
+  const wardrobeValuation = useMemo(() => wardrobeItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0), [wardrobeItems]);
+  const totalWears = useMemo(() => wardrobeItems.reduce((sum, item) => sum + (item.wearCount || 0), 0), [wardrobeItems]);
+  const categoryCount = useMemo(() => new Set(wardrobeItems.map((i) => i.category)).size, [wardrobeItems]);
+  const mostWornItems = useMemo(() => [...wardrobeItems].sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0)).slice(0, 4), [wardrobeItems]);
+  const recentItems = useMemo(() => items.slice(0, 4), [items]);
 
-  const totalWears = useMemo(
-    () => wardrobeItems.reduce((sum, item) => sum + (item.wearCount || 0), 0),
-    [wardrobeItems]
-  );
+  let body: ReactNode;
+  if (state.loading) {
+    body = <OverviewSkeleton />;
+  } else if (state.error) {
+    body = <LoadError error={state.error} title={t('errors.loadItems')} onRetry={state.refetch} retrying={state.refreshing} />;
+  } else if (state.offline) {
+    body = <OfflineState description={t('offline.wardrobe')} onRetry={state.refetch} />;
+  } else if (items.length === 0) {
+    body = (
+      <EmptyState
+        icon="shirt-outline"
+        accent="fashion"
+        title={t('overview.emptyTitle')}
+        description={t('overview.emptyBody')}
+        actionTitle={t('overview.emptyAction')}
+        onAction={onAddNew}
+      />
+    );
+  } else {
+    body = (
+      <Animated.View {...blockMotion} style={{ gap: layout.sectionGap }}>
+        <Card variant="tinted" accent="fashion" gradient="fashion" padding="md" style={{ gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+            <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
+              {t('overview.valueTitle')}
+            </Text>
+            <Tag label={t('overview.itemCount', { count: wardrobeItems.length })} accent="fashion" />
+          </View>
+          <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={t('overview.valueA11y', { amount: formatMoney(wardrobeValuation) })}>
+            {formatMoney(wardrobeValuation)}
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            {t('overview.valueHint')}
+          </Text>
+        </Card>
 
-  const categories = useMemo(
-    () => Array.from(new Set(wardrobeItems.map((i) => i.category))),
-    [wardrobeItems]
-  );
+        <View style={{ gap: GRID_GAP }}>
+          <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
+            <View style={{ flex: 1 }}>
+              <StatCard label={t('overview.wardrobe')} value={wardrobeItems.length} icon="shirt-outline" accent="fashion" onPress={onGoToWardrobe} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <StatCard label={t('overview.wishlist')} value={wishlistItems.length} icon="heart-outline" accent="fashion" onPress={onGoToWishlist} />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
+            <View style={{ flex: 1 }}>
+              <StatCard label={t('overview.totalWears')} value={totalWears} icon="sparkles-outline" accent="fashion" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <StatCard label={t('overview.categories')} value={categoryCount} icon="grid-outline" accent="fashion" />
+            </View>
+          </View>
+        </View>
 
-  const mostWornItems = useMemo(
-    () => [...wardrobeItems].sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0)).slice(0, 4),
-    [wardrobeItems]
-  );
+        {laundryItems.length > 0 ? (
+          <Card padding="none" variant="outlined">
+            <ListItem
+              title={t('overview.laundry')}
+              subtitle={t('overview.laundryCount', { count: laundryItems.length })}
+              icon="water-outline"
+              accent="fashion"
+              onPress={onGoToLaundry}
+              accessibilityHint={t('overview.laundryHint')}
+            />
+          </Card>
+        ) : null}
 
-  const recentItems = useMemo(
-    () => [...items].slice(0, 4),
-    [items]
-  );
+        {mostWornItems.length > 0 ? (
+          <View style={{ gap: spacing.md }}>
+            <SectionHeader title={t('overview.mostWorn')} actionLabel={t('overview.viewAll')} actionAccessibilityLabel={t('overview.viewAllA11y')} onActionPress={onGoToWardrobe} />
+            <CardRows items={mostWornItems} onSelectItem={onSelectItem} />
+          </View>
+        ) : null}
+
+        {recentItems.length > 0 ? (
+          <View style={{ gap: spacing.md }}>
+            <SectionHeader title={t('overview.recent')} />
+            <CardRows items={recentItems} onSelectItem={onSelectItem} />
+          </View>
+        ) : null}
+      </Animated.View>
+    );
+  }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-      {header ? header : null}
-
-      {/* Hero Wardrobe Valuation Card */}
-      <GlassCard glowColor={moduleColors.fashion} style={styles.heroCard}>
-        <View style={styles.heroHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="shirt-outline" size={18} color={moduleColors.fashion} />
-            <Text variant="caption" muted style={styles.heroLabel}>
-              WARDROBE ASSET VALUE
-            </Text>
-          </View>
-          <View style={[styles.itemCountPill, { backgroundColor: `${moduleColors.fashion}20` }]}>
-            <Text style={{ color: moduleColors.fashion, fontWeight: '800', fontSize: 11 }}>
-              {wardrobeItems.length} ITEMS
-            </Text>
-          </View>
-        </View>
-
-        <Text variant="display" style={[styles.heroValuation, { color: moduleColors.fashion }]}>
-          {formatMoney(wardrobeValuation)}
-        </Text>
-        <Text variant="caption" muted>
-          Total estimated valuation of your active wardrobe collection
-        </Text>
-      </GlassCard>
-
-      {/* KPI Cards Grid */}
-      <View style={styles.kpiGrid}>
-        <Pressable onPress={onGoToWardrobe} style={styles.kpiCardWrapper}>
-          <GlassCard style={styles.kpiCard}>
-            <View style={[styles.kpiIconBox, { backgroundColor: `${moduleColors.fashion}18` }]}>
-              <Ionicons name="shirt-outline" size={18} color={moduleColors.fashion} />
-            </View>
-            <Text variant="caption" muted style={styles.kpiLabel}>
-              WARDROBE
-            </Text>
-            <Text variant="title" style={styles.kpiValue}>
-              {wardrobeItems.length}
-            </Text>
-          </GlassCard>
-        </Pressable>
-
-        <Pressable onPress={onGoToWishlist} style={styles.kpiCardWrapper}>
-          <GlassCard style={styles.kpiCard}>
-            <View style={[styles.kpiIconBox, { backgroundColor: '#3b82f618' }]}>
-              <Ionicons name="cart-outline" size={18} color="#3b82f6" />
-            </View>
-            <Text variant="caption" muted style={styles.kpiLabel}>
-              WISHLIST
-            </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#3b82f6' }]}>
-              {wishlistItems.length}
-            </Text>
-          </GlassCard>
-        </Pressable>
-
-        <View style={styles.kpiCardWrapper}>
-          <GlassCard style={styles.kpiCard}>
-            <View style={[styles.kpiIconBox, { backgroundColor: '#8b5cf618' }]}>
-              <Ionicons name="sparkles-outline" size={18} color="#8b5cf6" />
-            </View>
-            <Text variant="caption" muted style={styles.kpiLabel}>
-              TOTAL WEARS
-            </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#8b5cf6' }]}>
-              {totalWears}
-            </Text>
-          </GlassCard>
-        </View>
-
-        <View style={styles.kpiCardWrapper}>
-          <GlassCard style={styles.kpiCard}>
-            <View style={[styles.kpiIconBox, { backgroundColor: '#10b98118' }]}>
-              <Ionicons name="grid-outline" size={18} color="#10b981" />
-            </View>
-            <Text variant="caption" muted style={styles.kpiLabel}>
-              CATEGORIES
-            </Text>
-            <Text variant="title" style={[styles.kpiValue, { color: '#10b981' }]}>
-              {categories.length}
-            </Text>
-          </GlassCard>
-        </View>
-      </View>
-
-      {/* Laundry Alert Banner (if any) */}
-      {laundryItems.length > 0 ? (
-        <Pressable onPress={onGoToLaundry}>
-          <GlassCard glowColor="#ef4444" style={styles.laundryCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <View style={[styles.laundryIconBox, { backgroundColor: '#ef444420' }]}>
-                <Ionicons name="water-outline" size={22} color="#ef4444" />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '700', fontSize: 14, color: '#ef4444' }}>
-                  Laundry Room Alert
-                </Text>
-                <Text variant="caption" muted>
-                  {laundryItems.length} {laundryItems.length === 1 ? 'piece needs' : 'pieces need'} wash
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-            </View>
-          </GlassCard>
-        </Pressable>
-      ) : null}
-
-      {/* Most Worn Pieces */}
-      {mostWornItems.length > 0 ? (
-        <View style={{ gap: spacing.sm }}>
-          <View style={styles.sectionTitleRow}>
-            <Text variant="heading" style={{ fontSize: 16, fontWeight: '700' }}>
-              Most Worn Pieces
-            </Text>
-            <Pressable onPress={onGoToWardrobe}>
-              <Text variant="caption" style={{ color: moduleColors.fashion, fontWeight: '700' }}>
-                View All
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.itemsGrid}>
-            {mostWornItems.map((item) => (
-              <FashionCard key={item.id} item={item} onPress={() => onSelectItem(item)} />
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      {/* Recent Additions */}
-      {recentItems.length > 0 ? (
-        <View style={{ gap: spacing.sm }}>
-          <View style={styles.sectionTitleRow}>
-            <Text variant="heading" style={{ fontSize: 16, fontWeight: '700' }}>
-              Recent Additions
-            </Text>
-          </View>
-
-          <View style={styles.itemsGrid}>
-            {recentItems.map((item) => (
-              <FashionCard key={item.id} item={item} onPress={() => onSelectItem(item)} />
-            ))}
-          </View>
-        </View>
-      ) : null}
-    </ScrollView>
+    <Screen onRefresh={state.refetch} refreshing={state.refreshing} contentContainerStyle={{ paddingBottom }}>
+      {header}
+      <StaleNotice state={state} />
+      {body}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.md,
-    gap: spacing.lg,
-    paddingBottom: 80,
-  },
-  heroCard: {
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  heroLabel: {
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    fontSize: 10,
-  },
-  itemCountPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  heroValuation: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '800',
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  kpiCardWrapper: {
-    width: '48.5%',
-  },
-  kpiCard: {
-    padding: spacing.md,
-    gap: 3,
-  },
-  kpiIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  kpiLabel: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  kpiValue: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  laundryCard: {
-    padding: spacing.md,
-    borderColor: '#ef444440',
-  },
-  laundryIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-});

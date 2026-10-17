@@ -82,11 +82,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       queue.onReplayResult((result) => {
         if (result.sent > 0) {
           void queryClient.invalidateQueries();
-          void queue.flashNotice(`Synced ${result.sent} offline ${result.sent === 1 ? 'entry' : 'entries'}`);
+          void queue.flashNotice({ kind: 'synced', count: result.sent });
         } else if (result.failed > 0) {
-          void queue.flashNotice(`${result.failed} ${result.failed === 1 ? 'entry' : 'entries'} couldn't be saved`);
+          void queue.flashNotice({ kind: 'failed', count: result.failed });
         } else if (result.authRequired) {
-          void queue.flashNotice('Sign in again to finish syncing');
+          void queue.flashNotice({ kind: 'signIn' });
         }
       }),
     [queryClient],

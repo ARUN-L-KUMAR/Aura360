@@ -24,13 +24,10 @@ export type SavedInput = {
   isFavorite?: boolean;
 };
 
-export const SAVED_TYPES: { value: SavedType; label: string }[] = [
-  { value: 'article', label: 'Article' },
-  { value: 'video', label: 'Video' },
-  { value: 'product', label: 'Product' },
-  { value: 'recipe', label: 'Recipe' },
-  { value: 'other', label: 'Other' },
-];
+/** Display order of the types. Labels live in the catalog: `t('saved:type.<value>')`. */
+export const SAVED_TYPES: readonly SavedType[] = ['article', 'video', 'product', 'recipe', 'other'];
+
+export const isSavedType = (value: string | null | undefined): value is SavedType => !!value && (SAVED_TYPES as readonly string[]).includes(value);
 
 export type Destination = 'auto' | 'saved' | 'notes' | 'fashion';
 
@@ -48,15 +45,13 @@ export type IngestPreview = {
   persistedTo: string | null;
 };
 
-export const MODULE_LABEL: Record<string, string> = {
-  saved: 'Saved',
-  notes: 'Notes',
-  fashion: 'Fashion wishlist',
-  food: 'Saved',
-  fitness: 'Saved',
-  skincare: 'Saved',
-  time: 'Saved',
-};
+/** Where a link can end up. Labels live in the catalog: `t('saved:place.<key>')`. */
+export type PlaceKey = 'saved' | 'notes' | 'fashion';
+
+/** Maps the server's module name to the place a link was filed under (everything else is filed under Saved). */
+export function placeOf(module: string | null | undefined): PlaceKey {
+  return module === 'notes' || module === 'fashion' ? module : 'saved';
+}
 
 export function hostOf(url: string | null) {
   if (!url) return null;

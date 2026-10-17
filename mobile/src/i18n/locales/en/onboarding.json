@@ -1,0 +1,21 @@
+{
+  "skip": "Skip",
+  "skipLabel": "Skip the introduction",
+  "next": "Next",
+  "getStarted": "Get started",
+  "pageOf": "Page {{current}} of {{total}}",
+  "slides": {
+    "everything": {
+      "title": "Everything in one place",
+      "body": "Money, fitness, food, notes, fashion and skincare, together in one calm app."
+    },
+    "ask": {
+      "title": "Ask Aura",
+      "body": "Chat with your AI assistant about your own data and get answers in seconds."
+    },
+    "offline": {
+      "title": "Works offline",
+      "body": "Log anything, anywhere, even without a connection. Aura syncs it when you are back online."
+    }
+  }
+}

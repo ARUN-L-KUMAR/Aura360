@@ -1,29 +1,43 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { FlatList, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { MealRow } from '@/components/food/meal-row';
+import { MealRow, openMeal } from '@/components/food/meal-row';
+import { FAB_CLEARANCE, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
 import { Card } from '@/components/ui/card';
+import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Screen } from '@/components/ui/screen';
+import { useListMotion } from '@/components/ui/motion';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { useScreenPadding } from '@/components/ui/screen';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMeals } from '@/features/food/hooks';
-import { MEAL_TYPES, type Meal } from '@/features/food/types';
+import { MEAL_TYPES, suggestMealType, type Meal } from '@/features/food/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, monthKey, monthLabel, shiftMonth } from '@/lib/format';
-import { moduleColors, radius, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 
 function lastDayOf(month: string) {
   const [year, m] = month.split('-').map(Number);
   return `${month}-${String(new Date(year, m, 0).getDate()).padStart(2, '0')}`;
 }
 
+type DayGroup = [day: string, items: Meal[]];
+
+const keyOf = (group: DayGroup) => group[0];
+const Separator = () => <View style={{ height: layout.itemGap }} />;
+
 export function HistorySection({ header }: { header: ReactNode }) {
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const router = useRouter();
+  const { t } = useTranslation('food');
   const [month, setMonth] = useState(monthKey());
   const meals = useMeals(`${month}-01`, lastDayOf(month));
   const isCurrent = month === monthKey();
+
+  const padding = useScreenPadding();
+  const refreshControl = useRefreshControl({ onRefresh: () => meals.refetch(), refreshing: meals.isRefetching });
 
   const days = useMemo(() => {
     const byDay = new Map<string, Meal[]>();
@@ -31,126 +45,89 @@ export function HistorySection({ header }: { header: ReactNode }) {
       const key = meal.date.slice(0, 10);
       byDay.set(key, [...(byDay.get(key) ?? []), meal]);
     }
-    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)) as DayGroup[];
   }, [meals.data]);
 
-  return (
-    <Screen onRefresh={() => meals.refetch()} refreshing={meals.isRefetching}>
+  const renderItem = useCallback(({ item, index }: { item: DayGroup; index: number }) => <DayCard day={item[0]} items={item[1]} index={index} />, []);
+
+  const empty = !meals.isPending && !meals.isError && days.length === 0;
+
+  const listHeader = (
+    <View style={{ gap: layout.sectionGap }}>
       {header}
 
-      {/* Month Navigator */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingVertical: spacing.xs,
-          paddingHorizontal: spacing.sm,
-          borderRadius: radius.md,
-          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous month"
-          onPress={() => setMonth(shiftMonth(month, -1))}
-          hitSlop={12}
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: pressed ? colors.cardMuted : 'transparent',
-          })}>
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
-        </Pressable>
+      <PeriodStepper
+        accent="food"
+        label={monthLabel(month)}
+        previousLabel={t('history.previousMonth')}
+        nextLabel={t('history.nextMonth')}
+        onPrevious={() => setMonth(shiftMonth(month, -1))}
+        onNext={() => setMonth(shiftMonth(month, 1))}
+        nextDisabled={isCurrent}
+      />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="calendar-outline" size={16} color={moduleColors.food} />
-          <Text variant="heading" style={{ fontSize: 16 }}>
-            {monthLabel(month)}
-          </Text>
-        </View>
+      {meals.isPending ? <SkeletonList count={4} /> : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next month"
-          onPress={() => setMonth(shiftMonth(month, 1))}
-          disabled={isCurrent}
-          hitSlop={12}
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: radius.pill,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: isCurrent ? 0.3 : 1,
-            backgroundColor: pressed ? colors.cardMuted : 'transparent',
-          })}>
-          <Ionicons name="chevron-forward" size={20} color={colors.text} />
-        </Pressable>
-      </View>
+      {meals.isError ? <QueryError error={meals.error} hasData={!!meals.data} retrying={meals.isFetching} onRetry={() => meals.refetch()} /> : null}
 
-      {meals.isPending ? (
-        <Card>
-          <Text muted>Loading…</Text>
-        </Card>
-      ) : null}
-
-      {meals.isError ? (
-        <Card>
-          <Text muted>{meals.error instanceof Error ? meals.error.message : "Couldn't load meals."}</Text>
-        </Card>
-      ) : null}
-
-      {!meals.isPending && !meals.isError && days.length === 0 ? (
+      {empty ? (
         <EmptyState
+          accent="food"
           icon="nutrition-outline"
-          title={`No meals logged in ${monthLabel(month)}`}
-          description="Log meals through the Today tab or using AI Log."
+          title={t('history.emptyTitle', { month: monthLabel(month) })}
+          description={t('history.emptyDescription')}
+          actionTitle={t('actions.logFood')}
+          onAction={() => openMeal(router, { mealType: suggestMealType() })}
         />
       ) : null}
+    </View>
+  );
 
-      {days.map(([day, items]) => {
-        const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
-        return (
-          <GlassCard key={day} style={{ gap: spacing.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text variant="label" style={{ fontWeight: '700' }}>
-                {formatDay(day)}
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: 2,
-                  borderRadius: radius.pill,
-                  backgroundColor: `${moduleColors.food}20`,
-                }}>
-                <Text variant="caption" style={{ color: moduleColors.food, fontWeight: '700' }}>
-                  {kcal} kcal · {items.length} {items.length === 1 ? 'item' : 'items'}
-                </Text>
-              </View>
-            </View>
-            {MEAL_TYPES.map((slot) => {
-              const slotItems = items.filter((meal) => meal.mealType === slot.value);
-              if (slotItems.length === 0) return null;
-              return (
-                <View key={slot.value} style={{ marginTop: spacing.xs }}>
-                  <Text variant="caption" muted style={{ fontWeight: '600', marginBottom: 2 }}>
-                    {slot.label}
-                  </Text>
-                  {slotItems.map((meal) => (
-                    <MealRow key={meal.id} meal={meal} />
-                  ))}
-                </View>
-              );
-            })}
-          </GlassCard>
-        );
-      })}
-    </Screen>
+  return (
+    <FlatList
+      data={days}
+      keyExtractor={keyOf}
+      renderItem={renderItem}
+      ItemSeparatorComponent={Separator}
+      ListHeaderComponent={listHeader}
+      refreshControl={refreshControl}
+      initialNumToRender={6}
+      windowSize={7}
+      contentContainerStyle={[padding, { paddingBottom: FAB_CLEARANCE }]}
+    />
   );
 }
 
+const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: Meal[]; index: number }) {
+  // Days are never added or removed from here (meals are edited on their own screen), so only the entrance is used.
+  const { t } = useTranslation('food');
+  const { entering } = useListMotion(index);
+  const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
+
+  return (
+    <Animated.View entering={entering}>
+      <Card padding="none" style={{ overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.sm }}>
+          <Text variant="title" accessibilityRole="header">
+            {formatDay(day)}
+          </Text>
+          <Tag accent="food" label={t('history.dayTotal', { kcal, count: items.length })} />
+        </View>
+        {MEAL_TYPES.map((slot) => {
+          const slotItems = items.filter((meal) => meal.mealType === slot.value);
+          if (slotItems.length === 0) return null;
+          return (
+            <View key={slot.value}>
+              <Text variant="caption" weight="semiBold" color="textSecondary" style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
+                {slot.label}
+              </Text>
+              {slotItems.map((meal) => (
+                <MealRow key={meal.id} meal={meal} />
+              ))}
+            </View>
+          );
+        })}
+      </Card>
+    </Animated.View>
+  );
+});

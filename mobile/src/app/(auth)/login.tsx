@@ -1,593 +1,251 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet, View, type TextInput } from 'react-native';
 
-import { GoogleSignInButton } from '@/components/google-sign-in-button';
+import { AUTH_FORM_MAX_WIDTH, AuthHeader, SocialSignIn, authContentStyle } from '@/components/auth-form-parts';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PasswordField } from '@/components/ui/password-field';
+import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
+import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
-import { radius, spacing, typography, useTheme } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { layout, spacing } from '@/theme';
 
-const LOGO = require('../../../assets/images/splash-logo.png');
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+
+function emailProblem(email: string) {
+  if (!email.trim()) return 'validation.emailRequired';
+  if (!EMAIL_PATTERN.test(email.trim())) return 'validation.emailInvalid';
+  return null;
+}
+
+function passwordProblem(password: string) {
+  return password ? null : 'validation.passwordRequired';
+}
 
 export default function LoginScreen() {
-  const { signIn, serverUrl, setServerUrl } = useAuth();
-  const { colors, scheme } = useTheme();
-  const isDark = scheme === 'dark';
+  const { t } = useTranslation('auth');
+  const { signIn, serverUrl, setServerUrl, sessionExpired, dismissSessionExpired } = useAuth();
+  const notify = useNotify();
 
   const passwordRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [showServerModal, setShowServerModal] = useState(false);
+  const [showServerSheet, setShowServerSheet] = useState(false);
   const [serverDraft, setServerDraft] = useState(serverUrl);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [savingServer, setSavingServer] = useState(false);
 
-  const hostDisplay = serverUrl
-    ? serverUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-    : 'Local Host';
+  const emailKey = touched.email ? emailProblem(email) : null;
+  const passwordKey = touched.password ? passwordProblem(password) : null;
+
+  const hostDisplay = serverUrl ? serverUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : t('server.localHost');
 
   async function submit() {
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+    if (loading) return;
+    setTouched({ email: true, password: true });
+    const firstProblem = emailProblem(email) ? emailRef : passwordProblem(password) ? passwordRef : null;
+    if (firstProblem) {
+      haptics.error();
+      firstProblem.current?.focus();
       return;
     }
     setError(null);
     setLoading(true);
     try {
       await signIn(email, password);
+      analytics.track('sign_in', { method: 'password' });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Invalid credentials. Please verify and try again.');
+      haptics.error();
+      // A 401 here means the details were wrong (not an expired session).
+      setError(userErrorMessage(e, t('signIn.failed'), { unauthorized: t('signIn.invalid') }));
     } finally {
       setLoading(false);
     }
   }
 
+  function openServerSheet() {
+    setServerDraft(serverUrl);
+    setServerError(null);
+    setShowServerSheet(true);
+  }
+
   async function saveServer() {
-    await setServerUrl(serverDraft);
-    setShowServerModal(false);
+    if (savingServer) return;
+    setSavingServer(true);
+    setServerError(null);
+    try {
+      await setServerUrl(serverDraft);
+      setShowServerSheet(false);
+      notify.success(t('server.saved'));
+    } catch (e) {
+      haptics.error();
+      setServerError(userErrorMessage(e, t('server.saveFailed')));
+    } finally {
+      setSavingServer(false);
+    }
+  }
+
+  async function resetServer() {
+    if (savingServer) return;
+    setSavingServer(true);
+    setServerError(null);
+    try {
+      await setServerUrl(null);
+      setServerDraft('');
+      setShowServerSheet(false);
+      notify.success(t('server.resetDone'));
+    } catch (e) {
+      notify.error(userErrorMessage(e, t('server.saveFailed')));
+    } finally {
+      setSavingServer(false);
+    }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        {/* Brand Header */}
-        <View style={styles.header}>
-          <View
-            style={[
-              styles.logoWrapper,
-              {
-                backgroundColor: isDark ? 'rgba(79, 70, 229, 0.14)' : 'rgba(79, 70, 229, 0.08)',
-                borderColor: isDark ? 'rgba(99, 102, 241, 0.35)' : 'rgba(79, 70, 229, 0.22)',
-              },
-            ]}>
-            <Image source={LOGO} contentFit="contain" style={styles.logoImage} />
-          </View>
+    <Screen showsVerticalScrollIndicator={false} contentContainerStyle={authContentStyle}>
+      <View style={styles.column}>
+        {sessionExpired ? <Banner severity="warning" message={t('sessionExpired.message')} onDismiss={dismissSessionExpired} /> : null}
 
-          <View style={styles.headerTitles}>
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: isDark ? 'rgba(99, 102, 241, 0.18)' : 'rgba(79, 70, 229, 0.08)',
-                  borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(79, 70, 229, 0.18)',
-                },
-              ]}>
-              <Text
-                variant="caption"
-                weight="semiBold"
-                style={{ color: colors.primary, fontSize: 10, letterSpacing: 1.2 }}>
-                WORKSPACE ACCESS
-              </Text>
-            </View>
+        <AuthHeader title={t('signIn.title')} subtitle={t('signIn.subtitle')} />
 
-            <Text variant="title" weight="bold" style={styles.title}>
-              Aura360
-            </Text>
-            <Text variant="body" muted style={styles.subtitle}>
-              Your integrated daily command center
-            </Text>
-          </View>
-        </View>
-
-        {/* Authentication Card */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.card,
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)',
-            },
-          ]}>
-          {/* Email Field */}
-          <View style={styles.fieldGroup}>
-            <Text variant="label" weight="semiBold" style={{ color: colors.text }}>
-              Email Address
-            </Text>
-            <View
-              style={[
-                styles.inputContainer,
-                {
-                  backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : colors.cardMuted,
-                  borderColor: emailFocused ? colors.primary : colors.border,
-                },
-              ]}>
-              <Ionicons
-                name="mail-outline"
-                size={19}
-                color={emailFocused ? colors.primary : colors.textMuted}
-                style={styles.leadingIcon}
-              />
-              <TextInput
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="name@example.com"
-                placeholderTextColor={colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-              />
-            </View>
-          </View>
-
-          {/* Password Field */}
-          <View style={styles.fieldGroup}>
-            <View style={styles.labelRow}>
-              <Text variant="label" weight="semiBold" style={{ color: colors.text }}>
-                Password
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.inputContainer,
-                {
-                  backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : colors.cardMuted,
-                  borderColor: passwordFocused ? colors.primary : colors.border,
-                },
-              ]}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={19}
-                color={passwordFocused ? colors.primary : colors.textMuted}
-                style={styles.leadingIcon}
-              />
-              <TextInput
-                ref={passwordRef}
-                style={[styles.textInput, { color: colors.text }]}
-                placeholder="Enter your password"
-                placeholderTextColor={colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                secureTextEntry={!showPassword}
-                autoComplete="password"
-                textContentType="password"
-                returnKeyType="go"
-                onSubmitEditing={submit}
-              />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={10}
-                style={styles.trailingIcon}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={19}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Error Banner */}
-          {error ? (
-            <View
-              style={[
-                styles.errorBanner,
-                {
-                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#fef2f2',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#fecaca',
-                },
-              ]}>
-              <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
-              <Text variant="caption" weight="medium" style={{ color: colors.danger, flex: 1 }}>
-                {error}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Sign In Button */}
-          <Pressable
-            accessibilityRole="button"
-            disabled={loading}
-            onPress={submit}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              {
-                backgroundColor: colors.primary,
-                opacity: loading ? 0.7 : pressed ? 0.88 : 1,
-                transform: [{ scale: pressed ? 0.985 : 1 }],
-              },
-            ]}>
-            {loading ? (
-              <Text variant="label" weight="bold" style={{ color: colors.primaryText }}>
-                Signing in…
-              </Text>
-            ) : (
-              <View style={styles.buttonInner}>
-                <Text variant="label" weight="bold" style={{ color: colors.primaryText }}>
-                  Sign in
-                </Text>
-                <Ionicons name="arrow-forward" size={17} color={colors.primaryText} />
-              </View>
-            )}
-          </Pressable>
-
-          {/* Or Divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text variant="caption" weight="semiBold" muted style={styles.dividerText}>
-              OR
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
-
-          {/* Google Sign In */}
-          <GoogleSignInButton onError={setError} />
-
-          {/* Sign Up Link */}
-          <View style={styles.signUpPrompt}>
-            <Text variant="body" muted style={{ fontSize: 14 }}>
-              New to Aura?{' '}
-            </Text>
-            <Link href="/sign-up" asChild>
-              <Pressable hitSlop={6}>
-                <Text
-                  variant="body"
-                  weight="bold"
-                  style={{ color: colors.primary, fontSize: 14 }}>
-                  Create an account
-                </Text>
-              </Pressable>
-            </Link>
-          </View>
-        </View>
-
-        {/* Server Endpoint Badge */}
-        <View style={styles.footer}>
-          <Pressable
-            onPress={() => {
-              setServerDraft(serverUrl);
-              setShowServerModal(true);
+        <View style={styles.form}>
+          <Input
+            ref={emailRef}
+            label={t('fields.email')}
+            leftIcon="mail-outline"
+            placeholder={t('fields.emailPlaceholder')}
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (error) setError(null);
             }}
-            hitSlop={8}
-            style={[
-              styles.serverPill,
-              {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : colors.card,
-                borderColor: colors.border,
-              },
-            ]}>
-            <View style={styles.statusDot} />
-            <Text variant="caption" muted style={{ fontSize: 11, fontWeight: '500' }}>
-              Connected: {hostDisplay}
-            </Text>
-            <Ionicons name="options-outline" size={13} color={colors.textMuted} />
-          </Pressable>
+            onBlur={() => setTouched((s) => ({ ...s, email: true }))}
+            error={emailKey ? t(emailKey) : null}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+          />
+
+          <PasswordField
+            ref={passwordRef}
+            label={t('fields.password')}
+            leftIcon="lock-closed-outline"
+            placeholder={t('fields.passwordPlaceholder')}
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (error) setError(null);
+            }}
+            onBlur={() => setTouched((s) => ({ ...s, password: true }))}
+            error={passwordKey ? t(passwordKey) : null}
+            returnKeyType="go"
+            onSubmitEditing={submit}
+          />
+
+          {error ? <Banner severity="error" title={t('signIn.errorTitle')} message={error} /> : null}
+
+          <Button title={t('signIn.submit')} size="lg" rightIcon={directional('arrow-forward', 'arrow-back')} loading={loading} onPress={submit} />
         </View>
-      </ScrollView>
 
-      {/* Server Config Modal */}
-      <Modal
-        visible={showServerModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowServerModal(false)}>
-        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
-          <View
-            style={[
-              styles.modalCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}>
-            <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="server-outline" size={20} color={colors.primary} />
-                <Text variant="heading" weight="bold">
-                  Backend Configuration
-                </Text>
-              </View>
-              <Pressable hitSlop={8} onPress={() => setShowServerModal(false)}>
-                <Ionicons name="close" size={22} color={colors.textMuted} />
-              </Pressable>
-            </View>
+        <SocialSignIn onError={setError} />
 
-            <Text variant="caption" muted>
-              Configure the API server endpoint this mobile client connects to:
-            </Text>
+        <View style={styles.prompt}>
+          <Text variant="body" color="textSecondary">
+            {t('signIn.newHere')}
+          </Text>
+          <Link href="/sign-up" asChild>
+            <Button title={t('signIn.createAccount')} variant="ghost" size="sm" fullWidth={false} accessibilityRole="link" />
+          </Link>
+        </View>
 
-            <View
-              style={[
-                styles.modalInputBox,
-                { backgroundColor: colors.cardMuted, borderColor: colors.border },
-              ]}>
-              <TextInput
-                value={serverDraft ?? ''}
-                onChangeText={setServerDraft}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                placeholder="https://app.example.com"
-                placeholderTextColor={colors.textMuted}
-                style={[styles.modalInput, { color: colors.text }]}
-              />
-            </View>
+        <View style={styles.footer}>
+          <Button
+            title={t('server.button', { host: hostDisplay })}
+            variant="tertiary"
+            size="sm"
+            fullWidth={false}
+            rightIcon="options-outline"
+            accessibilityHint={t('server.buttonHint')}
+            onPress={openServerSheet}
+          />
+        </View>
+      </View>
 
-            <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-              <Pressable
-                onPress={saveServer}
-                style={[styles.modalSaveButton, { backgroundColor: colors.primary }]}>
-                <Text variant="label" weight="bold" style={{ color: colors.primaryText }}>
-                  Save Server URL
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={async () => {
-                  await setServerUrl(null);
-                  setServerDraft('');
-                  setShowServerModal(false);
-                }}
-                style={styles.modalResetButton}>
-                <Text variant="caption" weight="semiBold" muted>
-                  Reset to Default Localhost
-                </Text>
-              </Pressable>
-            </View>
+      <BottomSheet
+        visible={showServerSheet}
+        onClose={() => setShowServerSheet(false)}
+        title={t('server.sheetTitle')}
+        footer={
+          <View style={styles.sheetActions}>
+            <Button title={t('server.save')} loading={savingServer} onPress={saveServer} />
+            <Button title={t('server.reset')} variant="tertiary" disabled={savingServer} onPress={resetServer} />
           </View>
+        }>
+        <View style={styles.sheetBody}>
+          <Text variant="body" color="textSecondary">
+            {t('server.intro')}
+          </Text>
+          <Input
+            label={t('server.urlLabel')}
+            leftIcon="server-outline"
+            placeholder={t('server.urlPlaceholder')}
+            helper={t('server.urlHelper')}
+            value={serverDraft ?? ''}
+            onChangeText={(text) => {
+              setServerDraft(text);
+              if (serverError) setServerError(null);
+            }}
+            error={serverError}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            textContentType="URL"
+            returnKeyType="done"
+            onSubmitEditing={saveServer}
+          />
         </View>
-      </Modal>
-    </KeyboardAvoidingView>
+      </BottomSheet>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    gap: spacing.md,
-  },
-  logoWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4f46e5',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  logoImage: {
-    width: 48,
-    height: 48,
-  },
-  headerTitles: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-  },
-  title: {
-    fontSize: 28,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: spacing.xl,
-    gap: spacing.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.08,
-        shadowRadius: 24,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  fieldGroup: {
-    gap: 7,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    paddingHorizontal: spacing.md,
-  },
-  leadingIcon: {
-    marginRight: spacing.sm,
-  },
-  trailingIcon: {
-    padding: 4,
-  },
-  textInput: {
-    flex: 1,
-    fontFamily: typography.fontFamily.medium,
-    fontSize: 15,
-    height: '100%',
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
-  primaryButton: {
-    height: 50,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4f46e5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  buttonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginVertical: 2,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 11,
-    letterSpacing: 1,
-  },
-  signUpPrompt: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: spacing.xs,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: spacing.xl,
-  },
-  serverPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10b981',
-  },
-  modalBackdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  modalCard: {
+  column: {
     width: '100%',
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: spacing.xl,
-    gap: spacing.md,
+    maxWidth: AUTH_FORM_MAX_WIDTH,
+    alignSelf: 'center',
+    gap: layout.sectionGap,
   },
-  modalHeader: {
+  form: { gap: layout.cardPadding },
+  prompt: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalInputBox: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  modalInput: {
-    fontFamily: typography.fontFamily.medium,
-    fontSize: 14,
-    minHeight: 38,
-  },
-  modalSaveButton: {
-    height: 46,
-    borderRadius: radius.md,
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
+    columnGap: spacing.xs,
   },
-  modalResetButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-  },
+  footer: { alignItems: 'center' },
+  sheetBody: { gap: layout.cardPadding },
+  sheetActions: { gap: spacing.sm },
 });
-

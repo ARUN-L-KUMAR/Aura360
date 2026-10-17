@@ -1,113 +1,133 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { FlatList, View } from 'react-native';
 
 import { EntryRow, openEntry } from '@/components/fitness/entry-row';
 import { FitnessSummary } from '@/components/fitness/fitness-summary';
-import { SectionLabel } from '@/components/fitness/section-label';
+import { FAB_CLEARANCE, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
 import { WorkoutCard } from '@/components/fitness/workout-card';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Screen } from '@/components/ui/screen';
+import { useRefreshControl } from '@/components/ui/pull-to-refresh';
+import { useScreenPadding } from '@/components/ui/screen';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useFitnessEntries } from '@/features/fitness/hooks';
 import { isWorkout } from '@/features/fitness/stats';
+import type { FitnessEntry } from '@/features/fitness/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, monthKey, monthLabel, shiftMonth } from '@/lib/format';
-import { moduleColors, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 
 function lastDayOf(month: string) {
   const [year, m] = month.split('-').map(Number);
   return `${month}-${String(new Date(year, m, 0).getDate()).padStart(2, '0')}`;
 }
 
+const keyOf = (entry: FitnessEntry) => entry.id;
+const Separator = () => <View style={{ height: layout.itemGap }} />;
+
 export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogWorkout: () => void }) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { t } = useTranslation('fitness');
   const [month, setMonth] = useState(monthKey());
   const entries = useFitnessEntries(`${month}-01`, lastDayOf(month));
   const isCurrent = month === monthKey();
+
+  const padding = useScreenPadding();
+  const refreshControl = useRefreshControl({ onRefresh: () => entries.refetch(), refreshing: entries.isRefetching });
 
   const list = useMemo(() => entries.data ?? [], [entries.data]);
   const workouts = useMemo(() => list.filter(isWorkout), [list]);
   // Weigh-ins, measurements and goals: everything that is not a workout.
   const others = useMemo(() => list.filter((entry) => !isWorkout(entry)), [list]);
 
-  return (
-    <Screen onRefresh={() => entries.refetch()} refreshing={entries.isRefetching}>
+  const renderItem = useCallback(({ item, index }: { item: FitnessEntry; index: number }) => <WorkoutCard entry={item} index={index} />, []);
+
+  const hasData = !!entries.data;
+  const empty = !entries.isPending && !entries.isError && list.length === 0;
+
+  const listHeader = (
+    <View style={{ gap: layout.sectionGap }}>
       {header}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setMonth(shiftMonth(month, -1))} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
-        </Pressable>
-        <Text variant="heading">{monthLabel(month)}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next month"
-          onPress={() => setMonth(shiftMonth(month, 1))}
-          disabled={isCurrent}
-          hitSlop={12}
-          style={{ opacity: isCurrent ? 0.3 : 1 }}>
-          <Ionicons name="chevron-forward" size={22} color={colors.text} />
-        </Pressable>
-      </View>
+      <PeriodStepper
+        accent="fitness"
+        label={monthLabel(month)}
+        previousLabel={t('log.previousMonth')}
+        nextLabel={t('log.nextMonth')}
+        onPrevious={() => setMonth(shiftMonth(month, -1))}
+        onNext={() => setMonth(shiftMonth(month, 1))}
+        nextDisabled={isCurrent}
+      />
 
       {entries.isPending ? (
-        <GlassCard>
-          <Text muted>Loading…</Text>
-        </GlassCard>
-      ) : null}
-      {entries.isError ? (
-        <GlassCard>
-          <Text muted>{entries.error instanceof Error ? entries.error.message : "Couldn't load entries."}</Text>
-        </GlassCard>
+        <>
+          <SkeletonCard lines={1} />
+          <SkeletonCard lines={3} />
+        </>
       ) : null}
 
-      {!entries.isPending && !entries.isError && list.length === 0 ? (
+      {entries.isError ? <QueryError error={entries.error} hasData={hasData} retrying={entries.isFetching} onRetry={() => entries.refetch()} /> : null}
+
+      {empty ? (
         <EmptyState
+          accent="fitness"
           icon="barbell-outline"
-          title={`Nothing logged in ${monthLabel(month)}`}
-          description="Track your strength, cardio and exercises to see your progress."
-          actionTitle="Log a workout"
+          title={t('log.emptyTitle', { month: monthLabel(month) })}
+          description={t('log.emptyDescription')}
+          actionTitle={t('actions.logWorkout')}
           onAction={onLogWorkout}
-          color={moduleColors.fitness}
         />
       ) : null}
 
       {workouts.length > 0 ? (
         <>
           <FitnessSummary entries={workouts} />
-          <View style={{ gap: spacing.sm }}>
-            <SectionLabel>{`Workouts (${workouts.length})`}</SectionLabel>
-            {workouts.map((entry) => (
-              <WorkoutCard key={entry.id} entry={entry} />
-            ))}
-          </View>
+          <SectionHeader title={t('log.workouts')} count={workouts.length} />
         </>
       ) : null}
+    </View>
+  );
 
+  const listFooter = !entries.isPending ? (
+    <View style={{ gap: layout.sectionGap }}>
       {others.length > 0 ? (
-        <GlassCard style={{ gap: spacing.xs }}>
-          <SectionLabel>Measurements & goals</SectionLabel>
-          {others.map((entry) => (
-            <EntryRow key={entry.id} entry={entry} />
-          ))}
-        </GlassCard>
+        <View style={{ gap: spacing.sm }}>
+          <SectionHeader title={t('log.measurementsAndGoals')} count={others.length} />
+          <Card padding="none" style={{ overflow: 'hidden' }}>
+            {others.map((entry, index) => (
+              <EntryRow key={entry.id} entry={entry} divider={index < others.length - 1} />
+            ))}
+          </Card>
+        </View>
       ) : null}
 
-      {!entries.isPending ? (
-        <Pressable accessibilityRole="button" onPress={() => openEntry(router)} hitSlop={8} style={{ alignSelf: 'center' }}>
-          <Text variant="label" muted>
-            Log a measurement or goal
-          </Text>
-        </Pressable>
-      ) : null}
+      <Button title={t('log.logMeasurement')} variant="tertiary" leftIcon="scale-outline" onPress={() => openEntry(router)} />
+
       {list.length > 0 ? (
-        <Text variant="caption" muted style={{ textAlign: 'center' }}>
-          Latest entry {formatDay(list[0].date)}
+        <Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>
+          {t('log.latestEntry', { date: formatDay(list[0].date) })}
         </Text>
       ) : null}
-    </Screen>
+    </View>
+  ) : null;
+
+  return (
+    <FlatList
+      data={workouts}
+      keyExtractor={keyOf}
+      renderItem={renderItem}
+      ItemSeparatorComponent={Separator}
+      ListHeaderComponent={listHeader}
+      ListFooterComponent={listFooter}
+      refreshControl={refreshControl}
+      contentContainerStyle={[padding, { paddingBottom: FAB_CLEARANCE }]}
+      keyboardShouldPersistTaps="handled"
+      initialNumToRender={6}
+      windowSize={7}
+    />
   );
 }

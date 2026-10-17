@@ -1,0 +1,248 @@
+{
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "retry": "Try again",
+    "close": "Close",
+    "done": "Done",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "search": "Search",
+    "clear": "Clear",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "skip": "Skip",
+    "next": "Next",
+    "share": "Share",
+    "copy": "Copy",
+    "undo": "Undo",
+    "dismiss": "Dismiss",
+    "signIn": "Sign in",
+    "goBack": "Go back"
+  },
+  "loading": "Loading",
+  "refresh": {
+    "refreshing": "Refreshing",
+    "updated": "Updated"
+  },
+  "severity": {
+    "info": "Info",
+    "success": "Success",
+    "warning": "Warning",
+    "error": "Error",
+    "critical": "Critical",
+    "neutral": "Status"
+  },
+  "badge": {
+    "withCount_one": "{{label}}, {{count}} new item",
+    "withCount_other": "{{label}}, {{count}} new items"
+  },
+  "banner": {
+    "dismiss": "Dismiss {{severity}} message"
+  },
+  "toast": {
+    "dismiss": "Dismiss message"
+  },
+  "bottomSheet": {
+    "handle": "Sheet handle",
+    "expand": "Expand sheet",
+    "collapse": "Collapse sheet",
+    "handleHint": "Swipe up or down with one finger to resize the sheet"
+  },
+  "emptyState": {
+    "empty": {
+      "title": "Nothing here yet"
+    },
+    "noResults": {
+      "title": "No results",
+      "description": "Try a different search or clear your filters."
+    },
+    "offline": {
+      "title": "You're offline",
+      "description": "Connect to the internet to see the latest."
+    },
+    "clearFilters": "Clear filters"
+  },
+  "errorState": {
+    "generic": {
+      "title": "Something went wrong",
+      "message": "We couldn't load this just now. Please try again.",
+      "action": "Try again"
+    },
+    "network": {
+      "title": "Can't connect",
+      "message": "Check your internet connection and try again.",
+      "action": "Try again"
+    },
+    "timeout": {
+      "title": "That took too long",
+      "message": "The server is slow to respond. Give it a moment and try again.",
+      "action": "Try again"
+    },
+    "sessionExpired": {
+      "title": "Session expired",
+      "message": "Sign in again to pick up where you left off.",
+      "action": "Sign in"
+    },
+    "notFound": {
+      "title": "Not found",
+      "message": "This may have been moved or deleted.",
+      "action": "Go back"
+    }
+  },
+  "searchBar": {
+    "clear": "Clear search"
+  },
+  "input": {
+    "clearField": "Clear {{label}}",
+    "clearText": "Clear text",
+    "charsOf": "{{current}} of {{max}} characters",
+    "chars_one": "{{count}} character",
+    "chars_other": "{{count}} characters"
+  },
+  "password": {
+    "label": "Password",
+    "show": "Show password",
+    "hide": "Hide password"
+  },
+  "otp": {
+    "label_one": "Verification code, {{count}} digit",
+    "label_other": "Verification code, {{count}} digits",
+    "hint": "Enter or paste the code",
+    "progress": "{{filled}} of {{total}} digits entered",
+    "digit": "Digit {{index}} of {{total}}"
+  },
+  "avatar": {
+    "profile": "Profile picture",
+    "online": "online",
+    "away": "away",
+    "busy": "busy",
+    "offline": "offline"
+  },
+  "chip": {
+    "remove": "Remove {{label}}",
+    "withCount": "{{label}}, {{value}}"
+  },
+  "tabs": {
+    "withCount": "{{label}}, {{value}}",
+    "home": "Home"
+  },
+  "iconButton": {
+    "newActivity": "New activity"
+  },
+  "progress": {
+    "percent": "{{percent}} percent",
+    "nearLimit": "{{percent}} percent, nearly at limit",
+    "overLimit": "{{percent}} percent, over limit"
+  },
+  "sectionHeader": {
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items"
+  },
+  "statCard": {
+    "up": "up {{value}}",
+    "down": "down {{value}}",
+    "unchanged": "unchanged {{value}}"
+  },
+  "dateField": {
+    "placeholder": "Select a date",
+    "value": "{{label}}: {{value}}"
+  },
+  "timeField": {
+    "placeholder": "Set a time",
+    "value": "{{label}}: {{value}}",
+    "notSet": "not set"
+  },
+  "comingSoon": {
+    "badge": "Coming soon",
+    "body": "This screen is on its way to the mobile app.",
+    "spoken": "{{label}}. {{blurb}} Coming soon to the mobile app."
+  },
+  "categoryHeader": {
+    "sections": "{{label}} sections"
+  },
+  "modules": {
+    "notes": {
+      "label": "Notes",
+      "short": "Notes",
+      "description": "Quick thoughts & ideas",
+      "blurb": "Journal and quick notes."
+    },
+    "finance": {
+      "label": "Finance",
+      "short": "Finance",
+      "description": "Track income & expenses",
+      "blurb": "Transactions, budgets, goals and subscriptions."
+    },
+    "fitness": {
+      "label": "Fitness",
+      "short": "Fitness",
+      "description": "Workouts & measurements",
+      "blurb": "Workouts, live sessions and your AI coach."
+    },
+    "food": {
+      "label": "Food",
+      "short": "Food",
+      "description": "Meal tracking & nutrition",
+      "blurb": "Meals, macros and water tracking."
+    },
+    "saved": {
+      "label": "Saved Items",
+      "short": "Saved",
+      "description": "Articles, videos & more",
+      "blurb": "Links and items worth keeping."
+    },
+    "fashion": {
+      "label": "Fashion",
+      "short": "Fashion",
+      "description": "Wardrobe management",
+      "blurb": "Wardrobe, wishlist, outfits and your fit profile."
+    },
+    "skincare": {
+      "label": "Skincare",
+      "short": "Skincare",
+      "description": "Routine & products",
+      "blurb": "Products and routines."
+    },
+    "time": {
+      "label": "Time Logs",
+      "short": "Time",
+      "description": "Activity tracking",
+      "blurb": "Track where your hours go."
+    },
+    "ai": {
+      "label": "Ask Aura",
+      "short": "Ask Aura",
+      "description": "Ask Aura AI assistant",
+      "blurb": "Chat with your AI assistant about your data."
+    }
+  },
+  "screens": {
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "alertsReminders": "Alerts & reminders",
+    "transaction": "Transaction",
+    "budget": "Budget",
+    "goal": "Goal",
+    "addMoney": "Add money",
+    "moneyOnHand": "Money on hand",
+    "logFood": "Log food",
+    "dailyTargets": "Daily targets",
+    "fitnessEntry": "Fitness entry",
+    "workout": "Workout",
+    "timeLog": "Time log",
+    "note": "Note",
+    "saveLink": "Save a link",
+    "savedItem": "Saved item",
+    "clothingItem": "Clothing Item",
+    "curatedLook": "Curated Look",
+    "conversations": "Conversations"
+  }
+}

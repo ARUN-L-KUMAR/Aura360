@@ -1,13 +1,22 @@
-import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { ApiError } from '@/lib/api';
+import { analytics } from '@/lib/telemetry';
+
+/** Report only failures that point at a bug or an outage: not 4xx (the user's input) and not plain offline. */
+function report(error: unknown, where: string) {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return;
+  analytics.captureException(error, { where });
+}
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({ onError: (error) => report(error, 'query') }),
+        mutationCache: new MutationCache({ onError: (error) => report(error, 'mutation') }),
         defaultOptions: {
           queries: {
             staleTime: 30_000,

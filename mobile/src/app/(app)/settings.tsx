@@ -2,417 +2,309 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, Switch, View } from 'react-native';
+import { View } from 'react-native';
 
+import { Reveal, SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
+import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
-import {
-  DEFAULT_NOTIF_PREFERENCES,
-  notificationService,
-  type NotificationPreferences,
-} from '@/lib/notifications';
+import { useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { runManualSync } from '@/lib/manual-sync';
+import { DEFAULT_NOTIF_PREFERENCES, HABIT_TIMES, formatClock, notificationService, type NotificationPreferences } from '@/lib/notifications';
+import { useOfflineSnapshot } from '@/lib/offline/use-offline';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
-import { moduleColors, radius, spacing, useTheme, type ThemeMode } from '@/theme';
+import { useNotify } from '@/providers/notify';
+import { layout, radius, spacing, useTheme, type ThemeMode } from '@/theme';
 
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
+/** Small preview of the brand colours in the current theme. Decorative: the text below it says what it shows. */
+function PalettePreview() {
+  const { t } = useTranslation('settings');
+  const { colors, scheme, mode } = useTheme();
+  const swatches = [colors.primary, colors.secondary, colors.tertiary, colors.success, colors.warning, colors.error];
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', gap: spacing.xs }}>
+        {swatches.map((color) => (
+          <View key={color} style={{ flex: 1, height: spacing.xl, borderRadius: radius.sm, backgroundColor: color }} />
+        ))}
+      </View>
+      <Text variant="caption" color="textSecondary">
+        {t(`appearance.preview.${mode === 'system' ? 'system' : 'fixed'}.${scheme}`)}
+      </Text>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
+  const { t } = useTranslation('settings');
   const router = useRouter();
+  const notify = useNotify();
   const { user, signOut, serverUrl } = useAuth();
-  const { mode, setMode, colors, scheme, shades } = useTheme();
-  const isDark = scheme === 'dark';
+  const { mode, setMode } = useTheme();
   const { isAvailable, isEnabled, biometricLabel, biometricType, toggleBiometrics } = useBiometrics();
+  const sync = useOfflineSnapshot();
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFERENCES);
-  const [testSent, setTestSent] = useState(false);
+  // Whether usage data and crash reports may be sent. Off until the user opts in; the stored choice is read first.
+  const [shareUsage, setShareUsage] = useState(analytics.isEnabled());
 
   useEffect(() => {
     void notificationService.getPreferences().then(setNotifPrefs);
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    void analytics.ready().then(() => {
+      if (alive) setShareUsage(analytics.isEnabled());
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const themeOptions: { value: ThemeMode; label: string }[] = [
+    { value: 'system', label: t('appearance.system') },
+    { value: 'light', label: t('appearance.light') },
+    { value: 'dark', label: t('appearance.dark') },
+  ];
+
+  function changeTheme(next: ThemeMode) {
+    setMode(next);
+    analytics.track('theme_changed', { mode: next });
+  }
+
   async function updateNotif(patch: Partial<NotificationPreferences>) {
     const next = { ...notifPrefs, ...patch };
     setNotifPrefs(next);
-    await notificationService.savePreferences(next);
-  }
-
-  async function sendTest() {
-    const ok = await notificationService.sendTestNotification();
-    if (ok) {
-      setTestSent(true);
-      setTimeout(() => setTestSent(false), 4000);
-    } else {
-      Alert.alert(
-        'Notifications in Expo Go',
-        'Android notifications in Expo SDK 53+ require a development build (npx expo run:android) to display native system notifications.',
-        [{ text: 'OK' }]
-      );
+    try {
+      await notificationService.savePreferences(next);
+      if (patch.enabled !== undefined) analytics.track('notifications_toggled', { enabled: patch.enabled });
+    } catch (e) {
+      notify.error(userErrorMessage(e, t('notifications.saveFailed')));
     }
   }
 
-  function confirmSignOut() {
-    Alert.alert('Sign out?', 'You will need to sign in again to access your Aura360 workspace.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
-    ]);
+  async function sendTest() {
+    try {
+      const ok = await notificationService.sendTestNotification();
+      if (ok) {
+        notify.success(t('notifications.testSent'));
+      } else {
+        await notify.alert({
+          title: t('notifications.expoGoTitle'),
+          message: t('notifications.expoGoMessage'),
+          severity: 'info',
+        });
+      }
+    } catch (e) {
+      notify.error(userErrorMessage(e, t('notifications.testFailed')));
+    }
   }
 
-  const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((p) => p[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.email
-      ? user.email[0].toUpperCase()
-      : 'A';
+  async function changeBiometrics(enable: boolean) {
+    const ok = await toggleBiometrics(enable);
+    if (ok) analytics.track('biometrics_toggled', { enabled: enable });
+    else if (enable) notify.warning(t('security.notConfirmed', { method: biometricLabel }));
+  }
 
+  async function changeShareUsage(enabled: boolean) {
+    const previous = shareUsage;
+    setShareUsage(enabled);
+    try {
+      // Opting out is recorded while the previous consent still applies; opting in once it is stored.
+      if (!enabled) analytics.track('telemetry_consent_changed', { enabled });
+      await analytics.setEnabled(enabled);
+      if (enabled) analytics.track('telemetry_consent_changed', { enabled });
+    } catch (e) {
+      setShareUsage(previous);
+      notify.error(userErrorMessage(e, t('privacy.saveFailed')));
+    }
+  }
+
+  async function confirmSignOut() {
+    const ok = await notify.confirm({
+      title: t('signOut.confirmTitle'),
+      message: t('signOut.confirmMessage'),
+      confirmLabel: t('signOut.button'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await signOut();
+      analytics.track('sign_out');
+    } catch (e) {
+      notify.error(userErrorMessage(e, t('signOut.failed')));
+    }
+  }
+
+  const displayName = user?.name ?? t('account.fallbackName');
   const biometricIcon: keyof typeof Ionicons.glyphMap =
-    biometricType === 'face'
-      ? 'scan-outline'
-      : biometricType === 'fingerprint'
-        ? 'finger-print-outline'
-        : 'shield-checkmark-outline';
+    biometricType === 'face' ? 'scan-outline' : biometricType === 'fingerprint' ? 'finger-print-outline' : 'shield-checkmark-outline';
+
+  const syncSubtitle =
+    sync.failed > 0
+      ? t('data.failed', { count: sync.failed })
+      : sync.pending > 0
+        ? t('data.pending', { count: sync.pending })
+        : sync.online
+          ? t('data.allSaved')
+          : t('data.savedOnPhone');
+  const canSync = sync.online && sync.pending > 0;
 
   return (
     <Screen topInset={false}>
-      {/* Profile Hero Card */}
-      <GlassCard
-        glowColor={moduleColors.ai}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.lg,
-          padding: spacing.lg,
-          backgroundColor: isDark ? 'rgba(18, 26, 36, 0.95)' : '#ffffff',
-        }}>
-        <View
-          style={{
-            width: 58,
-            height: 58,
-            borderRadius: radius.pill,
-            backgroundColor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)',
-            borderWidth: 2,
-            borderColor: moduleColors.ai,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: moduleColors.ai }}>{initials}</Text>
-        </View>
+      <Section title={t('account.title')}>
+        <ListItem avatar={{ name: user?.name ?? user?.email, size: 'lg' }} title={displayName} subtitle={user?.email} />
+      </Section>
 
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="heading">{user?.name ?? 'Aura User'}</Text>
-          <Text muted numberOfLines={1}>
-            {user?.email ?? 'user@aura360.internal'}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
-            <Text variant="caption" style={{ color: colors.success, fontWeight: '600' }}>
-              Active Workspace
-            </Text>
-          </View>
+      <Section title={t('appearance.title')} footer={t('appearance.footer')}>
+        <View style={{ padding: layout.cardPadding, gap: spacing.lg }}>
+          <Segmented options={themeOptions} value={mode} onChange={changeTheme} accessibilityLabel={t('appearance.themeLabel')} />
+          <PalettePreview />
         </View>
-      </GlassCard>
+      </Section>
 
-      {/* Alerts & reminders sent by the server (budget, renewals, workout, meals, skincare, unworn clothes) */}
-      <GlassCard style={{ padding: spacing.md }}>
-        <Pressable
-          accessibilityRole="button"
+      <Section title={t('notifications.title')} footer={notifPrefs.enabled ? t('notifications.footerOn') : t('notifications.footerOff')}>
+        <ListItem
+          icon="notifications"
+          accent="finance"
+          title={t('notifications.alertsTitle')}
+          subtitle={t('notifications.alertsSubtitle')}
           onPress={() => router.push('/notifications/settings' as never)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Ionicons name="notifications" size={20} color={moduleColors.finance} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontWeight: '700' }}>Alerts & reminders</Text>
-            <Text variant="caption" muted>
-              Budget alerts, renewals, workout, meals and more. Sent to this phone, even when the app is closed.
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Pressable>
-      </GlassCard>
-
-      {/* Habit Reminders & Notifications Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            <Ionicons name="notifications-outline" size={18} color={moduleColors.fitness} />
-            <Text variant="label" muted>
-              Daily Habit Reminders
-            </Text>
-          </View>
-          <Switch
-            value={notifPrefs.enabled}
-            onValueChange={(val) => void updateNotif({ enabled: val })}
-            trackColor={{ false: colors.border, true: moduleColors.fitness }}
-          />
-        </View>
-
+          divider
+        />
+        <SwitchRow
+          icon="alarm-outline"
+          accent="fitness"
+          title={t('notifications.habitsTitle')}
+          subtitle={t('notifications.habitsSubtitle')}
+          value={notifPrefs.enabled}
+          onValueChange={(val) => void updateNotif({ enabled: val })}
+          divider={notifPrefs.enabled}
+        />
         {notifPrefs.enabled ? (
-          <View style={{ gap: spacing.md, paddingTop: spacing.xs }}>
-            {/* Water Reminder */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>💧 Hydration Check</Text>
-                <Text variant="caption" muted>
-                  Prompts at 11:00 AM, 2:30 PM & 5:30 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.waterReminders}
-                onValueChange={(val) => void updateNotif({ waterReminders: val })}
-                trackColor={{ false: colors.border, true: moduleColors.food }}
-              />
-            </View>
-
-            {/* Morning Skincare */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>☀️ Morning Skincare</Text>
-                <Text variant="caption" muted>
-                  Daily routine alert at 8:00 AM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.morningSkincare}
-                onValueChange={(val) => void updateNotif({ morningSkincare: val })}
-                trackColor={{ false: colors.border, true: moduleColors.skincare }}
-              />
-            </View>
-
-            {/* Evening Skincare */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>🌙 Evening Skincare</Text>
-                <Text variant="caption" muted>
-                  Night routine & wind-down at 10:00 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.eveningSkincare}
-                onValueChange={(val) => void updateNotif({ eveningSkincare: val })}
-                trackColor={{ false: colors.border, true: moduleColors.skincare }}
-              />
-            </View>
-
-            {/* Daily Review */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>✨ Evening Review</Text>
-                <Text variant="caption" muted>
-                  Review workout & finance tallies at 8:00 PM
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.dailyReview}
-                onValueChange={(val) => void updateNotif({ dailyReview: val })}
-                trackColor={{ false: colors.border, true: moduleColors.ai }}
-              />
-            </View>
-
-            {/* Budget Alerts */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontWeight: '600' }}>💳 Budget Threshold Alerts</Text>
-                <Text variant="caption" muted>
-                  Notify when spending crosses limits
-                </Text>
-              </View>
-              <Switch
-                value={notifPrefs.budgetAlerts}
-                onValueChange={(val) => void updateNotif({ budgetAlerts: val })}
-                trackColor={{ false: colors.border, true: moduleColors.finance }}
-              />
-            </View>
-
-            {/* Test Notification Trigger */}
-            <Pressable
-              accessibilityRole="button"
+          <Reveal>
+            <SwitchRow
+              icon="water-outline"
+              accent="food"
+              title={t('notifications.hydrationTitle')}
+              subtitle={t('notifications.hydrationSubtitle', {
+                first: formatClock(HABIT_TIMES.water[0]),
+                second: formatClock(HABIT_TIMES.water[1]),
+                third: formatClock(HABIT_TIMES.water[2]),
+              })}
+              value={notifPrefs.waterReminders}
+              onValueChange={(val) => void updateNotif({ waterReminders: val })}
+              divider
+            />
+            <SwitchRow
+              icon="sunny-outline"
+              accent="skincare"
+              title={t('notifications.morningTitle')}
+              subtitle={t('notifications.morningSubtitle', { time: formatClock(HABIT_TIMES.morningSkincare) })}
+              value={notifPrefs.morningSkincare}
+              onValueChange={(val) => void updateNotif({ morningSkincare: val })}
+              divider
+            />
+            <SwitchRow
+              icon="moon-outline"
+              accent="skincare"
+              title={t('notifications.eveningTitle')}
+              subtitle={t('notifications.eveningSubtitle', { time: formatClock(HABIT_TIMES.eveningSkincare) })}
+              value={notifPrefs.eveningSkincare}
+              onValueChange={(val) => void updateNotif({ eveningSkincare: val })}
+              divider
+            />
+            <SwitchRow
+              icon="sparkles-outline"
+              accent="ai"
+              title={t('notifications.reviewTitle')}
+              subtitle={t('notifications.reviewSubtitle', { time: formatClock(HABIT_TIMES.dailyReview) })}
+              value={notifPrefs.dailyReview}
+              onValueChange={(val) => void updateNotif({ dailyReview: val })}
+              divider
+            />
+            <SwitchRow
+              icon="card-outline"
+              accent="finance"
+              title={t('notifications.budgetTitle')}
+              subtitle={t('notifications.budgetSubtitle')}
+              value={notifPrefs.budgetAlerts}
+              onValueChange={(val) => void updateNotif({ budgetAlerts: val })}
+              divider
+            />
+            <ListItem
+              icon="paper-plane-outline"
+              title={t('notifications.testTitle')}
+              subtitle={t('notifications.testSubtitle')}
               onPress={() => void sendTest()}
-              style={{
-                marginTop: spacing.xs,
-                padding: spacing.md,
-                borderRadius: radius.md,
-                backgroundColor: isDark ? 'rgba(34, 48, 65, 0.5)' : colors.cardMuted,
-                borderWidth: 1,
-                borderColor: colors.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: spacing.xs,
-              }}>
-              <Ionicons name="paper-plane-outline" size={16} color={moduleColors.fitness} />
-              <Text variant="caption" style={{ fontWeight: '700', color: colors.text }}>
-                {testSent ? '✓ Test Alert Sent to Notification Tray!' : 'Send Test Notification'}
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text variant="caption" muted>
-            Turn on habit notifications to receive scheduled water, skincare, and daily review alerts.
-          </Text>
-        )}
-      </GlassCard>
+              chevron={false}
+            />
+          </Reveal>
+        ) : null}
+      </Section>
 
-      {/* Security & Biometrics Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name={biometricIcon} size={18} color={moduleColors.ai} />
-          <Text variant="label" muted>
-            Security & App Lock
-          </Text>
-        </View>
+      <Section title={t('security.title')} footer={isAvailable ? undefined : t('security.footerUnavailable')}>
+        <SwitchRow
+          icon={biometricIcon}
+          accent="ai"
+          title={t('security.requireTitle', { method: biometricLabel })}
+          subtitle={isAvailable ? t('security.requireSubtitle') : t('security.unavailable')}
+          value={isEnabled}
+          disabled={!isAvailable}
+          onValueChange={(val) => void changeBiometrics(val)}
+        />
+      </Section>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, gap: 2, paddingRight: spacing.md }}>
-            <Text style={{ fontWeight: '600' }}>Require {biometricLabel}</Text>
-            <Text variant="caption" muted>
-              {isAvailable
-                ? `Lock Aura360 and require ${biometricLabel} when opening or switching apps`
-                : 'Biometric hardware not enrolled or available on this device'}
-            </Text>
-          </View>
-          <Switch
-            disabled={!isAvailable}
-            value={isEnabled}
-            onValueChange={(val) => void toggleBiometrics(val)}
-            trackColor={{ false: colors.border, true: moduleColors.ai }}
-          />
-        </View>
-      </GlassCard>
+      <Section title={t('privacy.title')}>
+        <SwitchRow
+          icon="analytics-outline"
+          accent="ai"
+          title={t('privacy.shareTitle')}
+          subtitle={t('privacy.shareSubtitle')}
+          titleLines={2}
+          value={shareUsage}
+          onValueChange={(val) => void changeShareUsage(val)}
+        />
+      </Section>
 
-      {/* Appearance Section */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="color-palette-outline" size={18} color={colors.primary} />
-          <Text variant="label" muted>
-            Appearance & Brand Theme
-          </Text>
-        </View>
-        <Segmented options={THEME_OPTIONS} value={mode} onChange={setMode} />
+      <Section title={t('data.title')}>
+        <ListItem
+          icon={sync.online ? 'cloud-done-outline' : 'cloud-offline-outline'}
+          title={sync.online ? t('data.online') : t('data.offline')}
+          subtitle={syncSubtitle}
+          divider
+        />
+        {canSync ? (
+          <Reveal>
+            <ListItem
+              icon="sync-outline"
+              title={t('data.syncNow')}
+              subtitle={sync.replaying ? t('data.syncing') : t('data.syncSubtitle')}
+              disabled={sync.replaying}
+              onPress={() => {
+                haptics.tap();
+                runManualSync().catch(() => notify.error(t('data.syncFailed')));
+              }}
+              chevron={false}
+              divider
+            />
+          </Reveal>
+        ) : null}
+        <ListItem icon="server-outline" title={t('data.server')} subtitle={serverUrl || t('data.defaultServer')} />
+      </Section>
 
-        {/* Live Brand Palette & Shades Showcase */}
-        <View style={{ gap: spacing.sm, paddingTop: spacing.xs }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text variant="caption" weight="semiBold" muted>
-              BRAND PALETTE & SHADES
-            </Text>
-            <Text variant="caption" muted style={{ fontSize: 11 }}>
-              Plus Jakarta Sans
-            </Text>
-          </View>
+      <Section title={t('about.title')}>
+        <ListItem icon="information-circle-outline" title={t('about.version')} meta={Constants.expoConfig?.version ?? '1.0.0'} />
+      </Section>
 
-          {/* Primary Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.primary }}>
-                Primary (Electric Indigo)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                {colors.primary}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`p-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.primary[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Secondary Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" style={{ fontSize: 11, fontWeight: '600', color: colors.secondary }}>
-                Secondary (Sky / Cyan)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                {colors.secondary}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`s-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.secondary[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Slate Swatches */}
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="caption" muted style={{ fontSize: 11, fontWeight: '600' }}>
-                Executive Slate (Neutrals)
-              </Text>
-              <Text variant="caption" muted style={{ fontSize: 10 }}>
-                50 – 950
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.sm, overflow: 'hidden' }}>
-              {([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const).map((step) => (
-                <View
-                  key={`sl-${step}`}
-                  style={{
-                    flex: 1,
-                    backgroundColor: shades.slate[step],
-                  }}
-                />
-              ))}
-            </View>
-          </View>
-        </View>
-      </GlassCard>
-
-      {/* Server & Architecture Info */}
-      <GlassCard style={{ gap: spacing.md, padding: spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Ionicons name="server-outline" size={18} color={colors.textMuted} />
-          <Text variant="label" muted>
-            Backend & System
-          </Text>
-        </View>
-
-        <View style={{ gap: spacing.xs }}>
-          <Text variant="caption" muted>
-            Backend Server URL
-          </Text>
-          <View
-            style={{
-              padding: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: isDark ? 'rgba(34, 48, 65, 0.5)' : colors.cardMuted,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}>
-            <Text style={{ fontFamily: 'monospace', fontSize: 13 }}>{serverUrl || 'Default local host'}</Text>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.xs }}>
-          <Text muted>App Version</Text>
-          <Text style={{ fontWeight: '600' }}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
-        </View>
-      </GlassCard>
-
-      <Button title="Sign out from Aura360" variant="danger" onPress={confirmSignOut} />
+      <Button title={t('signOut.button')} variant="destructive" leftIcon="log-out-outline" onPress={() => void confirmSignOut()} />
     </Screen>
   );
 }

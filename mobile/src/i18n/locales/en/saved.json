@@ -1,0 +1,140 @@
+{
+  "title": "Saved items",
+  "search": {
+    "placeholder": "Search saved items"
+  },
+  "filter": {
+    "all": "All",
+    "favourites": "Favourites"
+  },
+  "type": {
+    "article": "Article",
+    "video": "Video",
+    "product": "Product",
+    "recipe": "Recipe",
+    "other": "Other"
+  },
+  "place": {
+    "saved": "Saved",
+    "notes": "Notes",
+    "fashion": "Fashion wishlist"
+  },
+  "results_one": "{{count}} item",
+  "results_other": "{{count}} items",
+  "fab": "Save a link",
+  "empty": {
+    "title": "Nothing saved yet",
+    "description": "Keep articles, videos, recipes and products to come back to later.",
+    "action": "Save a link",
+    "noMatchTitle": "No matching items",
+    "noMatchDescription": "Try a different search or another filter."
+  },
+  "refreshError": {
+    "title": "Couldn't refresh your saved items",
+    "message": "You're seeing the last version we saved."
+  },
+  "action": {
+    "open": "Open link",
+    "edit": "Edit details",
+    "favourite": "Add to favourites",
+    "unfavourite": "Remove from favourites",
+    "remove": "Remove",
+    "more": "More options"
+  },
+  "card": {
+    "label": {
+      "plain": "{{title}}, {{type}}",
+      "host": "{{title}}, {{type}}, {{host}}",
+      "favourite": "{{title}}, {{type}}, favourite",
+      "hostFavourite": "{{title}}, {{type}}, {{host}}, favourite"
+    },
+    "hintLink": "Opens the link. More actions are available.",
+    "hintDetails": "Opens the details. More actions are available.",
+    "moreTags": "+{{count}}",
+    "favouriteItem": "Add {{title}} to favourites",
+    "unfavouriteItem": "Remove {{title}} from favourites",
+    "moreOptions": "More options for {{title}}"
+  },
+  "toast": {
+    "removed": "Removed from saved",
+    "undo": "Undo"
+  },
+  "errors": {
+    "offline": "You're offline. Try again once you're connected.",
+    "openLink": "Couldn't open this link.",
+    "copyLink": "Couldn't copy the link.",
+    "favourite": "Couldn't update your favourites. Please try again.",
+    "remove": "Couldn't remove the item. It's back in your list.",
+    "removeFromDetails": "Couldn't remove the item. Please try again.",
+    "save": "Couldn't save this item. Please try again."
+  },
+  "add": {
+    "title": "Save a link",
+    "link": {
+      "label": "Link",
+      "placeholder": "https://example.com/article"
+    },
+    "paste": "Paste",
+    "preview": "Preview",
+    "loading": "Reading the link…",
+    "saveTo": "Save to",
+    "destination": {
+      "auto": "Best fit (AI)"
+    },
+    "suggested": "Suggested: {{place}} ({{match}} match)",
+    "direct": "Saving directly to {{place}}",
+    "saveButton": "Save to {{place}}",
+    "manual": "Enter details manually instead",
+    "added": "Added to {{place}}",
+    "errors": {
+      "noLink": "No link found on your clipboard. Copy one first.",
+      "empty": "Paste or type a link.",
+      "scheme": "Enter a link starting with http:// or https://",
+      "preview": "Couldn't read that link. Check it and try again.",
+      "save": "Couldn't save the link. Please try again."
+    }
+  },
+  "item": {
+    "titleNew": "Add saved item",
+    "titleEdit": "Saved item",
+    "open": "Open link",
+    "copy": "Copy link",
+    "copied": "Link copied",
+    "type": "Type",
+    "titleField": {
+      "label": "Title",
+      "placeholder": "Title or headline",
+      "error": "Give it a title."
+    },
+    "url": {
+      "label": "Link (optional)",
+      "placeholder": "https://…",
+      "error": "The link must start with http:// or https://"
+    },
+    "description": {
+      "label": "Description (optional)",
+      "placeholder": "Key takeaways, highlights…"
+    },
+    "tags": {
+      "label": "Tags (optional)",
+      "helper": "Separate tags with commas.",
+      "placeholder": "tech, reading, design"
+    },
+    "favourite": {
+      "label": "Favourite",
+      "description": "Show it under Favourites."
+    },
+    "create": "Add to saved",
+    "save": "Save changes",
+    "delete": "Delete item",
+    "toast": {
+      "saved": "Changes saved",
+      "created": "Added to saved",
+      "deleted": "Item deleted"
+    },
+    "confirmDelete": {
+      "title": "Delete this item?",
+      "confirm": "Delete"
+    }
+  }
+}
