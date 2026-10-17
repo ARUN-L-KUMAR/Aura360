@@ -5,6 +5,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { ApiError } from '@/lib/api';
 import { analytics } from '@/lib/telemetry';
 import { isExpectedFailure } from '@/lib/telemetry/expected';
+import { PREVIEW } from '@/preview/flag';
 
 /** Report only failures that point at a bug or a server outage: being offline, timeouts and 4xx are expected. */
 function report(error: unknown, where: string) {
@@ -32,6 +33,19 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           // Without this an edit made offline would wait forever. Instead it fails right away (creates are queued
           // by the offline queue; anything else shows the usual "can't reach the server" error).
           mutations: { networkMode: 'always' },
+          // Preview builds read sample data once and never refetch it (see src/preview).
+          ...(PREVIEW
+            ? {
+                queries: {
+                  staleTime: Infinity,
+                  retry: false,
+                  networkMode: 'always' as const,
+                  refetchOnMount: false,
+                  refetchOnWindowFocus: false,
+                  refetchOnReconnect: false,
+                },
+              }
+            : {}),
         },
       }),
   );

@@ -6,6 +6,8 @@ import { api, apiSession, type SessionResponse } from '@/lib/api';
 import { storage, type StoredUser } from '@/lib/storage';
 import { unregisterFromServerPush } from '@/lib/push';
 import { analytics } from '@/lib/telemetry';
+import { PREVIEW } from '@/preview/flag';
+import { PREVIEW_USER } from '@/preview/mock-user';
 
 type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 
@@ -28,8 +30,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<AuthStatus>('loading');
-  const [user, setUser] = useState<StoredUser | null>(null);
+  // Preview builds (npm run preview:web) start signed in as a sample user; PREVIEW is false in every real build.
+  const [status, setStatus] = useState<AuthStatus>(PREVIEW ? 'signedIn' : 'loading');
+  const [user, setUser] = useState<StoredUser | null>(PREVIEW ? PREVIEW_USER : null);
   const [serverUrl, setServerUrlState] = useState(apiSession.getBaseUrl());
   const [sessionExpired, setSessionExpired] = useState(false);
 
@@ -43,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore the previous session on launch.
   useEffect(() => {
+    if (PREVIEW) return;
     let cancelled = false;
     (async () => {
       const savedServer = await storage.getServerUrl();

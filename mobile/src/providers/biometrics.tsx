@@ -11,6 +11,7 @@ import {
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { storage } from '@/lib/storage';
+import { PREVIEW } from '@/preview/flag';
 
 export type BiometricType = 'face' | 'fingerprint' | 'iris' | 'none';
 
@@ -57,6 +58,7 @@ export function BiometricsProvider({ children }: { children: ReactNode }) {
 
   // Check hardware and enrollment on mount
   useEffect(() => {
+    if (PREVIEW) return; // preview builds have no biometric lock
     let mounted = true;
 
     async function init() {
