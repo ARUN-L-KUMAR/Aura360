@@ -2,7 +2,9 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { AmountField } from '@/components/finance/amount-field';
-import { FormCard, failureMessage, parseAmount } from '@/components/finance/form-parts';
+import { failureMessage } from '@/components/finance/failure-message';
+import { FormCard, parseAmount } from '@/components/finance/form-parts';
+import { categoryLabel } from '@/components/finance/labels';
 import { Button } from '@/components/ui/button';
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
@@ -10,8 +12,10 @@ import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useDeleteBudget, useSaveBudget } from '@/features/finance/hooks';
 import { BUDGET_CATEGORIES, OVERALL_BUDGET, type Budget } from '@/features/finance/types';
+import { useTranslation } from '@/i18n';
 import { monthKey, monthLabel } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 
 const CUSTOM = '__custom__';
@@ -29,6 +33,7 @@ function parseBudget(raw?: string): Budget | null {
 export default function BudgetScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('finance');
   const params = useLocalSearchParams<{ budget?: string; month?: string }>();
   const existing = useMemo(() => parseBudget(params.budget), [params.budget]);
   const month = params.month || monthKey();
@@ -45,8 +50,8 @@ export default function BudgetScreen() {
 
   const finalCategory = category === CUSTOM ? customCategory.trim() : category;
   const amountValue = parseAmount(amount);
-  const categoryError = finalCategory ? null : category === CUSTOM ? 'Enter a category name.' : 'Choose a category.';
-  const amountError = !Number.isFinite(amountValue) || amountValue <= 0 ? 'Enter a budget greater than 0.' : null;
+  const categoryError = finalCategory ? null : category === CUSTOM ? t('budget.categoryNameNeeded') : t('budget.categoryNeeded');
+  const amountError = !Number.isFinite(amountValue) || amountValue <= 0 ? t('budget.amountInvalid') : null;
 
   async function submit() {
     setSubmitted(true);
@@ -57,58 +62,67 @@ export default function BudgetScreen() {
 
     try {
       await save.mutateAsync({ category: finalCategory, amount: amountValue, month, alertThreshold: threshold });
-      notify.success(existing ? 'Budget updated' : 'Budget saved');
+      analytics.track('budget_saved');
+      notify.success(existing ? t('budget.updated') : t('budget.saved'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not save. Try again.'));
+      notify.error(failureMessage(e, t('errors.save')));
     }
   }
 
   async function confirmDelete() {
     if (!existing) return;
     const ok = await notify.confirm({
-      title: 'Delete budget?',
-      message: `The ${isOverallExisting ? 'overall' : existing.category} budget will be removed.`,
-      confirmLabel: 'Delete',
+      title: t('budget.deleteTitle'),
+      message: isOverallExisting ? t('budget.deleteMessageOverall') : t('budget.deleteMessage', { category: categoryLabel(existing.category) }),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       destructive: true,
     });
     if (!ok) return;
     try {
       await remove.mutateAsync(existing.id);
-      notify.success('Budget deleted');
+      notify.success(t('budget.deleted'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not delete. Try again.'));
+      notify.error(failureMessage(e, t('errors.delete')));
     }
   }
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit budget' : 'New budget' }} />
+      <Stack.Screen options={{ title: existing ? t('budget.titleEdit') : t('budget.titleNew') }} />
 
       <Tag label={monthLabel(month)} icon="calendar-outline" accent="finance" size="md" />
 
       {existing ? (
-        <FormCard title="Category" icon="pie-chart-outline">
-          <Text variant="title">{isOverallExisting ? 'Overall monthly budget' : existing.category}</Text>
+        <FormCard title={t('budget.category')} icon="pie-chart-outline">
+          <Text variant="title">{isOverallExisting ? t('budgets.overallTitle') : categoryLabel(existing.category)}</Text>
         </FormCard>
       ) : (
-        <FormCard title="Category" icon="pie-chart-outline" error={submitted ? categoryError : null}>
+        <FormCard title={t('budget.category')} icon="pie-chart-outline" error={submitted ? categoryError : null}>
           <ChipGroup>
-            <Chip label="Overall" accent="finance" selected={category === OVERALL_BUDGET} onPress={() => setCategory(OVERALL_BUDGET)} />
+            <Chip label={t('categories.overall')} accent="finance" selected={category === OVERALL_BUDGET} onPress={() => setCategory(OVERALL_BUDGET)} />
             {BUDGET_CATEGORIES.map((name) => (
-              <Chip key={name} label={name} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
+              <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
             ))}
-            <Chip label="Custom" icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
+            <Chip label={t('categories.custom')} icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
           </ChipGroup>
           {category === CUSTOM ? (
-            <Input label="Category name" value={customCategory} onChangeText={setCustomCategory} placeholder="e.g. Pet care" autoCapitalize="words" returnKeyType="done" />
+            <Input
+              label={t('budget.customName')}
+              value={customCategory}
+              onChangeText={setCustomCategory}
+              placeholder={t('budget.customPlaceholder')}
+              autoCapitalize="words"
+              returnKeyType="done"
+            />
           ) : null}
         </FormCard>
       )}
 
       <AmountField
-        label="Monthly spending limit"
+        label={t('budget.limitLabel')}
         value={amount}
         onChangeText={setAmount}
         tone="primaryAccent"
@@ -118,9 +132,9 @@ export default function BudgetScreen() {
         onPreset={(limit) => setAmount(String(limit))}
       />
 
-      <FormCard title="Alert threshold" icon="notifications-outline">
+      <FormCard title={t('budget.threshold')} icon="notifications-outline">
         <Text variant="caption" color="textSecondary">
-          Aura will notify you when spending reaches this share of your limit.
+          {t('budget.thresholdHelp')}
         </Text>
         <ChipGroup>
           {THRESHOLDS.map((value) => (
@@ -129,8 +143,8 @@ export default function BudgetScreen() {
         </ChipGroup>
       </FormCard>
 
-      <Button title={existing ? 'Save budget changes' : 'Save budget'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete budget" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <Button title={existing ? t('budget.saveChanges') : t('budget.save')} onPress={submit} loading={save.isPending} />
+      {existing ? <Button title={t('budget.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );
 }

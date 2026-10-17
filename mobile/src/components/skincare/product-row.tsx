@@ -10,6 +10,7 @@ import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import type { SkincareProduct } from '@/features/skincare/types';
+import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -54,9 +55,10 @@ type StepProps = {
 export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done, onToggle, index }: StepProps) {
   const { colors, accent } = useTheme();
   const a = accent('skincare');
+  const { t } = useTranslation('skincare');
   const motion = useListMotion(index);
   const subtitle = subtitleOf(product);
-  const rating = product.rating ? `, rated ${product.rating}` : '';
+  const detail = [subtitle, product.rating ? t('product.rated', { rating: product.rating }) : null].filter(Boolean).join(', ');
 
   return (
     <Animated.View {...motion}>
@@ -64,8 +66,8 @@ export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done
         <PressableScale
           accessibilityRole="checkbox"
           accessibilityState={{ checked: done }}
-          accessibilityLabel={`Step ${step}, ${product.productName}${subtitle ? `, ${subtitle}` : ''}${rating}`}
-          accessibilityHint={done ? 'Double tap to mark as not done' : 'Double tap to mark as done'}
+          accessibilityLabel={detail ? t('product.stepLabelDetail', { step, name: product.productName, detail }) : t('product.stepLabel', { step, name: product.productName })}
+          accessibilityHint={done ? t('product.markNotDone') : t('product.markDone')}
           haptic="select"
           scaleTo={1}
           ringRadius={radius.md}
@@ -88,9 +90,13 @@ export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done
                   borderWidth: 1,
                   borderColor: done ? a.solid : colors.borderStrong,
                 }}>
-                <Text variant="label" weight="semiBold" numeric color={done ? a.onSolid : 'text'}>
-                  {step}
-                </Text>
+                {done ? (
+                  <Ionicons name="checkmark" size={20} color={a.onSolid} />
+                ) : (
+                  <Text variant="label" weight="semiBold" numeric>
+                    {step}
+                  </Text>
+                )}
               </View>
             }
             meta={product.rating ? <Rating value={product.rating} /> : undefined}
@@ -103,10 +109,11 @@ export const RoutineStepRow = memo(function RoutineStepRow({ product, step, done
 
 /** A product on the shelf: icon, name, brand, rating and a status badge when it needs attention. */
 export const ShelfRow = memo(function ShelfRow({ product, index }: { product: SkincareProduct; index: number }) {
+  const { t } = useTranslation('skincare');
   const motion = useListMotion(index);
   const subtitle = subtitleOf(product);
-  const status = product.status === 'need_to_buy' ? 'Need to buy' : product.status === 'finished' ? 'Finished' : null;
-  const rating = product.rating ? `, rated ${product.rating}` : '';
+  const status = product.status === 'need_to_buy' ? t('product.needToBuy') : product.status === 'finished' ? t('product.finished') : null;
+  const detail = [subtitle, product.rating ? t('product.rated', { rating: product.rating }) : null, status].filter(Boolean).join(', ');
 
   return (
     <Animated.View {...motion}>
@@ -116,7 +123,7 @@ export const ShelfRow = memo(function ShelfRow({ product, index }: { product: Sk
           icon={BODY_PART_ICON[product.bodyPart ?? ''] ?? 'flask-outline'}
           title={product.productName}
           subtitle={subtitle || undefined}
-          accessibilityLabel={`${product.productName}${subtitle ? `, ${subtitle}` : ''}${rating}${status ? `, ${status}` : ''}`}
+          accessibilityLabel={detail ? t('product.shelfLabelDetail', { name: product.productName, detail }) : product.productName}
           meta={
             product.rating || status ? (
               <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>

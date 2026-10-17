@@ -4,12 +4,12 @@ import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
+import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
 import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -18,36 +18,44 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useGoals } from '@/features/finance/hooks';
 import type { Goal } from '@/features/finance/types';
+import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { radius, spacing } from '@/theme';
+import { categoryLabel } from './labels';
 
 export function openGoal(router: ReturnType<typeof useRouter>, goal?: Goal) {
   router.push({ pathname: '/finance/goal', params: goal ? { goal: JSON.stringify(goal) } : {} });
 }
 
-function deadlineText(goal: Goal) {
-  if (goal.isCompleted) return 'Goal reached';
-  if (goal.daysRemaining === null) return null;
-  if (goal.daysRemaining < 0) return `${Math.abs(goal.daysRemaining)} days overdue`;
-  if (goal.daysRemaining === 0) return 'Due today';
-  return `${goal.daysRemaining} days left`;
-}
-
 const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: number }) {
   const router = useRouter();
   const motion = useListMotion(index);
-  const deadline = deadlineText(goal);
+  const { t } = useTranslation('finance');
+
+  const deadline = goal.isCompleted
+    ? t('goals.reached')
+    : goal.daysRemaining === null
+      ? null
+      : goal.daysRemaining < 0
+        ? t('goals.overdue', { count: Math.abs(goal.daysRemaining) })
+        : goal.daysRemaining === 0
+          ? t('goals.dueToday')
+          : t('goals.daysLeft', { count: goal.daysRemaining });
   const overdue = !goal.isCompleted && goal.daysRemaining !== null && goal.daysRemaining < 0;
-  const progress = `${formatMoney(goal.currentAmount)} of ${formatMoney(goal.targetAmount)}`;
+  const progress = t('goals.progress', { current: formatMoney(goal.currentAmount), target: formatMoney(goal.targetAmount) });
+  const category = categoryLabel(goal.category);
+  const label = deadline
+    ? t('goals.cardLabelDeadline', { title: goal.title, category, percent: goal.percentage, progress, deadline })
+    : t('goals.cardLabel', { title: goal.title, category, percent: goal.percentage, progress });
 
   return (
     <Animated.View {...motion}>
       <Card style={{ gap: spacing.md }}>
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={`${goal.title}, ${goal.category}, ${goal.percentage} percent, ${progress}${deadline ? `, ${deadline}` : ''}`}
-          accessibilityHint="Opens this goal"
-          onPress={() => router.push({ pathname: '/finance/goal', params: { goal: JSON.stringify(goal) } })}
+          accessibilityLabel={label}
+          accessibilityHint={t('goals.cardHint')}
+          onPress={() => openGoal(router, goal)}
           ringRadius={radius.md}
           style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
@@ -56,8 +64,7 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
                 {goal.title}
               </Text>
               <Text variant="caption" color={overdue ? 'errorText' : 'textSecondary'} numberOfLines={1}>
-                {goal.category}
-                {deadline ? ` · ${deadline}` : ''}
+                {deadline ? t('goals.categoryDeadline', { category, deadline }) : category}
               </Text>
             </View>
             <Text variant="title" numeric>
@@ -70,16 +77,16 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
           </Text>
         </PressableScale>
         {goal.isCompleted ? (
-          <Badge severity="success" label="Goal reached" size="sm" />
+          <Badge severity="success" label={t('goals.reached')} size="sm" />
         ) : (
           <Button
-            title="Add money"
+            title={t('goals.addMoney')}
             size="sm"
             variant="secondary"
             leftIcon="add"
             fullWidth={false}
             style={{ alignSelf: 'flex-start' }}
-            accessibilityLabel={`Add money to ${goal.title}`}
+            accessibilityLabel={t('goals.addMoneyTo', { title: goal.title })}
             onPress={() => router.push({ pathname: '/finance/contribute', params: { goal: JSON.stringify(goal) } })}
           />
         )}
@@ -90,40 +97,46 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
 
 export function GoalsSection({ header }: { header: ReactNode }) {
   const router = useRouter();
+  const { t } = useTranslation('finance');
   const blockMotion = useBlockMotion();
-  const { data, isPending, isError, error, refetch, isRefetching } = useGoals();
+  const { data, isPending, fetchStatus, isError, error, refetch, isRefetching } = useGoals();
   const summary = data?.summary;
   const goals = data?.data ?? [];
+  const offline = isPending && fetchStatus === 'paused';
 
   return (
     <Screen onRefresh={() => refetch()} refreshing={isRefetching} contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}>
       {header}
 
-      {isPending ? (
+      {isPending && !offline ? (
         <View style={{ gap: spacing.md }}>
           <SkeletonCard lines={2} />
           <SkeletonCard lines={1} />
           <SkeletonCard lines={1} />
         </View>
+      ) : offline ? (
+        <OfflineState description={t('offline.goals')} onRetry={() => void refetch()} />
       ) : isError && !data ? (
-        <ErrorState error={error} title="Couldn't load goals" onRetry={() => refetch()} retrying={isRefetching} />
+        <LoadError error={error} title={t('goals.error')} onRetry={() => void refetch()} retrying={isRefetching} />
       ) : (
         <>
+          {isError ? <RefreshError error={error} onRetry={() => void refetch()} retrying={isRefetching} /> : null}
+
           {summary && summary.totalGoals > 0 ? (
             <Animated.View {...blockMotion}>
               <Card variant="tinted" accent="finance" gradient="finance" style={{ gap: spacing.sm }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-                  <Text variant="title" style={{ flex: 1 }}>
-                    Savings goals
+                  <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
+                    {t('goals.savingsTitle')}
                   </Text>
-                  <Tag label={`${summary.completedCount} of ${summary.totalGoals} reached`} icon="flag" accent="finance" />
+                  <Tag label={t('goals.reachedCount', { done: summary.completedCount, total: summary.totalGoals })} icon="flag" accent="finance" />
                 </View>
                 <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {formatMoney(summary.totalSaved)}
                 </Text>
-                <ProgressBar percent={summary.overallProgress} accent="finance" showLabel label="Overall progress" />
+                <ProgressBar percent={summary.overallProgress} accent="finance" showLabel label={t('goals.overallProgress')} />
                 <Text variant="caption" numeric color="textSecondary">
-                  saved toward {formatMoney(summary.totalTarget)} in total
+                  {t('goals.savedToward', { target: formatMoney(summary.totalTarget) })}
                 </Text>
               </Card>
             </Animated.View>
@@ -139,14 +152,14 @@ export function GoalsSection({ header }: { header: ReactNode }) {
             <EmptyState
               accent="finance"
               icon="flag-outline"
-              title="No savings goals yet"
-              description="Set a target for an emergency fund, a trip or something you are saving up for."
-              actionTitle="Create a goal"
+              title={t('goals.emptyTitle')}
+              description={t('goals.emptyBody')}
+              actionTitle={t('goals.create')}
               onAction={() => openGoal(router)}
             />
           )}
 
-          {goals.length > 0 ? <Button title="New goal" variant="secondary" leftIcon="add" onPress={() => openGoal(router)} /> : null}
+          {goals.length > 0 ? <Button title={t('goals.new')} variant="secondary" leftIcon="add" onPress={() => openGoal(router)} /> : null}
         </>
       )}
     </Screen>

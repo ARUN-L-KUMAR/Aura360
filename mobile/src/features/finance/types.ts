@@ -103,6 +103,8 @@ export type GoalsResponse = {
   };
 };
 
+// Category names, payment methods and goal categories below are stored values (the API keeps them in English).
+// Screens draw them through components/finance/labels.ts; the `label` on PAYMENT_METHODS is an English fallback only.
 export const CATEGORY_OPTIONS: Record<EditableTransactionType, string[]> = {
   income: ['Salary', 'Freelance', 'Business', 'Scholarship', 'Gift', 'Interest', 'Refund', 'Other Income'],
   expense: ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Education', 'Rent', 'Groceries', 'Other'],

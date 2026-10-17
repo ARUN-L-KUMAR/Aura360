@@ -4,7 +4,6 @@ import { View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
-import { ApiError } from '@/lib/api';
 import { spacing, useTheme } from '@/theme';
 
 /** Parses what the user typed into an amount field. NaN when empty or not a number. Commas are ignored. */
@@ -17,11 +16,6 @@ export function cleanAmount(text: string) {
   const cleaned = text.replace(/[^0-9.]/g, '');
   const dot = cleaned.indexOf('.');
   return dot === -1 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '');
-}
-
-/** The message to show for a failed request: the server's own words when it sent some. */
-export function failureMessage(error: unknown, fallback: string) {
-  return error instanceof ApiError ? error.message : fallback;
 }
 
 /** Inline validation message with an icon, so an error is never colour alone. */

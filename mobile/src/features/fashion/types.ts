@@ -117,6 +117,8 @@ export interface ScrapedProduct {
   platform: string;
 }
 
+// Stored values (the API keeps them in English). Screens draw them through components/fashion/labels.ts and
+// condition.ts, so the `label` fields below are English fallbacks only and are not rendered.
 export const CATEGORIES = ['All', 'Tops', 'Bottoms', 'Shoes', 'Outerwear', 'Accessories'] as const;
 export const CONDITIONS = [
   { value: 'new', label: 'Brand New', color: success[500] },

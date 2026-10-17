@@ -12,11 +12,13 @@ import { WishlistSection } from '@/components/fashion/wishlist-section';
 import { CategoryFab, CategoryFrame, CategoryHeader, type CategorySection } from '@/components/ui/category-template';
 import { useFashionItems } from '@/features/fashion/hooks';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 
 type Section = 'overview' | 'wardrobe' | 'wishlist' | 'outfits' | 'planner' | 'fit';
 
 export default function FashionTabScreen() {
   const router = useRouter();
+  const { t } = useTranslation('fashion');
   const [section, setSection] = useState<Section>('overview');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -30,6 +32,7 @@ export default function FashionTabScreen() {
       loading: isPending && fetchStatus !== 'paused',
       offline: isPending && fetchStatus === 'paused',
       error: isError && !data ? error : null,
+      staleError: isError && data ? error : null,
       refreshing: isRefetching,
       refetch: () => {
         void refetch();
@@ -44,14 +47,14 @@ export default function FashionTabScreen() {
 
   const sections = useMemo<CategorySection<Section>[]>(
     () => [
-      { value: 'overview', label: 'Overview' },
-      { value: 'wardrobe', label: 'Wardrobe', count: data ? wardrobeCount : undefined },
-      { value: 'wishlist', label: 'Wishlist', count: data ? wishlistCount : undefined },
-      { value: 'outfits', label: 'Outfits' },
-      { value: 'planner', label: 'Planner' },
-      { value: 'fit', label: 'My fit' },
+      { value: 'overview', label: t('sections.overview') },
+      { value: 'wardrobe', label: t('sections.wardrobe'), count: data ? wardrobeCount : undefined },
+      { value: 'wishlist', label: t('sections.wishlist'), count: data ? wishlistCount : undefined },
+      { value: 'outfits', label: t('sections.outfits') },
+      { value: 'planner', label: t('sections.planner') },
+      { value: 'fit', label: t('sections.fit') },
     ],
-    [data, wardrobeCount, wishlistCount],
+    [data, wardrobeCount, wishlistCount, t],
   );
 
   const handleSelect = useCallback((item: FashionItem) => setSelectedId(item.id), []);
@@ -103,7 +106,7 @@ export default function FashionTabScreen() {
       {section === 'fit' ? <ProfileSection header={header} /> : null}
 
       {section !== 'fit' ? (
-        <CategoryFab module="fashion" icon="add" label={section === 'outfits' ? 'Create new outfit' : section === 'wishlist' ? 'Add to wishlist' : 'Add clothing item'} onPress={handleOpenAdd} />
+        <CategoryFab module="fashion" icon="add" label={section === 'outfits' ? t('fab.createOutfit') : section === 'wishlist' ? t('fab.addWishlist') : t('fab.addItem')} onPress={handleOpenAdd} />
       ) : null}
 
       <ItemDetailSheet item={selectedItem} onClose={handleCloseSheet} onEdit={handleEditItem} />

@@ -3,12 +3,13 @@ import { Image } from 'expo-image';
 import { useState, type ReactElement, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
+import { ErrorState, errorKindFromError } from '@/components/ui/error-state';
 import { useScreenPadding } from '@/components/ui/screen';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { layout, spacing, useTheme } from '@/theme';
 
 /** Gap between grid cells and rows. */
@@ -27,6 +28,8 @@ export type ItemsState = {
   offline: boolean;
   /** The request failed and there is nothing cached to show. Cached data stays visible instead. */
   error: unknown;
+  /** A refresh failed while cached items are still on screen (shown as a compact row, never instead of the items). */
+  staleError: unknown;
   /** A refetch is running (pull to refresh). */
   refreshing: boolean;
   refetch: () => void;
@@ -70,7 +73,18 @@ export function SpacerCell() {
  * Item picture: skeleton while it loads, a quiet icon tile when there is no picture or it fails to load.
  * Fills its parent; give the parent (or `style`) a size.
  */
-export function FashionImage({ uri, style, iconSize = 32 }: { uri?: string | null; style?: StyleProp<ViewStyle>; iconSize?: number }) {
+export function FashionImage({
+  uri,
+  style,
+  iconSize = 32,
+  accessibilityLabel,
+}: {
+  uri?: string | null;
+  style?: StyleProp<ViewStyle>;
+  iconSize?: number;
+  /** Set when the picture is the content (the detail view); leave off when the parent already names the piece. */
+  accessibilityLabel?: string;
+}) {
   const { colors, accent, reduceMotion } = useTheme();
   const [loadedUri, setLoadedUri] = useState<string | null>(null);
   const [failedUri, setFailedUri] = useState<string | null>(null);
@@ -79,11 +93,16 @@ export function FashionImage({ uri, style, iconSize = 32 }: { uri?: string | nul
   const loading = !failed && loadedUri !== uri;
 
   return (
-    <View style={[{ overflow: 'hidden', backgroundColor: colors.cardMuted }, style]}>
+    <View
+      accessible={accessibilityLabel ? true : undefined}
+      accessibilityRole={accessibilityLabel ? 'image' : undefined}
+      accessibilityLabel={accessibilityLabel}
+      style={[{ overflow: 'hidden', backgroundColor: colors.cardMuted }, style]}>
       {!failed && uri ? (
         <Image
           source={{ uri }}
           recyclingKey={uri}
+          cachePolicy="memory-disk"
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={reduceMotion ? 0 : 150}
@@ -92,7 +111,7 @@ export function FashionImage({ uri, style, iconSize = 32 }: { uri?: string | nul
           onError={() => setFailedUri(uri)}
         />
       ) : null}
-      {loading ? <Skeleton rounded={0} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} /> : null}
+      {loading ? <Skeleton rounded={0} style={StyleSheet.absoluteFill} /> : null}
       {failed ? (
         <View
           accessibilityElementsHidden
@@ -107,8 +126,9 @@ export function FashionImage({ uri, style, iconSize = 32 }: { uri?: string | nul
 
 /** Placeholder shaped like a two-column grid of item cards. */
 export function SkeletonGrid({ rows = 2 }: { rows?: number }) {
+  const { t } = useTranslation('fashion');
   return (
-    <SkeletonGroup label="Loading items" style={{ gap: GRID_GAP }}>
+    <SkeletonGroup label={t('loading.items')} style={{ gap: GRID_GAP }}>
       {Array.from({ length: rows }, (_, row) => (
         <View key={row} style={{ flexDirection: 'row', gap: GRID_GAP }}>
           {Array.from({ length: GRID_COLUMNS }, (_, col) => (
@@ -126,14 +146,30 @@ export function SkeletonGrid({ rows = 2 }: { rows?: number }) {
   );
 }
 
+/** The first-load failure for a list: network, timeout and signed-out keep their own wording. */
+function ItemsLoadError({ state }: { state: ItemsState }) {
+  const { t } = useTranslation('fashion');
+  const generic = errorKindFromError(state.error) === 'generic';
+  return <ErrorState error={state.error} title={generic ? t('errors.loadItems') : undefined} onRetry={state.refetch} retrying={state.refreshing} />;
+}
+
+function ItemsOffline({ state }: { state: ItemsState }) {
+  const { t } = useTranslation('fashion');
+  return <OfflineState description={t('offline.wardrobe')} onRetry={state.refetch} />;
+}
+
 /** The loading, error or offline stand-in for list content, or null when the data can be shown. */
 export function itemsGate(state: ItemsState): ReactElement | null {
   if (state.loading) return <SkeletonGrid />;
-  if (state.error) return <ErrorState error={state.error} onRetry={state.refetch} retrying={state.refreshing} />;
-  if (state.offline) {
-    return <EmptyState variant="offline" description="Connect to the internet to load your wardrobe." actionTitle="Try again" onAction={state.refetch} />;
-  }
+  if (state.error) return <ItemsLoadError state={state} />;
+  if (state.offline) return <ItemsOffline state={state} />;
   return null;
+}
+
+/** A refresh failed but the items on screen are still good: one compact row with a retry, above the content. */
+export function StaleNotice({ state }: { state: ItemsState }) {
+  if (!state.staleError) return null;
+  return <RefreshError error={state.staleError} onRetry={state.refetch} retrying={state.refreshing} />;
 }
 
 /** Number from a text field. Empty is a valid "no value"; commas count as decimal points. */

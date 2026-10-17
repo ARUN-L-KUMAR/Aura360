@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipRow, Tag } from '@/components/ui/chip';
@@ -14,14 +15,17 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useSaveFashionItem } from '@/features/fashion/hooks';
 import { SEASONS, type FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { categoryLabel, seasonLabel } from './labels';
 import {
   GRID_COLUMNS,
   HeaderStack,
   RowSeparator,
   SpacerCell,
+  StaleNotice,
   gridColumnStyle,
   isSpacer,
   itemsGate,
@@ -45,25 +49,26 @@ type LaundryRowProps = { item: FashionItem; first: boolean; busy: boolean; onMar
 
 /** One piece waiting to be washed. Leaves with a fade and the rows below close the gap when it is marked clean. */
 const LaundryRow = memo(function LaundryRow({ item, first, busy, onMarkClean }: LaundryRowProps) {
+  const { t } = useTranslation('fashion');
   const motion = useListMotion();
   return (
     <Animated.View {...motion}>
       {!first ? <Divider /> : null}
       <ListItem
         title={item.name}
-        subtitle={`${item.category} · ${item.color || 'No colour'}`}
+        subtitle={t('planner.itemSubtitle', { category: categoryLabel(item.category), colour: item.color || t('planner.noColour') })}
         icon="water-outline"
         accent="fashion"
         accessible={false}
         trailing={
           <Button
-            title="Mark clean"
+            title={t('planner.markClean')}
             size="sm"
             variant="secondary"
             leftIcon="checkmark"
             fullWidth={false}
             loading={busy}
-            accessibilityLabel={`Mark ${item.name} as clean`}
+            accessibilityLabel={t('planner.markCleanA11y', { name: item.name })}
             onPress={() => onMarkClean(item)}
           />
         }
@@ -74,6 +79,7 @@ const LaundryRow = memo(function LaundryRow({ item, first, busy, onMarkClean }: 
 
 export function PlannerSection({ items, state, header, onSelectItem, onAddNew }: PlannerSectionProps) {
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const padding = useListPadding();
   const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
   const [activeSeason, setActiveSeason] = useState<string>('All');
@@ -107,16 +113,19 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
         {
           onSuccess: () => {
             notify.toast({
-              message: `"${item.name}" is clean and ready to wear`,
+              message: t('planner.clean', { name: item.name }),
               severity: 'success',
-              action: { label: 'Undo', onPress: () => mutate({ id: item.id, condition: 'needs_wash' }) },
+              action: {
+                label: t('common.undo'),
+                onPress: () => mutate({ id: item.id, condition: 'needs_wash' }, { onError: (err) => notify.error(failureMessage(err, t('errors.update'))) }),
+              },
             });
           },
-          onError: (err) => notify.error(err),
+          onError: (err) => notify.error(failureMessage(err, t('errors.update'))),
         },
       );
     },
-    [mutate, notify],
+    [mutate, notify, t],
   );
 
   const gate = itemsGate(state);
@@ -132,19 +141,19 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
       <EmptyState
         icon="calendar-outline"
         accent="fashion"
-        title="Nothing to plan yet"
-        description="Add pieces to your wardrobe, tag them by season and they will show up here."
-        actionTitle="Add an item"
+        title={t('planner.emptyTitle')}
+        description={t('planner.emptyBody')}
+        actionTitle={t('planner.emptyAction')}
         onAction={onAddNew}
       />
     ) : (
       <EmptyState
         variant="noResults"
         accent="fashion"
-        title={`Nothing tagged for ${activeSeason.toLowerCase()}`}
-        description="Edit your items to give them seasonal tags."
+        title={t('planner.noSeasonTitle', { season: seasonLabel(activeSeason) })}
+        description={t('planner.noSeasonBody')}
         onClearFilters={() => setActiveSeason('All')}
-        clearFiltersLabel="Show all seasons"
+        clearFiltersLabel={t('planner.showAll')}
       />
     ));
 
@@ -164,15 +173,16 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
       ListHeaderComponent={
         <HeaderStack>
           {header}
+          <StaleNotice state={state} />
 
           {!gate ? (
             <Card variant="outlined" padding="sm" style={{ gap: spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
                 <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
-                  Laundry
+                  {t('planner.laundryTitle')}
                 </Text>
                 <Tag
-                  label={laundryItems.length === 0 ? 'All clean' : `${laundryItems.length} to wash`}
+                  label={laundryItems.length === 0 ? t('planner.allClean') : t('planner.toWash', { count: laundryItems.length })}
                   icon={laundryItems.length === 0 ? 'checkmark-circle' : 'water-outline'}
                   accent="fashion"
                 />
@@ -180,7 +190,7 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
 
               {laundryItems.length === 0 ? (
                 <Text variant="body" color="textSecondary">
-                  Everything is clean and ready to wear.
+                  {t('planner.allCleanBody')}
                 </Text>
               ) : (
                 <View>
@@ -194,10 +204,10 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
 
           {!gate && wardrobeItems.length > 0 ? (
             <View style={{ gap: spacing.md }}>
-              <SectionHeader title="Seasonal capsules" subtitle="Filter your wardrobe by the season each piece is tagged for." />
+              <SectionHeader title={t('planner.seasonalTitle')} subtitle={t('planner.seasonalHint')} />
               <ChipRow>
                 {SEASONS.map((season) => (
-                  <Chip key={season} label={season} accent="fashion" selected={activeSeason === season} count={seasonCounts.get(season) ?? 0} onPress={() => setActiveSeason(season)} />
+                  <Chip key={season} label={seasonLabel(season)} accent="fashion" selected={activeSeason === season} count={seasonCounts.get(season) ?? 0} onPress={() => setActiveSeason(season)} />
                 ))}
               </ChipRow>
             </View>

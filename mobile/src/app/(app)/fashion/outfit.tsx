@@ -4,7 +4,9 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { categoryLabel, occasionLabel } from '@/components/fashion/labels';
 import { FashionImage, SpacerCell, isSpacer, itemsGate, type GridEntry } from '@/components/fashion/shared';
+import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
@@ -16,6 +18,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useFashionItems, useSaveOutfit } from '@/features/fashion/hooks';
 import { OCCASIONS, type FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
@@ -37,11 +41,12 @@ type TileProps = { item: FashionItem; selected: boolean; onToggle: (id: string) 
 
 const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProps) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('fashion');
   const a = accent('fashion');
   return (
     <PressableScale
       accessibilityRole="checkbox"
-      accessibilityLabel={`${item.name}, ${item.category}`}
+      accessibilityLabel={t('look.pieceLabel', { name: item.name, category: categoryLabel(item.category) })}
       accessibilityState={{ checked: selected }}
       haptic="select"
       onPress={() => onToggle(item.id)}
@@ -59,7 +64,7 @@ const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProp
           style={{
             position: 'absolute',
             top: spacing.xs,
-            right: spacing.xs,
+            end: spacing.xs,
             width: spacing.xl,
             height: spacing.xl,
             borderRadius: radius.pill,
@@ -75,7 +80,7 @@ const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProp
           {item.name}
         </Text>
         <Text variant="caption" color="textSecondary" numberOfLines={1}>
-          {item.category}
+          {categoryLabel(item.category)}
         </Text>
       </View>
     </PressableScale>
@@ -85,6 +90,7 @@ const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProp
 export default function FashionOutfitModal() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -110,7 +116,7 @@ export default function FashionOutfitModal() {
     setSelectedItemIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   }, []);
 
-  const nameError = submitted && !name.trim() ? 'Give this look a name' : undefined;
+  const nameError = submitted && !name.trim() ? t('look.nameNeeded') : undefined;
   const piecesError = submitted && selectedItemIds.length === 0;
 
   const handleSave = () => {
@@ -127,12 +133,14 @@ export default function FashionOutfitModal() {
       },
       {
         onSuccess: () => {
-          notify.success('Look saved');
+          analytics.track('outfit_saved');
+          notify.success(t('look.saved'));
           router.back();
         },
         onError: (err) => {
-          setSaveError(err instanceof Error && err.message ? err.message : 'Could not save this look.');
-          notify.error(err);
+          const message = failureMessage(err, t('errors.saveLook'));
+          setSaveError(message);
+          notify.error(message);
         },
       },
     );
@@ -142,6 +150,7 @@ export default function FashionOutfitModal() {
     loading: isPending && fetchStatus !== 'paused',
     offline: isPending && fetchStatus === 'paused',
     error: isError && !allItems ? error : null,
+    staleError: isError && allItems ? error : null,
     refreshing: isRefetching,
     refetch: () => void refetch(),
   });
@@ -155,7 +164,7 @@ export default function FashionOutfitModal() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior="padding">
-      <Stack.Screen options={{ title: 'New look' }} />
+      <Stack.Screen options={{ title: t('look.title') }} />
       <FlatList
         data={gate ? [] : entries}
         keyExtractor={keyExtractor}
@@ -172,12 +181,12 @@ export default function FashionOutfitModal() {
         contentContainerStyle={{ padding: layout.screenPadding, paddingBottom: layout.sectionGap }}
         ListHeaderComponent={
           <View style={{ gap: layout.sectionGap, marginBottom: layout.itemGap }}>
-            {saveError ? <ErrorState size="inline" title="Couldn't save" message={saveError} /> : null}
+            {saveError ? <ErrorState size="inline" title={t('errors.saveTitle')} message={saveError} /> : null}
 
             <Card style={{ gap: spacing.lg }}>
               <Input
-                label="Look name"
-                placeholder="Summer date night"
+                label={t('look.nameLabel')}
+                placeholder={t('look.namePlaceholder')}
                 value={name}
                 onChangeText={setName}
                 error={nameError}
@@ -189,8 +198,8 @@ export default function FashionOutfitModal() {
               <View style={{ gap: spacing.sm }}>
                 <Input
                   ref={occasionRef}
-                  label="Occasion"
-                  placeholder="Casual, party"
+                  label={t('look.occasionLabel')}
+                  placeholder={t('look.occasionPlaceholder')}
                   value={occasion}
                   onChangeText={setOccasion}
                   autoCapitalize="sentences"
@@ -200,14 +209,14 @@ export default function FashionOutfitModal() {
                 />
                 <ChipRow>
                   {OCCASIONS.map((occ) => (
-                    <Chip key={occ} size="sm" label={occ} accent="fashion" selected={occasion.trim().toLowerCase() === occ.toLowerCase()} onPress={() => setOccasion(occ)} />
+                    <Chip key={occ} size="sm" label={occasionLabel(occ)} accent="fashion" selected={occasion.trim().toLowerCase() === occ.toLowerCase()} onPress={() => setOccasion(occ)} />
                   ))}
                 </ChipRow>
               </View>
               <Input
                 ref={vibeRef}
-                label="Style or vibe"
-                placeholder="Minimalist, cosy"
+                label={t('look.vibeLabel')}
+                placeholder={t('look.vibePlaceholder')}
                 value={vibe}
                 onChangeText={setVibe}
                 autoCapitalize="sentences"
@@ -216,12 +225,12 @@ export default function FashionOutfitModal() {
             </Card>
 
             <View style={{ gap: spacing.sm }}>
-              <SectionHeader title="Pick your pieces" subtitle="Choose from the items in your wardrobe." count={count} />
+              <SectionHeader title={t('look.pickTitle')} subtitle={t('look.pickHint')} count={count} />
               {piecesError ? (
                 <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   <Ionicons name="alert-circle" size={16} color={colors.errorText} />
                   <Text variant="caption" style={{ color: colors.errorText }}>
-                    Select at least one piece
+                    {t('look.pickNeeded')}
                   </Text>
                 </View>
               ) : null}
@@ -233,9 +242,9 @@ export default function FashionOutfitModal() {
             <EmptyState
               icon="shirt-outline"
               accent="fashion"
-              title="No pieces to pick from"
-              description="Add clothing to your wardrobe first, then come back to put a look together."
-              actionTitle="Add an item"
+              title={t('look.emptyTitle')}
+              description={t('look.emptyBody')}
+              actionTitle={t('look.emptyAction')}
               onAction={() => router.push({ pathname: '/fashion/add', params: { defaultStatus: 'wardrobe' } })}
             />
           )
@@ -252,7 +261,7 @@ export default function FashionOutfitModal() {
           backgroundColor: colors.background,
         }}>
         <Button
-          title={count > 0 ? `Save look · ${count} ${count === 1 ? 'piece' : 'pieces'}` : 'Save look'}
+          title={count > 0 ? t('look.saveCount', { count }) : t('look.save')}
           leftIcon="sparkles"
           loading={saveOutfit.isPending}
           onPress={handleSave}

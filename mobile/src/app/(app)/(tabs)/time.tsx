@@ -4,7 +4,9 @@ import { memo, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { failureMessage } from '@/components/finance/failure-message';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
+import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { MonthSwitcher } from '@/components/finance/month-switcher';
 import { Button } from '@/components/ui/button';
 import { Card, withAlpha } from '@/components/ui/card';
@@ -12,7 +14,6 @@ import { CategoryFab, CategoryFrame, CategoryHeader } from '@/components/ui/cate
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
 import { useListMotion } from '@/components/ui/motion';
@@ -24,10 +25,11 @@ import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
 import { Text } from '@/components/ui/text';
 import { useRunningTimer, useSaveTimeLog, useTimeLogs } from '@/features/time/hooks';
-import { TIME_CATEGORIES, byCategory, categoryColor, formatMinutes, totalMinutes, type TimeLog } from '@/features/time/types';
-import { ApiError } from '@/lib/api';
+import { TIME_CATEGORIES, byCategory, categoryColor, formatMinutes, timeCategoryLabel, totalMinutes, type TimeLog } from '@/features/time/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, monthKey, monthLabel, weekdayShort } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNow } from '@/lib/use-now';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
@@ -52,9 +54,12 @@ export function openTimeLog(router: ReturnType<typeof useRouter>, log?: TimeLog)
 
 type Day = { day: string; items: TimeLog[] };
 
+const keyExtractor = (d: Day) => d.day;
+
 export default function TimeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation('time');
   const padding = useScreenPadding();
   const [month, setMonth] = useState(monthKey());
 
@@ -90,19 +95,28 @@ export default function TimeScreen() {
     return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, items]) => ({ day, items }));
   }, [logs]);
 
+  const monthOffline = monthLogs.isPending && monthLogs.fetchStatus === 'paused';
+  const monthLoading = monthLogs.isPending && !monthOffline;
+  // Cached logs are showing but the latest refresh failed.
+  const staleError = monthLogs.isError && monthLogs.data !== undefined ? monthLogs.error : weekLogs.isError && weekLogs.data !== undefined ? weekLogs.error : null;
+
   const listHeader = (
     <View style={{ gap: layout.sectionGap, paddingBottom: spacing.md }}>
       <CategoryHeader module="time" />
 
+      {staleError ? <RefreshError error={staleError} onRetry={() => void Promise.all([monthLogs.refetch(), weekLogs.refetch()])} retrying={monthLogs.isRefetching || weekLogs.isRefetching} /> : null}
+
       {weekLogs.isPending ? (
         <SkeletonCard lines={1} />
+      ) : weekLogs.isError && !weekLogs.data ? (
+        <LoadError size="inline" error={weekLogs.error} title={t('errors.loadTotals')} onRetry={() => void weekLogs.refetch()} retrying={weekLogs.isRefetching} />
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           <View style={{ flex: 1, minWidth: 140 }}>
-            <StatCard label="Tracked today" value={formatMinutes(todayMinutes)} icon="today-outline" accent="time" />
+            <StatCard label={t('stats.today')} value={formatMinutes(todayMinutes)} icon="today-outline" accent="time" />
           </View>
           <View style={{ flex: 1, minWidth: 140 }}>
-            <StatCard label="Last 7 days" value={formatMinutes(weekMinutes)} icon="calendar-outline" accent="time" />
+            <StatCard label={t('stats.week')} value={formatMinutes(weekMinutes)} icon="calendar-outline" accent="time" />
           </View>
         </View>
       )}
@@ -113,17 +127,19 @@ export default function TimeScreen() {
 
       {breakdown.length > 0 ? (
         <Card style={{ gap: spacing.md }}>
-          <SectionHeader title="Time distribution" subtitle={`${formatMinutes(monthTotal)} logged in ${monthLabel(month)}`} />
+          <SectionHeader title={t('distribution.title')} subtitle={t('distribution.subtitle', { total: formatMinutes(monthTotal), month: monthLabel(month) })} />
           {breakdown.map((item) => {
             const percent = monthTotal > 0 ? (item.minutes / monthTotal) * 100 : 0;
+            const name = timeCategoryLabel(item.category);
+            const summary = t('distribution.row', { duration: formatMinutes(item.minutes), percent: Math.round(percent) });
             return (
-              <View key={item.category} style={{ gap: spacing.xs }}>
+              <View key={item.category} accessible accessibilityLabel={`${name}, ${summary}`} style={{ gap: spacing.xs }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
                   <Text variant="label" numberOfLines={1} style={{ flex: 1 }}>
-                    {item.category}
+                    {name}
                   </Text>
                   <Text variant="caption" numeric color="textSecondary">
-                    {formatMinutes(item.minutes)} ({Math.round(percent)}%)
+                    {summary}
                   </Text>
                 </View>
                 <ProgressBar percent={percent} color={categoryColor(item.category)} />
@@ -139,21 +155,23 @@ export default function TimeScreen() {
     <CategoryFrame>
       <FlatList<Day>
         data={days}
-        keyExtractor={(d) => d.day}
+        keyExtractor={keyExtractor}
         renderItem={({ item, index }) => <DayCard day={item.day} items={item.items} index={index} />}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          monthLogs.isPending ? (
+          monthLoading ? (
             <SkeletonList count={4} trailing />
+          ) : monthOffline ? (
+            <OfflineState description={t('offline')} onRetry={() => void monthLogs.refetch()} />
           ) : monthLogs.isError ? (
-            <ErrorState error={monthLogs.error} title="Couldn't load time logs" onRetry={() => monthLogs.refetch()} retrying={monthLogs.isRefetching} />
+            <LoadError error={monthLogs.error} title={t('errors.loadLogs')} onRetry={() => void monthLogs.refetch()} retrying={monthLogs.isRefetching} />
           ) : (
             <EmptyState
               accent="time"
               icon="time-outline"
-              title={`No time logged in ${monthLabel(month)}`}
-              description="Start the stopwatch above, or add the hours you spent on an activity."
-              actionTitle="Add time log"
+              title={t('empty.title', { month: monthLabel(month) })}
+              description={t('empty.body')}
+              actionTitle={t('actions.addLog')}
               onAction={() => openTimeLog(router)}
             />
           )
@@ -161,22 +179,25 @@ export default function TimeScreen() {
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        initialNumToRender={6}
+        windowSize={7}
         contentContainerStyle={[padding, { gap: spacing.md, paddingBottom: FAB_CLEARANCE }]}
         style={{ flex: 1, backgroundColor: colors.background }}
       />
-      <CategoryFab module="time" label="Add time log" onPress={() => openTimeLog(router)} />
+      <CategoryFab module="time" label={t('actions.addLog')} onPress={() => openTimeLog(router)} />
     </CategoryFrame>
   );
 }
 
 const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: TimeLog[]; index: number }) {
   const motion = useListMotion(index);
+  const { t } = useTranslation('time');
   return (
     <Animated.View {...motion}>
       <Card padding="none" style={{ overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <Text variant="label" weight="semiBold" accessibilityRole="header" style={{ flex: 1 }}>
-            {weekdayShort(day)}, {formatDay(day)}
+            {t('day.heading', { weekday: weekdayShort(day), date: formatDay(day) })}
           </Text>
           <Tag label={formatMinutes(totalMinutes(items))} icon="time-outline" accent="time" />
         </View>
@@ -188,14 +209,18 @@ const DayCard = memo(function DayCard({ day, items, index }: { day: string; item
   );
 });
 
-function LogRow({ log, divider }: { log: TimeLog; divider: boolean }) {
+const LogRow = memo(function LogRow({ log, divider }: { log: TimeLog; divider: boolean }) {
   const router = useRouter();
+  const { t } = useTranslation('time');
   const color = categoryColor(log.category);
   const duration = formatMinutes(log.duration);
+  const category = log.category ? timeCategoryLabel(log.category) : null;
   return (
     <ListItem
       leading={
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: layout.minTouchTarget - spacing.xs,
             height: layout.minTouchTarget - spacing.xs,
@@ -208,7 +233,7 @@ function LogRow({ log, divider }: { log: TimeLog; divider: boolean }) {
         </View>
       }
       title={log.activity}
-      subtitle={[log.category, log.description].filter(Boolean).join(' · ') || undefined}
+      subtitle={[category, log.description].filter(Boolean).join(' · ') || undefined}
       meta={
         <Text variant="label" weight="bold" numeric numberOfLines={1}>
           {duration}
@@ -217,14 +242,15 @@ function LogRow({ log, divider }: { log: TimeLog; divider: boolean }) {
       divider={divider}
       chevron={false}
       onPress={() => openTimeLog(router, log)}
-      accessibilityLabel={`${log.activity}, ${duration}${log.category ? `, ${log.category}` : ''}`}
-      accessibilityHint="Opens this time log"
+      accessibilityLabel={category ? t('log.labelCategory', { activity: log.activity, duration, category }) : t('log.label', { activity: log.activity, duration })}
+      accessibilityHint={t('log.hint')}
     />
   );
-}
+});
 
 function TimerCard() {
   const notify = useNotify();
+  const { t } = useTranslation('time');
   const { timer, loaded, start, clear } = useRunningTimer();
   const save = useSaveTimeLog();
   const [activity, setActivity] = useState('');
@@ -235,7 +261,7 @@ function TimerCard() {
 
   if (!loaded) return <SkeletonCard lines={2} />;
 
-  const activityError = submitted && !activity.trim() ? 'What are you working on?' : null;
+  const activityError = submitted && !activity.trim() ? t('timer.activityNeeded') : null;
 
   function begin() {
     setSubmitted(true);
@@ -265,23 +291,24 @@ function TimerCard() {
         },
       });
       clear();
-      notify.success(`Saved ${formatMinutes(minutes)} for ${timer.activity}`);
+      analytics.track('time_logged');
+      notify.success(t('timer.saved', { duration: formatMinutes(minutes), activity: timer.activity }));
     } catch (e) {
-      notify.error(e instanceof ApiError ? e.message : 'Could not save. The timer is still running, try again.');
+      notify.error(failureMessage(e, t('errors.stop')));
     }
   }
 
   async function discard() {
     const ok = await notify.confirm({
-      title: 'Discard this timer?',
-      message: 'The time will not be saved.',
-      confirmLabel: 'Discard',
-      cancelLabel: 'Keep',
+      title: t('timer.discardTitle'),
+      message: t('timer.discardMessage'),
+      confirmLabel: t('timer.discard'),
+      cancelLabel: t('timer.keep'),
       destructive: true,
     });
     if (!ok) return;
     clear();
-    notify.info('Timer discarded');
+    notify.info(t('timer.discarded'));
   }
 
   if (timer) {
@@ -295,16 +322,16 @@ function TimerCard() {
           <Text variant="title" numberOfLines={1} style={{ flex: 1 }}>
             {timer.activity}
           </Text>
-          {timer.category ? <Tag label={timer.category} color={activeColor} /> : null}
+          {timer.category ? <Tag label={timeCategoryLabel(timer.category)} color={activeColor} /> : null}
         </View>
 
-        <Text variant="display" numeric accessibilityRole="timer" accessibilityLabel={`Elapsed time ${clock}`} style={{ textAlign: 'center' }}>
+        <Text variant="display" numeric accessibilityRole="timer" accessibilityLabel={t('timer.elapsed', { clock })} style={{ textAlign: 'center' }}>
           {clock}
         </Text>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          <Button title="Stop and save" leftIcon="stop" onPress={stop} loading={save.isPending} style={{ flex: 1, minWidth: 150 }} />
-          <Button title="Discard" variant="tertiary" leftIcon="trash-outline" onPress={discard} disabled={save.isPending} style={{ flex: 1, minWidth: 120 }} />
+          <Button title={t('timer.stop')} leftIcon="stop" onPress={stop} loading={save.isPending} style={{ flex: 1, minWidth: 150 }} />
+          <Button title={t('timer.discard')} variant="tertiary" leftIcon="trash-outline" onPress={discard} disabled={save.isPending} style={{ flex: 1, minWidth: 120 }} />
         </View>
       </Card>
     );
@@ -312,12 +339,12 @@ function TimerCard() {
 
   return (
     <Card style={{ gap: spacing.md }}>
-      <SectionHeader title="Live stopwatch" subtitle="Track an activity as you do it." />
+      <SectionHeader title={t('timer.stopwatch')} subtitle={t('timer.stopwatchHint')} />
       <Input
-        label="What are you working on?"
+        label={t('timer.activityLabel')}
         value={activity}
         onChangeText={setActivity}
-        placeholder="e.g. Deep work, workout, coding"
+        placeholder={t('timer.activityPlaceholder')}
         autoCapitalize="sentences"
         returnKeyType="go"
         error={activityError}
@@ -325,10 +352,10 @@ function TimerCard() {
       />
       <ChipGroup>
         {TIME_CATEGORIES.map((name) => (
-          <Chip key={name} label={name} selected={category === name} color={categoryColor(name)} onPress={() => setCategory(category === name ? null : name)} />
+          <Chip key={name} label={timeCategoryLabel(name)} selected={category === name} color={categoryColor(name)} onPress={() => setCategory(category === name ? null : name)} />
         ))}
       </ChipGroup>
-      <Button title="Start timer" leftIcon="play" onPress={begin} />
+      <Button title={t('timer.start')} leftIcon="play" onPress={begin} />
     </Card>
   );
 }

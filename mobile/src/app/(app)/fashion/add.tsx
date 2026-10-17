@@ -5,11 +5,13 @@ import { View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FashionImage, parseAmount } from '@/components/fashion/shared';
-import { CONDITION_META } from '@/components/fashion/condition';
+import { conditionLabel } from '@/components/fashion/condition';
+import { categoryLabel, occasionLabel, seasonLabel } from '@/components/fashion/labels';
+import { failureMessage } from '@/components/finance/failure-message';
+import { LoadError, OfflineState } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
-import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
@@ -28,19 +30,20 @@ import {
   type FashionItem,
   type FashionStatus,
 } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
-const STATUS_OPTIONS: { value: 'wardrobe' | 'wishlist'; label: string }[] = [
-  { value: 'wardrobe', label: 'In my wardrobe' },
-  { value: 'wishlist', label: 'On my wishlist' },
-];
+/** Not copy: the start of a web address. */
+const URL_HINT = 'https://';
 
 const PIECE_CATEGORIES = CATEGORIES.filter((c) => c !== 'All');
 
 export default function FashionAddScreen() {
   const router = useRouter();
+  const { t } = useTranslation('fashion');
   const params = useLocalSearchParams<{ id?: string; defaultStatus?: FashionStatus }>();
   const { data, isPending, fetchStatus, isError, error, refetch, isRefetching } = useFashionItems();
 
@@ -50,18 +53,18 @@ export default function FashionAddScreen() {
   if (isEdit && !existingItem) {
     return (
       <Screen topInset={false}>
-        <Stack.Screen options={{ title: 'Edit item' }} />
+        <Stack.Screen options={{ title: t('add.titleEdit') }} />
         {isPending && fetchStatus !== 'paused' ? (
           <>
             <Skeleton height={layout.minTouchTarget} rounded="lg" />
             <SkeletonCard media lines={3} />
           </>
         ) : isPending ? (
-          <EmptyState variant="offline" description="Connect to the internet to load this item." actionTitle="Try again" onAction={() => void refetch()} />
+          <OfflineState description={t('offline.item')} onRetry={() => void refetch()} />
         ) : isError ? (
-          <ErrorState error={error} onRetry={() => void refetch()} retrying={isRefetching} />
+          <LoadError error={error} title={t('errors.loadItems')} onRetry={() => void refetch()} retrying={isRefetching} />
         ) : (
-          <ErrorState kind="notFound" message="This item may have been deleted." onRetry={() => router.back()} />
+          <ErrorState kind="notFound" message={t('add.notFound')} onRetry={() => router.back()} retryLabel={t('common.goBack')} />
         )}
       </Screen>
     );
@@ -74,6 +77,7 @@ export default function FashionAddScreen() {
 function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | null; defaultStatus: FashionStatus }) {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const saveMutation = useSaveFashionItem();
@@ -105,22 +109,22 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
   const notesRef = useRef<TextInput>(null);
 
   const parsedPrice = parseAmount(price);
-  const nameError = submitted && !name.trim() ? 'Enter a name for this item' : undefined;
-  const priceError = submitted && !parsedPrice.valid ? 'Enter an amount, like 2499 or 2499.50' : undefined;
+  const nameError = submitted && !name.trim() ? t('add.nameNeeded') : undefined;
+  const priceError = submitted && !parsedPrice.valid ? t('add.priceInvalid') : undefined;
 
   const pickImage = async (useCamera: boolean) => {
     setPhotoError(null);
     try {
       const permission = useCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        setPhotoError('Allow camera or photo access in your device settings to add a picture.');
+        setPhotoError(t('add.photoDenied'));
         return;
       }
       const options = { allowsEditing: true, aspect: [1, 1] as [number, number], quality: 0.8 };
       const result = useCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
       if (!result.canceled && result.assets[0]?.uri) setImageUrl(result.assets[0].uri);
     } catch {
-      setPhotoError("Couldn't open the photo picker. Try again.");
+      setPhotoError(t('add.photoFailed'));
     }
   };
 
@@ -155,17 +159,23 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
 
     saveMutation.mutate(payload, {
       onSuccess: () => {
-        notify.success(existingItem ? 'Changes saved' : status === 'wishlist' ? 'Added to your wishlist' : 'Added to your wardrobe');
+        analytics.track('fashion_item_saved', { mode: existingItem ? 'edit' : 'create' });
+        notify.success(existingItem ? t('add.saved') : status === 'wishlist' ? t('add.addedWishlist') : t('add.addedWardrobe'));
         router.back();
       },
       onError: (err) => {
-        setSaveError(err instanceof Error && err.message ? err.message : 'Could not save this item.');
-        notify.error(err);
+        const message = failureMessage(err, t('errors.saveItem'));
+        setSaveError(message);
+        notify.error(message);
       },
     });
   };
 
-  const saveLabel = existingItem ? 'Save changes' : status === 'wishlist' ? 'Add to wishlist' : 'Add to wardrobe';
+  const saveLabel = existingItem ? t('add.saveChanges') : status === 'wishlist' ? t('add.saveWishlist') : t('add.saveWardrobe');
+  const statusOptions: { value: 'wardrobe' | 'wishlist'; label: string }[] = [
+    { value: 'wardrobe', label: t('add.inWardrobe') },
+    { value: 'wishlist', label: t('add.onWishlist') },
+  ];
 
   return (
     <Screen
@@ -183,34 +193,34 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
           <Button title={saveLabel} leftIcon="checkmark" loading={saveMutation.isPending} onPress={handleSave} />
         </View>
       }>
-      <Stack.Screen options={{ title: existingItem ? 'Edit item' : 'Add item' }} />
+      <Stack.Screen options={{ title: existingItem ? t('add.titleEdit') : t('add.titleNew') }} />
 
-      {saveError ? <ErrorState size="inline" title="Couldn't save" message={saveError} /> : null}
+      {saveError ? <ErrorState size="inline" title={t('errors.saveTitle')} message={saveError} /> : null}
 
-      <Segmented options={STATUS_OPTIONS} value={status === 'wishlist' ? 'wishlist' : 'wardrobe'} onChange={setStatus} accessibilityLabel="Where this item lives" />
+      <Segmented options={statusOptions} value={status === 'wishlist' ? 'wishlist' : 'wardrobe'} onChange={setStatus} accessibilityLabel={t('add.where')} />
 
       <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="Photo" />
+        <SectionHeader title={t('add.photoTitle')} />
         {imageUrl ? (
           <View style={{ alignSelf: 'center', width: '60%', aspectRatio: 1 }}>
-            <FashionImage uri={imageUrl} style={{ flex: 1, borderRadius: radius.md }} iconSize={48} />
-            <View style={{ position: 'absolute', top: spacing.xs, right: spacing.xs }}>
-              <IconButton icon="trash-outline" variant="filled" destructive size="sm" accessibilityLabel="Remove photo" onPress={() => setImageUrl('')} />
+            <FashionImage uri={imageUrl} accessibilityLabel={t('add.photoSelected')} style={{ flex: 1, borderRadius: radius.md }} iconSize={48} />
+            <View style={{ position: 'absolute', top: spacing.xs, end: spacing.xs }}>
+              <IconButton icon="trash-outline" variant="filled" destructive size="sm" accessibilityLabel={t('add.removePhoto')} onPress={() => setImageUrl('')} />
             </View>
           </View>
         ) : (
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <View style={{ flex: 1 }}>
-              <Button title="Choose photo" variant="secondary" leftIcon="images-outline" onPress={() => pickImage(false)} />
+              <Button title={t('add.choosePhoto')} variant="secondary" leftIcon="images-outline" onPress={() => pickImage(false)} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button title="Take photo" variant="secondary" leftIcon="camera-outline" onPress={() => pickImage(true)} />
+              <Button title={t('add.takePhoto')} variant="secondary" leftIcon="camera-outline" onPress={() => pickImage(true)} />
             </View>
           </View>
         )}
         <Input
-          label="Or paste an image link"
-          placeholder="https://"
+          label={t('add.pasteLink')}
+          placeholder={URL_HINT}
           value={imageUrl}
           onChangeText={(value) => {
             setImageUrl(value);
@@ -229,8 +239,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
 
       <Card style={{ gap: spacing.lg }}>
         <Input
-          label="Item name"
-          placeholder="Linen blend overshirt"
+          label={t('add.nameLabel')}
+          placeholder={t('add.namePlaceholder')}
           value={name}
           onChangeText={setName}
           error={nameError}
@@ -241,8 +251,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
         />
         <Input
           ref={brandRef}
-          label="Brand or store"
-          placeholder="Zara, Uniqlo, Nike"
+          label={t('add.brandLabel')}
+          placeholder={t('add.brandPlaceholder')}
           value={brand}
           onChangeText={setBrand}
           autoCapitalize="words"
@@ -252,18 +262,20 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
         />
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Category</Text>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.category')}
+          </Text>
           <ChipGroup>
             {PIECE_CATEGORIES.map((cat) => (
-              <Chip key={cat} label={cat} accent="fashion" selected={category === cat} onPress={() => setCategory(cat)} />
+              <Chip key={cat} label={categoryLabel(cat)} accent="fashion" selected={category === cat} onPress={() => setCategory(cat)} />
             ))}
           </ChipGroup>
         </View>
 
         <Input
           ref={priceRef}
-          label="Price"
-          placeholder="2499"
+          label={t('add.priceLabel')}
+          placeholder={t('add.pricePlaceholder')}
           value={price}
           onChangeText={setPrice}
           error={priceError}
@@ -281,8 +293,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
           <Input
             ref={colorRef}
             containerStyle={{ flex: 1 }}
-            label="Colour"
-            placeholder="Navy"
+            label={t('add.colourLabel')}
+            placeholder={t('add.colourPlaceholder')}
             value={color}
             onChangeText={setColor}
             autoCapitalize="words"
@@ -293,8 +305,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
           <Input
             ref={sizeRef}
             containerStyle={{ flex: 1 }}
-            label="Size"
-            placeholder="M or 32"
+            label={t('add.sizeLabel')}
+            placeholder={t('add.sizePlaceholder')}
             value={size}
             onChangeText={setSize}
             autoCapitalize="characters"
@@ -308,10 +320,10 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
 
       {status === 'wardrobe' ? (
         <Card style={{ gap: spacing.md }}>
-          <SectionHeader title="Condition" subtitle="Items marked as needing a wash show up in the planner's laundry list." />
+          <SectionHeader title={t('add.conditionTitle')} subtitle={t('add.conditionHint')} />
           <ChipGroup>
             {CONDITIONS.map((cond) => (
-              <Chip key={cond.value} label={CONDITION_META[cond.value].label} accent="fashion" selected={condition === cond.value} onPress={() => setCondition(cond.value)} />
+              <Chip key={cond.value} label={conditionLabel(cond.value)} accent="fashion" selected={condition === cond.value} onPress={() => setCondition(cond.value)} />
             ))}
           </ChipGroup>
         </Card>
@@ -319,18 +331,22 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
 
       <Card style={{ gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Seasons</Text>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.seasons')}
+          </Text>
           <ChipGroup>
             {SEASONS.map((s) => (
-              <Chip key={s} label={s} accent="fashion" selected={selectedSeasons.includes(s)} onPress={() => toggleSeason(s)} />
+              <Chip key={s} label={seasonLabel(s)} accent="fashion" selected={selectedSeasons.includes(s)} onPress={() => toggleSeason(s)} />
             ))}
           </ChipGroup>
         </View>
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Occasions</Text>
+          <Text variant="label" accessibilityRole="header">
+            {t('add.occasions')}
+          </Text>
           <ChipGroup>
             {OCCASIONS.map((occ) => (
-              <Chip key={occ} label={occ} accent="fashion" selected={selectedOccasions.includes(occ)} onPress={() => toggleOccasion(occ)} />
+              <Chip key={occ} label={occasionLabel(occ)} accent="fashion" selected={selectedOccasions.includes(occ)} onPress={() => toggleOccasion(occ)} />
             ))}
           </ChipGroup>
         </View>
@@ -339,8 +355,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
       <Card style={{ gap: spacing.lg }}>
         <Input
           ref={linkRef}
-          label="Store link"
-          placeholder="https://myntra.com/..."
+          label={t('add.linkLabel')}
+          placeholder={t('add.linkPlaceholder')}
           value={buyingLink}
           onChangeText={setBuyingLink}
           keyboardType="url"
@@ -354,8 +370,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
         />
         <Input
           ref={notesRef}
-          label="Notes"
-          placeholder="Pairs with white sneakers, fits slightly oversized"
+          label={t('add.notesLabel')}
+          placeholder={t('add.notesPlaceholder')}
           value={notes}
           onChangeText={setNotes}
           multiline

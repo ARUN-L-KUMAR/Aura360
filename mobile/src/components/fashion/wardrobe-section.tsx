@@ -7,13 +7,16 @@ import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { SearchBar } from '@/components/ui/search-bar';
 import { Text } from '@/components/ui/text';
 import { CATEGORIES, type FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { categoryLabel } from './labels';
 import {
   GRID_COLUMNS,
   HeaderStack,
   RowSeparator,
   SpacerCell,
+  StaleNotice,
   gridColumnStyle,
   isSpacer,
   itemsGate,
@@ -36,6 +39,7 @@ type LaundryFilter = 'all' | 'clean' | 'needs_wash';
 const keyExtractor = (entry: GridEntry) => entry.id;
 
 export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }: WardrobeSectionProps) {
+  const { t } = useTranslation('fashion');
   const padding = useListPadding();
   const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
 
@@ -87,14 +91,14 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
 
   const empty = gate ?? (
     filtersActive && hasWardrobe ? (
-      <EmptyState variant="noResults" accent="fashion" description="Nothing in your wardrobe matches. Try another search or clear the filters." onClearFilters={clearFilters} />
+      <EmptyState variant="noResults" accent="fashion" description={t('wardrobe.noMatch')} onClearFilters={clearFilters} />
     ) : (
       <EmptyState
         icon="shirt-outline"
         accent="fashion"
-        title="Your wardrobe is empty"
-        description="Add shirts, jeans, sneakers and accessories to track what you own and how often you wear it."
-        actionTitle="Add an item"
+        title={t('wardrobe.emptyTitle')}
+        description={t('wardrobe.emptyBody')}
+        actionTitle={t('wardrobe.emptyAction')}
         onAction={onAddNew}
       />
     )
@@ -118,15 +122,16 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
       ListHeaderComponent={
         <HeaderStack>
           {header}
+          <StaleNotice state={state} />
           {!gate && hasWardrobe ? (
             <View style={{ gap: spacing.md }}>
-              <SearchBar value={search} onChangeText={setSearch} debounceMs={200} placeholder="Search by name, brand or colour" accessibilityLabel="Search wardrobe" returnKeyType="search" autoCorrect={false} />
+              <SearchBar value={search} onChangeText={setSearch} debounceMs={200} placeholder={t('wardrobe.search')} accessibilityLabel={t('wardrobe.searchA11y')} returnKeyType="search" autoCorrect={false} />
 
               <ChipRow>
                 {CATEGORIES.map((cat) => (
                   <Chip
                     key={cat}
-                    label={cat}
+                    label={categoryLabel(cat)}
                     accent="fashion"
                     selected={selectedCategory === cat}
                     count={cat === 'All' ? wardrobeItems.length : (categoryCounts.get(cat.toLowerCase()) ?? 0)}
@@ -136,14 +141,13 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
               </ChipRow>
 
               <ChipRow>
-                <Chip label="All" accent="fashion" selected={laundryFilter === 'all'} onPress={() => setLaundryFilter('all')} />
-                <Chip label="Clean" accent="fashion" selected={laundryFilter === 'clean'} count={wardrobeItems.length - needsWashCount} onPress={() => setLaundryFilter('clean')} />
-                <Chip label="Needs wash" accent="fashion" selected={laundryFilter === 'needs_wash'} count={needsWashCount} onPress={() => setLaundryFilter('needs_wash')} />
+                <Chip label={t('wardrobe.filterAll')} accent="fashion" selected={laundryFilter === 'all'} onPress={() => setLaundryFilter('all')} />
+                <Chip label={t('wardrobe.filterClean')} accent="fashion" selected={laundryFilter === 'clean'} count={wardrobeItems.length - needsWashCount} onPress={() => setLaundryFilter('clean')} />
+                <Chip label={t('wardrobe.filterWash')} accent="fashion" selected={laundryFilter === 'needs_wash'} count={needsWashCount} onPress={() => setLaundryFilter('needs_wash')} />
               </ChipRow>
 
               <Text variant="caption" weight="medium" color="textSecondary" accessibilityLiveRegion="polite">
-                {filteredItems.length} {filteredItems.length === 1 ? 'piece' : 'pieces'}
-                {filtersActive ? ' match your filters' : ' in your wardrobe'}
+                {filtersActive ? t('wardrobe.countFiltered', { count: filteredItems.length }) : t('wardrobe.count', { count: filteredItems.length })}
               </Text>
             </View>
           ) : null}

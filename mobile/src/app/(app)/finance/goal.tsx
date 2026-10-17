@@ -3,7 +3,9 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 
-import { FormCard, cleanAmount, failureMessage, parseAmount } from '@/components/finance/form-parts';
+import { failureMessage } from '@/components/finance/failure-message';
+import { FormCard, cleanAmount, parseAmount } from '@/components/finance/form-parts';
+import { categoryLabel } from '@/components/finance/labels';
 import { Button } from '@/components/ui/button';
 import { Card, readableOn } from '@/components/ui/card';
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
@@ -15,14 +17,16 @@ import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useDeleteGoal, useSaveGoal } from '@/features/finance/hooks';
 import { GOAL_CATEGORIES, GOAL_COLORS, type Goal } from '@/features/finance/types';
+import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, neutral, radius, spacing, tabularNums, useTheme } from '@/theme';
 
-/** Spoken names for the swatches in GOAL_COLORS, in the same order. */
-const COLOR_NAMES = ['Indigo', 'Green', 'Purple', 'Amber', 'Red', 'Pink', 'Teal'];
+/** Catalog keys for the spoken names of the swatches in GOAL_COLORS, in the same order. */
+const COLOR_NAME_KEYS = ['indigo', 'green', 'purple', 'amber', 'red', 'pink', 'teal'] as const;
 
 function parseGoal(raw?: string): Goal | null {
   try {
@@ -36,6 +40,7 @@ export default function GoalScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { colors } = useTheme();
+  const { t } = useTranslation('finance');
   const params = useLocalSearchParams<{ goal?: string }>();
   const existing = useMemo(() => parseGoal(params.goal), [params.goal]);
 
@@ -59,9 +64,9 @@ export default function GoalScreen() {
   const savedVal = Number.isFinite(savedValue) ? savedValue : 0;
   const progressPercent = targetVal > 0 ? Math.min(100, Math.round((savedVal / targetVal) * 100)) : 0;
 
-  const titleError = title.trim() ? null : 'Give your goal a name.';
-  const targetError = !Number.isFinite(targetValue) || targetValue <= 0 ? 'Enter a target amount greater than 0.' : null;
-  const savedError = !Number.isFinite(savedValue) ? 'Enter a valid amount.' : savedValue < 0 ? 'Saved amount cannot be negative.' : null;
+  const titleError = title.trim() ? null : t('goal.nameNeeded');
+  const targetError = !Number.isFinite(targetValue) || targetValue <= 0 ? t('goal.targetInvalid') : null;
+  const savedError = !Number.isFinite(savedValue) ? t('goal.savedInvalid') : savedValue < 0 ? t('goal.savedNegative') : null;
 
   async function submit() {
     setSubmitted(true);
@@ -83,69 +88,71 @@ export default function GoalScreen() {
           notes: notes.trim() || null,
         },
       });
-      notify.success(existing ? 'Goal updated' : 'Goal created');
+      analytics.track('goal_saved');
+      notify.success(existing ? t('goal.updated') : t('goal.created'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not save. Try again.'));
+      notify.error(failureMessage(e, t('errors.save')));
     }
   }
 
   async function confirmDelete() {
     if (!existing) return;
     const ok = await notify.confirm({
-      title: 'Delete goal?',
-      message: `"${existing.title}" will be removed.`,
-      confirmLabel: 'Delete',
+      title: t('goal.deleteTitle'),
+      message: t('goal.deleteMessage', { title: existing.title }),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       destructive: true,
     });
     if (!ok) return;
     try {
       await remove.mutateAsync(existing.id);
-      notify.success('Goal deleted');
+      notify.success(t('goal.deleted'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not delete. Try again.'));
+      notify.error(failureMessage(e, t('errors.delete')));
     }
   }
 
   const symbol = (
-    <Text variant="body" color="textSecondary">
+    <Text variant="body" color="textSecondary" accessibilityElementsHidden importantForAccessibility="no">
       {CURRENCY_SYMBOL}
     </Text>
   );
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit goal' : 'New goal' }} />
+      <Stack.Screen options={{ title: existing ? t('goal.titleEdit') : t('goal.titleNew') }} />
 
-      {/* Live preview of the goal card */}
-      <Card tintColor={color} style={{ gap: spacing.sm }}>
+      {/* Live preview of the goal card. It repeats what the fields below already say, so screen readers skip it. */}
+      <Card tintColor={color} style={{ gap: spacing.sm }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-          <Tag label={category} color={color} tone="accent" />
+          <Tag label={categoryLabel(category)} color={color} tone="accent" />
           <Text variant="title" numeric>
             {progressPercent}%
           </Text>
         </View>
         <Text variant="title" numberOfLines={1}>
-          {title.trim() || 'Goal name'}
+          {title.trim() || t('goal.namePlaceholder')}
         </Text>
         <ProgressBar percent={progressPercent} color={color} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
           <Text variant="caption" numeric color="textSecondary">
-            Saved: {formatMoney(savedVal)}
+            {t('goal.saved', { amount: formatMoney(savedVal) })}
           </Text>
           <Text variant="caption" numeric color="textSecondary">
-            Target: {formatMoney(targetVal)}
+            {t('goal.target', { amount: formatMoney(targetVal) })}
           </Text>
         </View>
       </Card>
 
       <FormCard>
         <Input
-          label="Goal name"
+          label={t('goal.nameLabel')}
           value={title}
           onChangeText={setTitle}
-          placeholder="e.g. Trip to Japan"
+          placeholder={t('goal.nameExample')}
           autoFocus={!existing}
           autoCapitalize="sentences"
           returnKeyType="next"
@@ -156,7 +163,7 @@ export default function GoalScreen() {
           <View style={{ flex: 1, minWidth: 150 }}>
             <Input
               ref={targetRef}
-              label="Target"
+              label={t('goal.targetLabel')}
               value={target}
               onChangeText={(text) => setTarget(cleanAmount(text))}
               leftAdornment={symbol}
@@ -172,7 +179,7 @@ export default function GoalScreen() {
           <View style={{ flex: 1, minWidth: 150 }}>
             <Input
               ref={savedRef}
-              label="Saved so far"
+              label={t('goal.savedLabel')}
               value={saved}
               onChangeText={(text) => setSaved(cleanAmount(text))}
               leftAdornment={symbol}
@@ -187,23 +194,24 @@ export default function GoalScreen() {
         </View>
       </FormCard>
 
-      <FormCard title="Category" icon="pricetags-outline">
+      <FormCard title={t('goal.category')} icon="pricetags-outline">
         <ChipGroup>
           {GOAL_CATEGORIES.map((name) => (
-            <Chip key={name} label={name} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
+            <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
           ))}
         </ChipGroup>
       </FormCard>
 
-      <FormCard title="Goal colour" icon="color-palette-outline">
-        <View accessibilityRole="radiogroup" accessibilityLabel="Goal colour" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+      <FormCard title={t('goal.colour')} icon="color-palette-outline">
+        <View accessibilityRole="radiogroup" accessibilityLabel={t('goal.colour')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           {GOAL_COLORS.map((value, i) => {
             const isSelected = color === value;
+            const nameKey = COLOR_NAME_KEYS[i];
             return (
               <PressableScale
                 key={value}
                 accessibilityRole="radio"
-                accessibilityLabel={COLOR_NAMES[i] ?? `Colour ${i + 1}`}
+                accessibilityLabel={nameKey ? t(`goal.colours.${nameKey}` as const) : t('goal.colours.fallback', { index: i + 1 })}
                 accessibilityState={{ checked: isSelected }}
                 haptic="select"
                 onPress={() => setColor(value)}
@@ -226,20 +234,20 @@ export default function GoalScreen() {
       </FormCard>
 
       <FormCard>
-        <DateField label="Target date (optional)" value={targetDate} onChange={setTargetDate} clearable placeholder="No deadline" minimumDate={new Date()} />
+        <DateField label={t('goal.dateLabel')} value={targetDate} onChange={setTargetDate} clearable placeholder={t('goal.dateNone')} minimumDate={new Date()} />
         <Input
-          label="Notes (optional)"
+          label={t('goal.notesLabel')}
           value={notes}
           onChangeText={setNotes}
           multiline
           autoCapitalize="sentences"
-          placeholder="Why are you saving for this?"
+          placeholder={t('goal.notesPlaceholder')}
           style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: spacing.md }}
         />
       </FormCard>
 
-      <Button title={existing ? 'Save changes' : 'Create goal'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete goal" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <Button title={existing ? t('goal.saveChanges') : t('goal.create')} onPress={submit} loading={save.isPending} />
+      {existing ? <Button title={t('goal.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );
 }

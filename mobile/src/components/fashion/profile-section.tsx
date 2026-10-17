@@ -1,6 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { View, type TextInput } from 'react-native';
 
+import { failureMessage } from '@/components/finance/failure-message';
+import { RefreshError } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChipGroup, Chip } from '@/components/ui/chip';
@@ -13,8 +15,10 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useFashionProfile, useSaveFashionProfile } from '@/features/fashion/hooks';
 import type { FashionProfileData } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
 import { layout, spacing } from '@/theme';
+import { fitLabel, styleLabel } from './labels';
 import { parseAmount, useListPadding } from './shared';
 
 interface ProfileSectionProps {
@@ -22,29 +26,27 @@ interface ProfileSectionProps {
 }
 
 const STYLE_OPTIONS = ['Minimalist', 'Streetwear', 'Old money', 'Smart casual', 'Athleisure', 'Classic or formal', 'Vintage', 'Monochrome'];
-const FIT_OPTIONS = ['Slim', 'Regular', 'Relaxed', 'Oversized'].map((fit) => ({ value: fit, label: fit }));
-const UNIT_OPTIONS: { value: Unit; label: string }[] = [
-  { value: 'cm', label: 'cm' },
-  { value: 'in', label: 'in' },
-];
+/** Stored values; labels are looked up where they are drawn. */
+const FIT_VALUES = ['Slim', 'Regular', 'Relaxed', 'Oversized'];
 const SHOE_SYSTEMS = (['UK', 'US', 'EU'] as const).map((s) => ({ value: s, label: s }));
 
 type Unit = 'cm' | 'in';
 type Measure = 'height' | 'chest' | 'waist' | 'shoulders' | 'inseam' | 'neck' | 'weight';
 
-const MEASURES: { key: Measure; label: string; cm: string; inch: string }[] = [
-  { key: 'height', label: 'Height', cm: '178', inch: '70' },
-  { key: 'chest', label: 'Chest', cm: '100', inch: '40' },
-  { key: 'waist', label: 'Waist', cm: '82', inch: '32' },
-  { key: 'shoulders', label: 'Shoulders', cm: '46', inch: '18' },
-  { key: 'inseam', label: 'Inseam', cm: '78', inch: '30' },
-  { key: 'neck', label: 'Neck', cm: '39', inch: '15' },
+const MEASURES: { key: Exclude<Measure, 'weight'>; cm: string; inch: string }[] = [
+  { key: 'height', cm: '178', inch: '70' },
+  { key: 'chest', cm: '100', inch: '40' },
+  { key: 'waist', cm: '82', inch: '32' },
+  { key: 'shoulders', cm: '46', inch: '18' },
+  { key: 'inseam', cm: '78', inch: '30' },
+  { key: 'neck', cm: '39', inch: '15' },
 ];
 
 const text = (value: unknown) => (value ? String(value) : '');
 
 export function ProfileSection({ header }: ProfileSectionProps) {
   const profileQuery = useFashionProfile();
+  const { t } = useTranslation('fashion');
   const { paddingBottom } = useListPadding();
   const { data: profile, isPending, isError, error, refetch, isRefetching } = profileQuery;
 
@@ -62,7 +64,13 @@ export function ProfileSection({ header }: ProfileSectionProps) {
   } else {
     body = (
       <>
-        {loadError ? <ErrorState size="inline" error={loadError} onRetry={() => void refetch()} retrying={isRefetching} /> : null}
+        {loadError ? (
+          profile ? (
+            <RefreshError error={loadError} onRetry={() => void refetch()} retrying={isRefetching} />
+          ) : (
+            <ErrorState size="inline" error={loadError} title={errorKindFromError(loadError) === 'generic' ? t('errors.loadItems') : undefined} onRetry={() => void refetch()} retrying={isRefetching} />
+          )
+        ) : null}
         {/* Remount with fresh values whenever the saved profile changes on the server. */}
         <ProfileForm key={JSON.stringify(profile ?? null)} profile={profile} />
       </>
@@ -79,6 +87,7 @@ export function ProfileSection({ header }: ProfileSectionProps) {
 
 function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const saveProfile = useSaveFashionProfile();
 
   const [unit, setUnit] = useState<Unit>('cm');
@@ -108,13 +117,19 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
   const setMeasure = (key: Measure, value: string) => setMeasures((prev) => ({ ...prev, [key]: value }));
   const toggleStyleTag = (tag: string) => setStyleTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
 
+  const unitOptions: { value: Unit; label: string }[] = [
+    { value: 'cm', label: t('profile.units.cm') },
+    { value: 'in', label: t('profile.units.in') },
+  ];
+  const fitOptions = FIT_VALUES.map((fit) => ({ value: fit, label: fitLabel(fit) }));
+
   const parsed = Object.fromEntries(Object.entries(measures).map(([key, value]) => [key, parseAmount(value)])) as Record<Measure, ReturnType<typeof parseAmount>>;
   const hasInvalid = Object.values(parsed).some((p) => !p.valid);
 
   const handleSave = () => {
     if (hasInvalid) {
       setShowErrors(true);
-      notify.warning('Check the highlighted measurements');
+      notify.warning(t('profile.checkMeasures'));
       return;
     }
     const payload: FashionProfileData = {
@@ -135,23 +150,23 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
       styleTags,
     };
     saveProfile.mutate(payload, {
-      onSuccess: () => notify.success('Fit profile saved'),
-      onError: (err) => notify.error(err),
+      onSuccess: () => notify.success(t('profile.saved')),
+      onError: (err) => notify.error(failureMessage(err, t('errors.saveProfile'))),
     });
   };
 
-  const measureError = (key: Measure) => (showErrors && !parsed[key].valid ? 'Enter a number, like 70 or 70.5' : undefined);
+  const measureError = (key: Measure) => (showErrors && !parsed[key].valid ? t('profile.measureInvalid') : undefined);
 
   return (
     <>
       <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title="Standard sizes" subtitle="The sizes you usually buy." />
+        <SectionHeader title={t('profile.sizesTitle')} subtitle={t('profile.sizesHint')} />
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Input
             ref={sizeTopRef}
             containerStyle={{ flex: 1 }}
-            label="Top size"
-            placeholder="M, L or 40"
+            label={t('profile.topSize')}
+            placeholder={t('profile.topPlaceholder')}
             value={sizeTop}
             onChangeText={setSizeTop}
             autoCapitalize="characters"
@@ -163,8 +178,8 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
           <Input
             ref={sizeBottomRef}
             containerStyle={{ flex: 1 }}
-            label="Bottom size"
-            placeholder="32 or 34"
+            label={t('profile.bottomSize')}
+            placeholder={t('profile.bottomPlaceholder')}
             value={sizeBottom}
             onChangeText={setSizeBottom}
             autoCapitalize="characters"
@@ -176,12 +191,14 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Shoe size system</Text>
-          <Segmented options={SHOE_SYSTEMS} value={shoeSystem} onChange={setShoeSystem} accessibilityLabel="Shoe size system" />
+          <Text variant="label" accessibilityRole="header">
+            {t('profile.shoeSystem')}
+          </Text>
+          <Segmented options={SHOE_SYSTEMS} value={shoeSystem} onChange={setShoeSystem} accessibilityLabel={t('profile.shoeSystem')} />
           <Input
             ref={sizeShoesRef}
-            label="Shoe size"
-            placeholder={`8.5 or 9 (${shoeSystem})`}
+            label={t('profile.shoeSize')}
+            placeholder={t('profile.shoePlaceholder', { system: shoeSystem })}
             value={sizeShoes}
             onChangeText={setSizeShoes}
             autoCorrect={false}
@@ -192,18 +209,22 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Preferred fit for tops</Text>
-          <Segmented options={FIT_OPTIONS} value={preferredFitTop} onChange={setPreferredFitTop} accessibilityLabel="Preferred fit for tops" />
+          <Text variant="label" accessibilityRole="header">
+            {t('profile.fitTop')}
+          </Text>
+          <Segmented options={fitOptions} value={preferredFitTop} onChange={setPreferredFitTop} accessibilityLabel={t('profile.fitTop')} />
         </View>
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label">Preferred fit for bottoms</Text>
-          <Segmented options={FIT_OPTIONS} value={preferredFitBottom} onChange={setPreferredFitBottom} accessibilityLabel="Preferred fit for bottoms" />
+          <Text variant="label" accessibilityRole="header">
+            {t('profile.fitBottom')}
+          </Text>
+          <Segmented options={fitOptions} value={preferredFitBottom} onChange={setPreferredFitBottom} accessibilityLabel={t('profile.fitBottom')} />
         </View>
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title="Body measurements" subtitle="Used for size suggestions when you shop." />
-        <Segmented options={UNIT_OPTIONS} value={unit} onChange={setUnit} accessibilityLabel="Measurement unit" />
+        <SectionHeader title={t('profile.measuresTitle')} subtitle={t('profile.measuresHint')} />
+        <Segmented options={unitOptions} value={unit} onChange={setUnit} accessibilityLabel={t('profile.unit')} />
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           {MEASURES.map((m, index) => (
@@ -212,7 +233,7 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
                 ref={(el) => {
                   measureRefs.current[index] = el;
                 }}
-                label={`${m.label} (${unit})`}
+                label={t('profile.measureLabel', { measure: t(`profile.measures.${m.key}` as const), unit: t(`profile.units.${unit}` as const) })}
                 placeholder={unit === 'cm' ? m.cm : m.inch}
                 value={measures[m.key]}
                 onChangeText={(value) => setMeasure(m.key, value)}
@@ -228,16 +249,16 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
       </Card>
 
       <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="Style" subtitle="Pick the looks you gravitate towards." />
+        <SectionHeader title={t('profile.styleTitle')} subtitle={t('profile.styleHint')} />
         <ChipGroup>
           {STYLE_OPTIONS.map((tag) => (
-            <Chip key={tag} label={tag} accent="fashion" selected={styleTags.includes(tag)} onPress={() => toggleStyleTag(tag)} />
+            <Chip key={tag} label={styleLabel(tag)} accent="fashion" selected={styleTags.includes(tag)} onPress={() => toggleStyleTag(tag)} />
           ))}
         </ChipGroup>
       </Card>
 
       <View style={{ marginTop: layout.itemGap }}>
-        <Button title="Save fit profile" leftIcon="checkmark" loading={saveProfile.isPending} onPress={handleSave} />
+        <Button title={t('profile.save')} leftIcon="checkmark" loading={saveProfile.isPending} onPress={handleSave} />
       </View>
     </>
   );

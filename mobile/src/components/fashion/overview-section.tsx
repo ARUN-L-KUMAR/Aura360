@@ -2,10 +2,10 @@ import { useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { LoadError, OfflineState } from '@/components/finance/load-error';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
 import { ListItem } from '@/components/ui/list-item';
 import { useBlockMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
@@ -14,10 +14,11 @@ import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
 import { Text } from '@/components/ui/text';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { layout, spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
-import { GRID_COLUMNS, GRID_GAP, SkeletonGrid, useListPadding, type ItemsState } from './shared';
+import { GRID_COLUMNS, GRID_GAP, SkeletonGrid, StaleNotice, useListPadding, type ItemsState } from './shared';
 
 interface OverviewSectionProps {
   items: FashionItem[];
@@ -49,9 +50,10 @@ function CardRows({ items, onSelectItem }: { items: FashionItem[]; onSelectItem:
 }
 
 function OverviewSkeleton() {
+  const { t } = useTranslation('fashion');
   return (
     <>
-      <SkeletonGroup label="Loading wardrobe summary" style={{ gap: spacing.md }}>
+      <SkeletonGroup label={t('loading.summary')} style={{ gap: spacing.md }}>
         <Skeleton height={layout.minTouchTarget * 2.5} rounded="lg" />
         <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
           <View style={{ flex: 1 }}>
@@ -68,6 +70,7 @@ function OverviewSkeleton() {
 }
 
 export function OverviewSection({ items, state, header, onSelectItem, onAddNew, onGoToWardrobe, onGoToWishlist, onGoToLaundry }: OverviewSectionProps) {
+  const { t } = useTranslation('fashion');
   const blockMotion = useBlockMotion();
   const { paddingBottom } = useListPadding();
 
@@ -85,17 +88,17 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
   if (state.loading) {
     body = <OverviewSkeleton />;
   } else if (state.error) {
-    body = <ErrorState error={state.error} onRetry={state.refetch} retrying={state.refreshing} />;
+    body = <LoadError error={state.error} title={t('errors.loadItems')} onRetry={state.refetch} retrying={state.refreshing} />;
   } else if (state.offline) {
-    body = <EmptyState variant="offline" description="Connect to the internet to load your wardrobe." actionTitle="Try again" onAction={state.refetch} />;
+    body = <OfflineState description={t('offline.wardrobe')} onRetry={state.refetch} />;
   } else if (items.length === 0) {
     body = (
       <EmptyState
         icon="shirt-outline"
         accent="fashion"
-        title="Start your wardrobe"
-        description="Add the pieces you own to see their value, how often you wear them and what needs washing."
-        actionTitle="Add your first item"
+        title={t('overview.emptyTitle')}
+        description={t('overview.emptyBody')}
+        actionTitle={t('overview.emptyAction')}
         onAction={onAddNew}
       />
     );
@@ -105,33 +108,33 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
         <Card variant="tinted" accent="fashion" gradient="fashion" padding="md" style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
             <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
-              Wardrobe value
+              {t('overview.valueTitle')}
             </Text>
-            <Tag label={`${wardrobeItems.length} ${wardrobeItems.length === 1 ? 'item' : 'items'}`} accent="fashion" />
+            <Tag label={t('overview.itemCount', { count: wardrobeItems.length })} accent="fashion" />
           </View>
-          <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={`Wardrobe value ${formatMoney(wardrobeValuation)}`}>
+          <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={t('overview.valueA11y', { amount: formatMoney(wardrobeValuation) })}>
             {formatMoney(wardrobeValuation)}
           </Text>
           <Text variant="caption" color="textSecondary">
-            Estimated total of the pieces you own.
+            {t('overview.valueHint')}
           </Text>
         </Card>
 
         <View style={{ gap: GRID_GAP }}>
           <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
             <View style={{ flex: 1 }}>
-              <StatCard label="Wardrobe" value={wardrobeItems.length} icon="shirt-outline" accent="fashion" onPress={onGoToWardrobe} />
+              <StatCard label={t('overview.wardrobe')} value={wardrobeItems.length} icon="shirt-outline" accent="fashion" onPress={onGoToWardrobe} />
             </View>
             <View style={{ flex: 1 }}>
-              <StatCard label="Wishlist" value={wishlistItems.length} icon="heart-outline" accent="fashion" onPress={onGoToWishlist} />
+              <StatCard label={t('overview.wishlist')} value={wishlistItems.length} icon="heart-outline" accent="fashion" onPress={onGoToWishlist} />
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
             <View style={{ flex: 1 }}>
-              <StatCard label="Total wears" value={totalWears} icon="sparkles-outline" accent="fashion" />
+              <StatCard label={t('overview.totalWears')} value={totalWears} icon="sparkles-outline" accent="fashion" />
             </View>
             <View style={{ flex: 1 }}>
-              <StatCard label="Categories" value={categoryCount} icon="grid-outline" accent="fashion" />
+              <StatCard label={t('overview.categories')} value={categoryCount} icon="grid-outline" accent="fashion" />
             </View>
           </View>
         </View>
@@ -139,26 +142,26 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
         {laundryItems.length > 0 ? (
           <Card padding="none" variant="outlined">
             <ListItem
-              title="Laundry"
-              subtitle={`${laundryItems.length} ${laundryItems.length === 1 ? 'piece needs' : 'pieces need'} washing`}
+              title={t('overview.laundry')}
+              subtitle={t('overview.laundryCount', { count: laundryItems.length })}
               icon="water-outline"
               accent="fashion"
               onPress={onGoToLaundry}
-              accessibilityHint="Opens the planner"
+              accessibilityHint={t('overview.laundryHint')}
             />
           </Card>
         ) : null}
 
         {mostWornItems.length > 0 ? (
           <View style={{ gap: spacing.md }}>
-            <SectionHeader title="Most worn" actionLabel="View all" actionAccessibilityLabel="View all wardrobe items" onActionPress={onGoToWardrobe} />
+            <SectionHeader title={t('overview.mostWorn')} actionLabel={t('overview.viewAll')} actionAccessibilityLabel={t('overview.viewAllA11y')} onActionPress={onGoToWardrobe} />
             <CardRows items={mostWornItems} onSelectItem={onSelectItem} />
           </View>
         ) : null}
 
         {recentItems.length > 0 ? (
           <View style={{ gap: spacing.md }}>
-            <SectionHeader title="Recent additions" />
+            <SectionHeader title={t('overview.recent')} />
             <CardRows items={recentItems} onSelectItem={onSelectItem} />
           </View>
         ) : null}
@@ -169,6 +172,7 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
   return (
     <Screen onRefresh={state.refetch} refreshing={state.refreshing} contentContainerStyle={{ paddingBottom }}>
       {header}
+      <StaleNotice state={state} />
       {body}
     </Screen>
   );

@@ -1,1 +1,40 @@
-{}
+{
+  "sections": {
+    "morning": "Morning ({{n}})",
+    "evening": "Evening ({{n}})",
+    "shelf": "Shelf ({{n}})"
+  },
+  "hero": {
+    "morningTitle": "Morning routine",
+    "eveningTitle": "Evening routine",
+    "doneCount": "{{done}} of {{total}} done",
+    "morningProgress": "Morning routine progress",
+    "eveningProgress": "Evening routine progress",
+    "complete": "Routine complete. Nice work.",
+    "remaining_one": "{{count}} step to go",
+    "remaining_other": "{{count}} steps to go"
+  },
+  "errors": {
+    "load": "Couldn't load your products"
+  },
+  "offline": "Connect to the internet to load your products.",
+  "empty": {
+    "shelfTitle": "Your shelf is empty",
+    "shelfBody": "Add cleansers, serums, moisturisers or SPF on the Aura360 web app and they will show up here.",
+    "refresh": "Refresh",
+    "morningTitle": "No morning steps yet",
+    "eveningTitle": "No evening steps yet",
+    "routineBody": "Products set to this routine appear here, in the order you chose.",
+    "viewShelf": "View shelf"
+  },
+  "product": {
+    "rated": "rated {{rating}}",
+    "stepLabel": "Step {{step}}, {{name}}",
+    "stepLabelDetail": "Step {{step}}, {{name}}, {{detail}}",
+    "markDone": "Marks this step as done",
+    "markNotDone": "Marks this step as not done",
+    "needToBuy": "Need to buy",
+    "finished": "Finished",
+    "shelfLabelDetail": "{{name}}, {{detail}}"
+  }
+}

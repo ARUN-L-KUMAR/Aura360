@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Linking, View } from 'react-native';
 
+import { failureMessage } from '@/components/finance/failure-message';
 import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,13 @@ import { Tag } from '@/components/ui/chip';
 import { Text } from '@/components/ui/text';
 import { useDeleteFashionItem, useLogItemWear, useUpdateItemStatus } from '@/features/fashion/hooks';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
-import { errorMessage } from '@/lib/notify';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
 import { conditionMeta } from './condition';
+import { categoryLabel, occasionLabel, seasonLabel, statusLabel } from './labels';
 import { FashionImage } from './shared';
 
 interface ItemDetailSheetProps {
@@ -27,21 +29,15 @@ interface ItemDetailSheetProps {
   onEdit: (item: FashionItem) => void;
 }
 
-const STATUS_LABEL: Record<FashionItem['status'], string> = {
-  wardrobe: 'Wardrobe',
-  wishlist: 'Wishlist',
-  sold: 'Sold',
-  donated: 'Donated',
-};
-
 /** Item details as a bottom sheet: peeks at 70%, drags up to 92%. */
 export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps) {
+  const { t } = useTranslation('fashion');
   // Keep the last item on screen while the sheet slides away.
   const [shown, setShown] = useState<FashionItem | null>(item);
   if (item && item !== shown) setShown(item);
   const current = item ?? shown;
 
-  const subtitle = current ? [current.brand, current.category].filter(Boolean).join(' · ') : '';
+  const subtitle = current ? [current.brand, categoryLabel(current.category)].filter(Boolean).join(' · ') : '';
 
   return (
     <BottomSheet
@@ -49,7 +45,7 @@ export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps)
       onClose={onClose}
       snapPoints={['70%', '92%']}
       scrollable
-      accessibilityLabel={current ? `${current.name}, item details` : 'Item details'}
+      accessibilityLabel={current ? t('detail.sheetLabel', { name: current.name }) : t('detail.sheetLabelFallback')}
       header={
         current ? (
           <View style={{ gap: spacing.xs }}>
@@ -71,14 +67,16 @@ export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps)
 
 function SpecRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.lg }}>
+    <View accessible style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.lg }}>
       <Text variant="body" color="textSecondary">
         {label}
       </Text>
       {typeof children === 'string' ? (
-        <Text variant="body" weight="medium" style={{ flex: 1, textAlign: 'right' }}>
-          {children}
-        </Text>
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <Text variant="body" weight="medium">
+            {children}
+          </Text>
+        </View>
       ) : (
         children
       )}
@@ -88,6 +86,7 @@ function SpecRow({ label, children }: { label: string; children: ReactNode }) {
 
 function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: FashionItem }) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('fashion');
   const notify = useNotify();
   const [photoIndex, setPhotoIndex] = useState(0);
   // Toasts sit behind an open sheet, so failures are shown here.
@@ -104,13 +103,13 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
   const wearCount = item.wearCount ?? 0;
   const costPerWear = priceNum > 0 ? (wearCount > 0 ? priceNum / wearCount : priceNum) : null;
   const buyingLink = item.metadata?.buyingLink as string | undefined;
-  const platform = (item.metadata?.platform as string | undefined) || 'store';
+  const platform = (item.metadata?.platform as string | undefined) || t('detail.store');
   const condition = conditionMeta(item.condition);
   const isWardrobe = item.status === 'wardrobe';
 
-  const fail = (err: unknown) => {
+  const fail = (err: unknown, fallback = t('errors.update')) => {
     haptics.error();
-    setFailure(errorMessage(err));
+    setFailure(failureMessage(err, fallback));
   };
 
   const handleToggleStatus = () => {
@@ -120,10 +119,10 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
       { id: item.id, status: nextStatus },
       {
         onSuccess: () => {
-          notify.success(`Moved to your ${nextStatus}`);
+          notify.success(nextStatus === 'wishlist' ? t('detail.movedWishlist') : t('detail.movedWardrobe'));
           onClose();
         },
-        onError: fail,
+        onError: (err) => fail(err),
       },
     );
   };
@@ -135,9 +134,9 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
       {
         onSuccess: () => {
           haptics.success();
-          AccessibilityInfo.announceForAccessibility(`Wear logged. Worn ${wearCount + 1} times.`);
+          AccessibilityInfo.announceForAccessibility(t('detail.wearLogged', { count: wearCount + 1 }));
         },
-        onError: fail,
+        onError: (err) => fail(err),
       },
     );
   };
@@ -145,34 +144,35 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
   const handleDelete = async () => {
     setFailure(null);
     const confirmed = await notify.confirm({
-      title: 'Delete this item?',
-      message: `"${item.name}" will be removed from your ${isWardrobe ? 'wardrobe' : 'list'}. This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('detail.deleteTitle'),
+      message: isWardrobe ? t('detail.deleteWardrobe', { name: item.name }) : t('detail.deleteList', { name: item.name }),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       destructive: true,
     });
     if (!confirmed) return;
     deleteMutation.mutate(item.id, {
       onSuccess: () => {
-        notify.success(`Deleted "${item.name}"`);
+        notify.success(t('detail.deleted', { name: item.name }));
         onClose();
       },
-      onError: fail,
+      onError: (err) => fail(err, t('errors.delete')),
     });
   };
 
   const handleOpenLink = () => {
     if (!buyingLink) return;
     setFailure(null);
-    Linking.openURL(buyingLink).catch(() => setFailure("That link couldn't be opened. Check the address in the item's details."));
+    Linking.openURL(buyingLink).catch(() => setFailure(t('errors.link')));
   };
 
   return (
     <View style={{ gap: spacing.lg, paddingTop: spacing.sm }}>
-      {failure ? <ErrorState size="inline" title="That didn't work" message={failure} /> : null}
+      {failure ? <ErrorState size="inline" title={t('errors.failTitle')} message={failure} /> : null}
 
       {photos.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
-          <FashionImage uri={activePhoto} style={{ width: '100%', aspectRatio: 3 / 2, borderRadius: radius.lg }} iconSize={48} />
+          <FashionImage uri={activePhoto} accessibilityLabel={t('detail.photo', { name: item.name })} style={{ width: '100%', aspectRatio: 3 / 2, borderRadius: radius.lg }} iconSize={48} />
           {photos.length > 1 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {photos.map((uri, i) => {
@@ -181,7 +181,7 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
                   <PressableScale
                     key={uri}
                     accessibilityRole="button"
-                    accessibilityLabel={`Photo ${i + 1} of ${photos.length}`}
+                    accessibilityLabel={t('detail.photoPick', { index: i + 1, total: photos.length })}
                     accessibilityState={{ selected }}
                     haptic="select"
                     onPress={() => setPhotoIndex(i)}
@@ -203,52 +203,52 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
       ) : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-        <Tag label={STATUS_LABEL[item.status]} accent={isWardrobe ? 'fashion' : undefined} size="md" />
+        <Tag label={statusLabel(item.status)} accent={isWardrobe ? 'fashion' : undefined} size="md" />
         {condition ? <Badge severity={condition.severity} icon={condition.icon} label={condition.label} /> : null}
       </View>
 
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
-          <StatCard label="Price" value={priceNum > 0 ? formatMoney(priceNum) : '—'} />
+          <StatCard label={t('detail.price')} value={priceNum > 0 ? formatMoney(priceNum) : '—'} />
         </View>
         <View style={{ flex: 1 }}>
-          <StatCard label="Worn" value={`${wearCount}x`} accent="fashion" />
+          <StatCard label={t('detail.worn')} value={t('detail.wornCount', { n: wearCount })} accent="fashion" />
         </View>
         {costPerWear !== null ? (
           <View style={{ flex: 1 }}>
-            <StatCard label="Per wear" value={formatMoney(costPerWear)} />
+            <StatCard label={t('detail.perWear')} value={formatMoney(costPerWear)} />
           </View>
         ) : null}
       </View>
 
       <View style={{ gap: spacing.sm }}>
-        {isWardrobe ? <Button title="Worn today" leftIcon="sparkles" loading={logWear.isPending} onPress={handleLogWear} accessibilityHint="Adds one to the wear count" /> : null}
+        {isWardrobe ? <Button title={t('detail.wearToday')} leftIcon="sparkles" loading={logWear.isPending} onPress={handleLogWear} accessibilityHint={t('detail.wearHint')} /> : null}
         <Button
-          title={isWardrobe ? 'Move to wishlist' : 'Move to wardrobe'}
+          title={isWardrobe ? t('detail.toWishlist') : t('detail.toWardrobe')}
           variant="secondary"
           leftIcon={isWardrobe ? 'bookmark-outline' : 'shirt-outline'}
           loading={updateStatus.isPending}
           onPress={handleToggleStatus}
         />
-        {buyingLink ? <Button title={`View in ${platform}`} variant="tertiary" leftIcon="cart-outline" rightIcon="open-outline" onPress={handleOpenLink} /> : null}
+        {buyingLink ? <Button title={t('detail.viewIn', { platform })} variant="tertiary" leftIcon="cart-outline" rightIcon="open-outline" onPress={handleOpenLink} /> : null}
       </View>
 
       <Card padding="sm" style={{ gap: spacing.md }}>
         <Text variant="title" accessibilityRole="header">
-          Details
+          {t('detail.detailsTitle')}
         </Text>
-        <SpecRow label="Category">{item.subcategory ? `${item.category} · ${item.subcategory}` : item.category}</SpecRow>
-        {item.color ? <SpecRow label="Colour">{item.color}</SpecRow> : null}
-        {item.size ? <SpecRow label="Size">{item.size}</SpecRow> : null}
-        {condition ? <SpecRow label="Condition">{condition.label}</SpecRow> : null}
-        {item.season && item.season.length > 0 ? <SpecRow label="Season">{item.season.join(', ')}</SpecRow> : null}
-        {item.occasion && item.occasion.length > 0 ? <SpecRow label="Occasion">{item.occasion.join(', ')}</SpecRow> : null}
+        <SpecRow label={t('detail.category')}>{item.subcategory ? `${categoryLabel(item.category)} · ${item.subcategory}` : categoryLabel(item.category)}</SpecRow>
+        {item.color ? <SpecRow label={t('detail.colour')}>{item.color}</SpecRow> : null}
+        {item.size ? <SpecRow label={t('detail.size')}>{item.size}</SpecRow> : null}
+        {condition ? <SpecRow label={t('detail.condition')}>{condition.label}</SpecRow> : null}
+        {item.season && item.season.length > 0 ? <SpecRow label={t('detail.season')}>{item.season.map(seasonLabel).join(', ')}</SpecRow> : null}
+        {item.occasion && item.occasion.length > 0 ? <SpecRow label={t('detail.occasion')}>{item.occasion.map(occasionLabel).join(', ')}</SpecRow> : null}
       </Card>
 
       {item.notes || item.description ? (
         <Card padding="sm" style={{ gap: spacing.sm }}>
           <Text variant="title" accessibilityRole="header">
-            Notes
+            {t('detail.notesTitle')}
           </Text>
           <Text variant="body" color="textSecondary">
             {item.notes || item.description}
@@ -259,7 +259,7 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
         <View style={{ flex: 1 }}>
           <Button
-            title="Edit"
+            title={t('detail.edit')}
             variant="secondary"
             leftIcon="pencil-outline"
             onPress={() => {
@@ -269,7 +269,7 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Button title="Delete" variant="destructive" leftIcon="trash-outline" loading={deleteMutation.isPending} onPress={handleDelete} />
+          <Button title={t('detail.delete')} variant="destructive" leftIcon="trash-outline" loading={deleteMutation.isPending} onPress={handleDelete} />
         </View>
       </View>
     </View>

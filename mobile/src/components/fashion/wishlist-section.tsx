@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
@@ -12,6 +13,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useUpdateItemStatus } from '@/features/fashion/hooks';
 import type { FashionItem } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
@@ -21,6 +23,7 @@ import {
   HeaderStack,
   RowSeparator,
   SpacerCell,
+  StaleNotice,
   gridColumnStyle,
   isSpacer,
   itemsGate,
@@ -44,18 +47,19 @@ type CellProps = { item: FashionItem; busy: boolean; onSelect: (item: FashionIte
 
 const WishlistCell = memo(function WishlistCell({ item, busy, onSelect, onBought }: CellProps) {
   // Grid cell: fade out when bought / removed, but no layout animation (two-column cells reflow instantly).
+  const { t } = useTranslation('fashion');
   const motion = useListMotion();
   const exiting = 'exiting' in motion ? motion.exiting : undefined;
   return (
     <Animated.View exiting={exiting} style={{ flex: 1, gap: spacing.sm }}>
       <FashionCard item={item} onPress={onSelect} />
       <Button
-        title="I bought this"
+        title={t('wishlist.bought')}
         variant="secondary"
         size="sm"
         leftIcon="bag-check-outline"
         loading={busy}
-        accessibilityLabel={`I bought ${item.name}`}
+        accessibilityLabel={t('wishlist.boughtA11y', { name: item.name })}
         onPress={() => onBought(item)}
       />
     </Animated.View>
@@ -64,6 +68,7 @@ const WishlistCell = memo(function WishlistCell({ item, busy, onSelect, onBought
 
 export function WishlistSection({ items, state, header, onSelectItem, onAddNew }: WishlistSectionProps) {
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const padding = useListPadding();
   const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
   const updateStatus = useUpdateItemStatus();
@@ -85,16 +90,19 @@ export function WishlistSection({ items, state, header, onSelectItem, onAddNew }
         {
           onSuccess: () => {
             notify.toast({
-              message: `"${item.name}" moved to your wardrobe`,
+              message: t('wishlist.moved', { name: item.name }),
               severity: 'success',
-              action: { label: 'Undo', onPress: () => mutate({ id: item.id, status: 'wishlist' }) },
+              action: {
+                label: t('common.undo'),
+                onPress: () => mutate({ id: item.id, status: 'wishlist' }, { onError: (err) => notify.error(failureMessage(err, t('errors.update'))) }),
+              },
             });
           },
-          onError: (err) => notify.error(err),
+          onError: (err) => notify.error(failureMessage(err, t('errors.update'))),
         },
       );
     },
-    [mutate, notify],
+    [mutate, notify, t],
   );
 
   const gate = itemsGate(state);
@@ -110,9 +118,9 @@ export function WishlistSection({ items, state, header, onSelectItem, onAddNew }
       <EmptyState
         icon="heart-outline"
         accent="fashion"
-        title="Your wishlist is empty"
-        description="Save pieces you plan to buy. Add a price and a store link to keep track of them."
-        actionTitle="Add to wishlist"
+        title={t('wishlist.emptyTitle')}
+        description={t('wishlist.emptyBody')}
+        actionTitle={t('wishlist.emptyAction')}
         onAction={onAddNew}
       />
     );
@@ -133,23 +141,24 @@ export function WishlistSection({ items, state, header, onSelectItem, onAddNew }
       ListHeaderComponent={
         <HeaderStack>
           {header}
+          <StaleNotice state={state} />
           {!gate && wishlistItems.length > 0 ? (
             <Card variant="tinted" accent="fashion" style={{ gap: spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
                 <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
-                  Wishlist budget
+                  {t('wishlist.budgetTitle')}
                 </Text>
-                <Tag label={`${wishlistItems.length} ${wishlistItems.length === 1 ? 'item' : 'items'}`} accent="fashion" />
+                <Tag label={t('wishlist.itemCount', { count: wishlistItems.length })} accent="fashion" />
               </View>
-              <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={`Wishlist budget ${formatMoney(totalBudget)}`}>
+              <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={t('wishlist.budgetA11y', { amount: formatMoney(totalBudget) })}>
                 {formatMoney(totalBudget)}
               </Text>
               <Text variant="caption" color="textSecondary">
-                Estimated cost to buy everything you have saved.
+                {t('wishlist.budgetHint')}
               </Text>
             </Card>
           ) : null}
-          {!gate && wishlistItems.length > 0 ? <SectionHeader title="Saved pieces" count={wishlistItems.length} /> : null}
+          {!gate && wishlistItems.length > 0 ? <SectionHeader title={t('wishlist.saved')} count={wishlistItems.length} /> : null}
         </HeaderStack>
       }
       ListEmptyComponent={empty}

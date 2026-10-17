@@ -3,7 +3,10 @@ import { useMemo, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 
 import { AmountField } from '@/components/finance/amount-field';
-import { FormCard, failureMessage, parseAmount } from '@/components/finance/form-parts';
+import { failureMessage } from '@/components/finance/failure-message';
+import { FormCard, parseAmount } from '@/components/finance/form-parts';
+import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from '@/components/finance/labels';
+import { NO_DESCRIPTION } from '@/components/finance/transaction-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
@@ -20,15 +23,13 @@ import {
   type PaymentMethod,
   type Transaction,
 } from '@/features/finance/types';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { spacing, type ThemeColors } from '@/theme';
 
-const TYPE_OPTIONS: { value: EditableTransactionType; label: string }[] = [
-  { value: 'expense', label: 'Expense' },
-  { value: 'income', label: 'Income' },
-  { value: 'investment', label: 'Investment' },
-];
+const TYPE_VALUES: EditableTransactionType[] = ['expense', 'income', 'investment'];
 
 const TYPE_TONE: Record<EditableTransactionType, keyof ThemeColors> = {
   expense: 'errorText',
@@ -51,6 +52,7 @@ function parseTransaction(raw?: string): Transaction | null {
 export default function TransactionScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('finance');
   const params = useLocalSearchParams<{ tx?: string }>();
   const existing = useMemo(() => parseTransaction(params.tx), [params.tx]);
   const isTransfer = existing?.type === 'transfer';
@@ -63,7 +65,7 @@ export default function TransactionScreen() {
   const [category, setCategory] = useState(existing ? (knownCategory ? existing.category : CUSTOM) : '');
   const [customCategory, setCustomCategory] = useState(existing && !knownCategory ? existing.category : '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(existing?.paymentMethod ?? 'upi');
-  const [description, setDescription] = useState(existing && existing.description !== 'No description' ? existing.description : '');
+  const [description, setDescription] = useState(existing && existing.description !== NO_DESCRIPTION ? existing.description : '');
   const [date, setDate] = useState(existing?.date.slice(0, 10) ?? toIsoDay(new Date()));
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [submitted, setSubmitted] = useState(false);
@@ -75,8 +77,8 @@ export default function TransactionScreen() {
 
   const finalCategory = category === CUSTOM ? customCategory.trim() : category;
   const amountValue = parseAmount(amount);
-  const amountError = !Number.isFinite(amountValue) || amountValue <= 0 ? 'Enter an amount greater than 0.' : null;
-  const categoryError = finalCategory ? null : category === CUSTOM ? 'Enter a category name.' : 'Choose a category.';
+  const amountError = !Number.isFinite(amountValue) || amountValue <= 0 ? t('transaction.amountInvalid') : null;
+  const categoryError = finalCategory ? null : category === CUSTOM ? t('transaction.categoryNameNeeded') : t('transaction.categoryNeeded');
 
   function changeType(next: EditableTransactionType) {
     setType(next);
@@ -108,54 +110,58 @@ export default function TransactionScreen() {
           date,
         },
       });
-      notify.success(existing ? 'Transaction updated' : 'Transaction added');
+      // The event only knows income and expense; investments are not reported until it does.
+      if (!existing) analytics.track('transaction_created', { type });
+      notify.success(existing ? t('transaction.updated') : t('transaction.added'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not save. Try again.'));
+      notify.error(failureMessage(e, t('errors.save')));
     }
   }
 
   async function confirmDelete() {
     if (!existing) return;
+    const description = existing.description === NO_DESCRIPTION ? t('row.noDescription') : existing.description;
     const ok = await notify.confirm({
-      title: existing.type === 'transfer' ? 'Delete transfer?' : 'Delete transaction?',
-      message: `${existing.description} will be removed.`,
-      confirmLabel: 'Delete',
+      title: existing.type === 'transfer' ? t('transaction.deleteTransferTitle') : t('transaction.deleteTitle'),
+      message: t('transaction.deleteMessage', { description }),
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       destructive: true,
     });
     if (!ok) return;
     try {
       await remove.mutateAsync(existing.id);
-      notify.success(existing.type === 'transfer' ? 'Transfer deleted' : 'Transaction deleted');
+      notify.success(existing.type === 'transfer' ? t('transaction.transferDeleted') : t('transaction.deleted'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not delete. Try again.'));
+      notify.error(failureMessage(e, t('errors.delete')));
     }
   }
 
   if (isTransfer && existing) {
     return (
       <Screen topInset={false}>
-        <Stack.Screen options={{ title: 'Transfer' }} />
+        <Stack.Screen options={{ title: t('transaction.titleTransfer') }} />
         <Card style={{ gap: spacing.sm }}>
-          <Text variant="title">{existing.description}</Text>
-          <Text color="textSecondary">Transfers between accounts can only be deleted here.</Text>
+          <Text variant="title">{existing.description === NO_DESCRIPTION ? t('row.noDescription') : existing.description}</Text>
+          <Text color="textSecondary">{t('transaction.transferNote')}</Text>
         </Card>
-        <Button title="Delete transfer" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} />
+        <Button title={t('transaction.deleteTransfer')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} />
       </Screen>
     );
   }
 
-  const typeLabel = TYPE_OPTIONS.find((o) => o.value === type)?.label ?? 'Amount';
+  const typeOptions = TYPE_VALUES.map((value) => ({ value, label: transactionTypeLabel(value) }));
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: existing ? 'Edit transaction' : 'New transaction' }} />
+      <Stack.Screen options={{ title: existing ? t('transaction.titleEdit') : t('transaction.titleNew') }} />
 
-      <Segmented options={TYPE_OPTIONS} value={type} onChange={changeType} accessibilityLabel="Transaction type" />
+      <Segmented options={typeOptions} value={type} onChange={changeType} accessibilityLabel={t('transaction.typeLabel')} />
 
       <AmountField
-        label={`${typeLabel} amount`}
+        label={t('transaction.amountLabel', { type: transactionTypeLabel(type) })}
         value={amount}
         onChangeText={setAmount}
         tone={TYPE_TONE[type]}
@@ -166,19 +172,19 @@ export default function TransactionScreen() {
         onPreset={addPreset}
       />
 
-      <FormCard title="Category" icon="pricetag-outline" error={submitted ? categoryError : null}>
+      <FormCard title={t('transaction.category')} icon="pricetag-outline" error={submitted ? categoryError : null}>
         <ChipGroup>
           {CATEGORY_OPTIONS[type].map((name) => (
-            <Chip key={name} label={name} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
+            <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
           ))}
-          <Chip label="Custom" icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
+          <Chip label={t('categories.custom')} icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
         </ChipGroup>
         {category === CUSTOM ? (
           <Input
-            label="Category name"
+            label={t('transaction.customName')}
             value={customCategory}
             onChangeText={setCustomCategory}
-            placeholder="e.g. Pet care"
+            placeholder={t('transaction.customPlaceholder')}
             autoCapitalize="words"
             returnKeyType="next"
             onSubmitEditing={() => descriptionRef.current?.focus()}
@@ -186,10 +192,10 @@ export default function TransactionScreen() {
         ) : null}
       </FormCard>
 
-      <FormCard title="Paid with" icon="card-outline">
+      <FormCard title={t('transaction.paidWith')} icon="card-outline">
         <ChipGroup>
           {PAYMENT_METHODS.map((method) => (
-            <Chip key={method.value} label={method.label} accent="finance" selected={paymentMethod === method.value} onPress={() => setPaymentMethod(method.value)} />
+            <Chip key={method.value} label={paymentMethodLabel(method.value)} accent="finance" selected={paymentMethod === method.value} onPress={() => setPaymentMethod(method.value)} />
           ))}
         </ChipGroup>
       </FormCard>
@@ -197,29 +203,29 @@ export default function TransactionScreen() {
       <FormCard>
         <Input
           ref={descriptionRef}
-          label="Description"
+          label={t('transaction.description')}
           value={description}
           onChangeText={setDescription}
-          placeholder="What was this for?"
+          placeholder={t('transaction.descriptionPlaceholder')}
           autoCapitalize="sentences"
           returnKeyType="next"
           onSubmitEditing={() => notesRef.current?.focus()}
         />
-        <DateField label="Date" value={date} onChange={(next) => next && setDate(next)} />
+        <DateField label={t('transaction.date')} value={date} onChange={(next) => next && setDate(next)} />
         <Input
           ref={notesRef}
-          label="Notes (optional)"
+          label={t('transaction.notes')}
           value={notes}
           onChangeText={setNotes}
           multiline
           autoCapitalize="sentences"
-          placeholder="Add any extra details"
+          placeholder={t('transaction.notesPlaceholder')}
           style={{ minHeight: 64, textAlignVertical: 'top', paddingTop: spacing.md }}
         />
       </FormCard>
 
-      <Button title={existing ? 'Save changes' : 'Add transaction'} onPress={submit} loading={save.isPending} />
-      {existing ? <Button title="Delete transaction" variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
+      <Button title={existing ? t('transaction.saveChanges') : t('transaction.add')} onPress={submit} loading={save.isPending} />
+      {existing ? <Button title={t('transaction.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );
 }

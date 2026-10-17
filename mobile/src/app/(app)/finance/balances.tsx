@@ -2,15 +2,17 @@ import { Stack, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 
-import { FormCard, cleanAmount, failureMessage, parseAmount } from '@/components/finance/form-parts';
+import { failureMessage } from '@/components/finance/failure-message';
+import { FormCard, cleanAmount, parseAmount } from '@/components/finance/form-parts';
+import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useBalances, useSaveBalances } from '@/features/finance/hooks';
+import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
@@ -20,7 +22,8 @@ import { spacing, tabularNums } from '@/theme';
 export default function BalancesScreen() {
   const router = useRouter();
   const notify = useNotify();
-  const { data, isPending, isError, error, refetch, isRefetching } = useBalances();
+  const { t } = useTranslation('finance');
+  const { data, isPending, fetchStatus, isError, error, refetch, isRefetching } = useBalances();
   const save = useSaveBalances();
 
   const [cash, setCash] = useState<string | null>(null);
@@ -37,9 +40,10 @@ export default function BalancesScreen() {
   // An empty field means zero; anything else must be a number.
   const cashValue = activeCash.trim() ? parseAmount(activeCash) : 0;
   const accountValue = activeAccount.trim() ? parseAmount(activeAccount) : 0;
-  const cashError = Number.isFinite(cashValue) ? null : 'Enter a valid amount.';
-  const accountError = Number.isFinite(accountValue) ? null : 'Enter a valid amount.';
+  const cashError = Number.isFinite(cashValue) ? null : t('balances.invalid');
+  const accountError = Number.isFinite(accountValue) ? null : t('balances.invalid');
   const totalLiquid = (Number.isFinite(cashValue) ? cashValue : 0) + (Number.isFinite(accountValue) ? accountValue : 0);
+  const offline = isPending && fetchStatus === 'paused';
 
   async function submit() {
     setSubmitted(true);
@@ -50,47 +54,51 @@ export default function BalancesScreen() {
 
     try {
       await save.mutateAsync({ cash_balance: cashValue, account_balance: accountValue });
-      notify.success('Balances updated');
+      notify.success(t('balances.updated'));
       router.back();
     } catch (e) {
-      notify.error(failureMessage(e, 'Could not save. Try again.'));
+      notify.error(failureMessage(e, t('errors.save')));
     }
   }
 
   const symbol = (
-    <Text variant="body" color="textSecondary">
+    <Text variant="body" color="textSecondary" accessibilityElementsHidden importantForAccessibility="no">
       {CURRENCY_SYMBOL}
     </Text>
   );
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: 'Money on hand' }} />
+      <Stack.Screen options={{ title: t('balances.title') }} />
 
-      {isPending ? (
+      {isPending && !offline ? (
         <>
           <SkeletonCard lines={1} />
           <SkeletonCard lines={2} />
         </>
+      ) : offline ? (
+        <OfflineState description={t('offline.finance')} onRetry={() => void refetch()} />
       ) : isError && !data ? (
-        <ErrorState error={error} title="Couldn't load your balances" onRetry={() => refetch()} retrying={isRefetching} />
+        <LoadError error={error} title={t('balances.error')} onRetry={() => void refetch()} retrying={isRefetching} />
       ) : (
         <>
+          {isError ? <RefreshError error={error} onRetry={() => void refetch()} retrying={isRefetching} /> : null}
+
           <Card variant="tinted" accent="finance" style={{ alignItems: 'center', gap: spacing.xs }}>
             <Text variant="caption" weight="semiBold" color="textSecondary">
-              Total money on hand
+              {t('balances.total')}
             </Text>
             <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               {formatMoney(totalLiquid)}
             </Text>
             <Text variant="caption" color="textSecondary">
-              Cash plus bank and UPI balances
+              {t('balances.totalHint')}
             </Text>
           </Card>
 
           <FormCard>
             <Input
-              label="Cash in hand"
+              label={t('balances.cash')}
               value={activeCash}
               onChangeText={(text) => setCash(cleanAmount(text))}
               leftIcon="wallet-outline"
@@ -105,7 +113,7 @@ export default function BalancesScreen() {
             />
             <Input
               ref={accountRef}
-              label="Bank and UPI balance"
+              label={t('balances.account')}
               value={activeAccount}
               onChangeText={(text) => setAccount(cleanAmount(text))}
               leftIcon="card-outline"
@@ -120,7 +128,7 @@ export default function BalancesScreen() {
             />
           </FormCard>
 
-          <Button title="Update balances" onPress={submit} loading={save.isPending} />
+          <Button title={t('balances.update')} onPress={submit} loading={save.isPending} />
         </>
       )}
     </Screen>

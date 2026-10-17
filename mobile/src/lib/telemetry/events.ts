@@ -26,7 +26,7 @@ export type EventMap = {
   action_queued: { kind: string };
   sync_completed: { sent: number; failed: number };
   // Modules
-  transaction_created: { type: 'income' | 'expense' };
+  transaction_created: { type: 'income' | 'expense' | 'investment' };
   budget_saved: Record<string, never>;
   goal_saved: Record<string, never>;
   goal_contribution: { reached: boolean };

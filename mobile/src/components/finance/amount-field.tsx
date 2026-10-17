@@ -4,6 +4,7 @@ import { FieldError, cleanAmount, parseAmount } from '@/components/finance/form-
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
 import { MAX_FONT_SCALE, fontWeightFamily, spacing, tabularNums, typeScale, useTheme, type ThemeColors } from '@/theme';
@@ -41,6 +42,7 @@ export function AmountField({
   onSubmitEditing,
 }: Props) {
   const { colors } = useTheme();
+  const { t } = useTranslation('finance');
   const parsed = parseAmount(value);
   const hasValue = Number.isFinite(parsed) && parsed > 0;
 
@@ -99,7 +101,7 @@ export function AmountField({
               selectable={false}
               accent="finance"
               onPress={() => onPreset(amount)}
-              accessibilityHint={presetsAdd ? 'Adds to the amount' : 'Sets the amount'}
+              accessibilityHint={presetsAdd ? t('amount.presetAdds') : t('amount.presetSets')}
             />
           ))}
         </View>

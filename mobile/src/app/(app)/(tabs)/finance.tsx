@@ -7,21 +7,23 @@ import { HistorySection } from '@/components/finance/history-section';
 import { OverviewSection } from '@/components/finance/overview-section';
 import { openTransaction } from '@/components/finance/transaction-row';
 import { CategoryFab, CategoryFrame, CategoryHeader, type CategorySection } from '@/components/ui/category-template';
+import { useTranslation } from '@/i18n';
 
 type Section = 'overview' | 'history' | 'budgets' | 'goals';
 
-const SECTIONS: CategorySection<Section>[] = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'history', label: 'History' },
-  { value: 'budgets', label: 'Budgets' },
-  { value: 'goals', label: 'Goals' },
-];
-
 export default function FinanceScreen() {
   const router = useRouter();
+  const { t } = useTranslation('finance');
   const [section, setSection] = useState<Section>('overview');
 
-  const header = <CategoryHeader module="finance" sections={SECTIONS} section={section} onSectionChange={setSection} />;
+  const sections: CategorySection<Section>[] = [
+    { value: 'overview', label: t('sections.overview') },
+    { value: 'history', label: t('sections.history') },
+    { value: 'budgets', label: t('sections.budgets') },
+    { value: 'goals', label: t('sections.goals') },
+  ];
+
+  const header = <CategoryHeader module="finance" sections={sections} section={section} onSectionChange={setSection} />;
 
   return (
     <CategoryFrame>
@@ -30,7 +32,7 @@ export default function FinanceScreen() {
       {section === 'budgets' ? <BudgetsSection header={header} /> : null}
       {section === 'goals' ? <GoalsSection header={header} /> : null}
 
-      {section === 'overview' || section === 'history' ? <CategoryFab module="finance" label="Add transaction" onPress={() => openTransaction(router)} /> : null}
+      {section === 'overview' || section === 'history' ? <CategoryFab module="finance" label={t('actions.addTransaction')} onPress={() => openTransaction(router)} /> : null}
     </CategoryFrame>
   );
 }

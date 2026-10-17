@@ -6,8 +6,10 @@ import { View } from 'react-native';
 import { ListItem } from '@/components/ui/list-item';
 import { Text } from '@/components/ui/text';
 import type { Transaction, TransactionType } from '@/features/finance/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, formatMoney } from '@/lib/format';
 import { layout, radius, spacing, useTheme, type ThemeColors } from '@/theme';
+import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from './labels';
 
 const TYPE_ICON = {
   income: 'arrow-down-circle',
@@ -15,13 +17,6 @@ const TYPE_ICON = {
   investment: 'trending-up',
   transfer: 'swap-horizontal',
 } as const;
-
-const TYPE_LABEL: Record<TransactionType, string> = {
-  income: 'Income',
-  expense: 'Expense',
-  investment: 'Investment',
-  transfer: 'Transfer',
-};
 
 function typeTone(type: TransactionType, c: ThemeColors) {
   switch (type) {
@@ -36,13 +31,8 @@ function typeTone(type: TransactionType, c: ThemeColors) {
   }
 }
 
-const PAYMENT_LABEL: Record<string, string> = {
-  upi: 'UPI',
-  cash: 'Cash',
-  card: 'Card',
-  bank_transfer: 'Bank',
-  other: 'Other',
-};
+/** The server fills an empty description with this English placeholder. */
+export const NO_DESCRIPTION = 'No description';
 
 export function openTransaction(router: ReturnType<typeof useRouter>, tx?: Transaction) {
   router.push({ pathname: '/finance/transaction', params: tx ? { tx: JSON.stringify(tx) } : {} });
@@ -52,16 +42,20 @@ export function openTransaction(router: ReturnType<typeof useRouter>, tx?: Trans
 export const TransactionRow = memo(function TransactionRow({ tx, divider }: { tx: Transaction; divider?: boolean }) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation('finance');
 
   const tone = typeTone(tx.type, colors);
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '';
-  const meta = [tx.category, formatDay(tx.date), tx.paymentMethod ? PAYMENT_LABEL[tx.paymentMethod] : null].filter(Boolean).join(' · ');
+  const meta = [categoryLabel(tx.category), formatDay(tx.date), tx.paymentMethod ? paymentMethodLabel(tx.paymentMethod) : null].filter(Boolean).join(' · ');
   const amount = formatMoney(tx.amount);
+  const description = tx.description === NO_DESCRIPTION ? t('row.noDescription') : tx.description;
 
   return (
     <ListItem
       leading={
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: layout.minTouchTarget - spacing.xs,
             height: layout.minTouchTarget - spacing.xs,
@@ -73,7 +67,7 @@ export const TransactionRow = memo(function TransactionRow({ tx, divider }: { tx
           <Ionicons name={TYPE_ICON[tx.type] ?? 'cash-outline'} size={22} color={tone.fg} />
         </View>
       }
-      title={tx.description}
+      title={description}
       subtitle={meta}
       meta={
         <Text variant="label" weight="bold" numeric numberOfLines={1} color={tx.type === 'income' ? 'successText' : 'text'}>
@@ -84,8 +78,8 @@ export const TransactionRow = memo(function TransactionRow({ tx, divider }: { tx
       divider={divider}
       onPress={() => openTransaction(router, tx)}
       chevron={false}
-      accessibilityLabel={`${tx.description}, ${TYPE_LABEL[tx.type] ?? 'Transaction'} of ${amount}, ${meta}`}
-      accessibilityHint="Opens this transaction"
+      accessibilityLabel={t('row.label', { description, type: transactionTypeLabel(tx.type), amount, meta })}
+      accessibilityHint={t('row.hint')}
     />
   );
 });

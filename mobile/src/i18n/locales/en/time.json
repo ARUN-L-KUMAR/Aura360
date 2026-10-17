@@ -1,1 +1,97 @@
-{}
+{
+  "duration": {
+    "minutes": "{{minutes}}m",
+    "hours": "{{hours}}h",
+    "hoursMinutes": "{{hours}}h {{minutes}}m"
+  },
+  "categories": {
+    "work": "Work",
+    "study": "Study",
+    "personal": "Personal",
+    "exercise": "Exercise",
+    "social": "Social",
+    "rest": "Rest",
+    "other": "Other",
+    "uncategorised": "Uncategorised",
+    "custom": "Custom"
+  },
+  "actions": {
+    "addLog": "Add time log",
+    "tryAgain": "Try again"
+  },
+  "errors": {
+    "save": "Couldn't save. Try again.",
+    "delete": "Couldn't delete. Try again.",
+    "stop": "Couldn't save. The timer is still running, so try again.",
+    "loadLogs": "Couldn't load time logs",
+    "loadTotals": "Couldn't load your totals"
+  },
+  "offline": "Connect to the internet to load your time logs.",
+  "stats": {
+    "today": "Tracked today",
+    "week": "Last 7 days"
+  },
+  "distribution": {
+    "title": "Time distribution",
+    "subtitle": "{{total}} logged in {{month}}",
+    "row": "{{duration}} ({{percent}}%)"
+  },
+  "empty": {
+    "title": "No time logged in {{month}}",
+    "body": "Start the stopwatch above, or add the hours you spent on an activity."
+  },
+  "day": {
+    "heading": "{{weekday}}, {{date}}"
+  },
+  "log": {
+    "label": "{{activity}}, {{duration}}",
+    "labelCategory": "{{activity}}, {{duration}}, {{category}}",
+    "hint": "Opens this time log"
+  },
+  "timer": {
+    "stopwatch": "Live stopwatch",
+    "stopwatchHint": "Track an activity as you do it.",
+    "activityLabel": "What are you working on?",
+    "activityPlaceholder": "e.g. Deep work, workout, coding",
+    "activityNeeded": "Enter an activity to start the timer.",
+    "start": "Start timer",
+    "stop": "Stop and save",
+    "discard": "Discard",
+    "elapsed": "Elapsed time {{clock}}",
+    "saved": "Saved {{duration}} for {{activity}}",
+    "discardTitle": "Discard this timer?",
+    "discardMessage": "The time will not be saved.",
+    "keep": "Keep",
+    "discarded": "Timer discarded"
+  },
+  "form": {
+    "titleEdit": "Edit time log",
+    "titleNew": "Add time log",
+    "activityNeeded": "Enter what you did.",
+    "durationNeeded": "Enter how many minutes it took.",
+    "updated": "Time log updated",
+    "added": "Time log added",
+    "deleteTitle": "Delete this time log?",
+    "deleted": "Time log deleted",
+    "activity": "Activity",
+    "activityPlaceholder": "e.g. Deep work, learning Rust, client call",
+    "category": "Category",
+    "customName": "Category name",
+    "customPlaceholder": "e.g. Side project",
+    "durationTitle": "Duration",
+    "minutes": "Minutes",
+    "minutesHelper": "That is {{duration}}.",
+    "presetHint": "Sets the duration to {{duration}}",
+    "ratingTitle": "Productivity rating (optional)",
+    "ratingHint": "Rate this {{value}} out of 10",
+    "ratingHelp": "1 is a low-focus session, 10 is your best. Tap again to clear.",
+    "date": "Date",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "What did you achieve? Any blockers?",
+    "saveChanges": "Save changes",
+    "add": "Add time log",
+    "delete": "Delete time log",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete"
+  }
+}

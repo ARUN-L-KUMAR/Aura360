@@ -2,11 +2,12 @@ import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { failureMessage } from '@/components/finance/failure-message';
+import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
@@ -15,9 +16,11 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteOutfit, useLogOutfitWorn, useOutfits } from '@/features/fashion/hooks';
 import type { FashionItem, FashionOutfit } from '@/features/fashion/types';
+import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing } from '@/theme';
-import { FashionImage, HeaderStack, RowSeparator, useListPadding, type ItemsState } from './shared';
+import { occasionLabel } from './labels';
+import { FashionImage, HeaderStack, RowSeparator, StaleNotice, useListPadding, type ItemsState } from './shared';
 
 interface OutfitsSectionProps {
   items: FashionItem[];
@@ -41,6 +44,7 @@ type CardProps = {
 };
 
 const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn, onLogWorn, onDelete }: CardProps) {
+  const { t } = useTranslation('fashion');
   const motion = useListMotion(index);
   const pieces = outfit.itemIds.map((id) => itemsMap.get(id)).filter((i): i is FashionItem => !!i);
   const wears = outfit.wearCount ?? 0;
@@ -55,12 +59,12 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
             </Text>
             {outfit.occasion || outfit.vibe ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                {outfit.occasion ? <Tag label={outfit.occasion} accent="fashion" /> : null}
+                {outfit.occasion ? <Tag label={occasionLabel(outfit.occasion)} accent="fashion" /> : null}
                 {outfit.vibe ? <Tag label={outfit.vibe} /> : null}
               </View>
             ) : null}
           </View>
-          <IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={`Delete outfit ${outfit.name}`} onPress={() => onDelete(outfit)} />
+          <IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={t('outfits.deleteA11y', { name: outfit.name })} onPress={() => onDelete(outfit)} />
         </View>
 
         {pieces.length > 0 ? (
@@ -76,22 +80,22 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
           </ScrollView>
         ) : (
           <Text variant="caption" color="textSecondary">
-            The pieces in this look are not available right now.
+            {t('outfits.piecesGone')}
           </Text>
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: layout.minTouchTarget }}>
           <Text variant="caption" weight="medium" color="textSecondary" style={{ flex: 1 }}>
-            Worn {wears} {wears === 1 ? 'time' : 'times'}
+            {t('outfits.worn', { count: wears })}
           </Text>
           <Button
-            title="Worn today"
+            title={t('outfits.wornToday')}
             size="sm"
             variant="secondary"
             leftIcon="checkmark-done"
             fullWidth={false}
             loading={busyWorn}
-            accessibilityLabel={`Log ${outfit.name} as worn today`}
+            accessibilityLabel={t('outfits.wornTodayA11y', { name: outfit.name })}
             onPress={() => onLogWorn(outfit)}
           />
         </View>
@@ -102,6 +106,7 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
 
 export function OutfitsSection({ items, state, header, onCreateOutfit }: OutfitsSectionProps) {
   const notify = useNotify();
+  const { t } = useTranslation('fashion');
   const padding = useListPadding();
   const outfitsQuery = useOutfits();
   const { data: outfits, refetch: refetchOutfits } = outfitsQuery;
@@ -123,30 +128,31 @@ export function OutfitsSection({ items, state, header, onCreateOutfit }: Outfits
     (outfit: FashionOutfit) => {
       logWornMutate(outfit.id, {
         onSuccess: (res) => {
-          if (res?.alreadyLogged) notify.info(`"${outfit.name}" is already logged for today`);
-          else notify.success(`Logged "${outfit.name}" as worn today`);
+          if (res?.alreadyLogged) notify.info(t('outfits.alreadyLogged', { name: outfit.name }));
+          else notify.success(t('outfits.logged', { name: outfit.name }));
         },
-        onError: (err) => notify.error(err),
+        onError: (err) => notify.error(failureMessage(err, t('errors.outfit'))),
       });
     },
-    [logWornMutate, notify],
+    [logWornMutate, notify, t],
   );
 
   const handleDelete = useCallback(
     async (outfit: FashionOutfit) => {
       const confirmed = await notify.confirm({
-        title: 'Delete this outfit?',
-        message: `"${outfit.name}" will be removed. Your clothing items stay in your wardrobe.`,
-        confirmLabel: 'Delete',
+        title: t('outfits.deleteTitle'),
+        message: t('outfits.deleteMessage', { name: outfit.name }),
+        confirmLabel: t('common.delete'),
+        cancelLabel: t('common.cancel'),
         destructive: true,
       });
       if (!confirmed) return;
       deleteMutate(outfit.id, {
-        onSuccess: () => notify.success(`Deleted "${outfit.name}"`),
-        onError: (err) => notify.error(err),
+        onSuccess: () => notify.success(t('outfits.deleted', { name: outfit.name })),
+        onError: (err) => notify.error(failureMessage(err, t('errors.delete'))),
       });
     },
-    [deleteMutate, notify],
+    [deleteMutate, notify, t],
   );
 
   const renderItem = useCallback(
@@ -159,15 +165,16 @@ export function OutfitsSection({ items, state, header, onCreateOutfit }: Outfits
   const loading = outfitsQuery.isPending && outfitsQuery.fetchStatus !== 'paused';
   const offline = outfitsQuery.isPending && outfitsQuery.fetchStatus === 'paused';
   const failed = outfitsQuery.isError && !outfits;
+  const staleError = outfitsQuery.isError && outfits ? outfitsQuery.error : null;
   const gate = loading ? (
     <View style={{ gap: spacing.md }}>
       <SkeletonCard media lines={1} />
       <SkeletonCard media lines={1} />
     </View>
   ) : failed ? (
-    <ErrorState error={outfitsQuery.error} onRetry={() => void refetchOutfits()} retrying={outfitsQuery.isRefetching} />
+    <LoadError error={outfitsQuery.error} title={t('errors.loadOutfits')} onRetry={() => void refetchOutfits()} retrying={outfitsQuery.isRefetching} />
   ) : offline ? (
-    <EmptyState variant="offline" description="Connect to the internet to load your outfits." actionTitle="Try again" onAction={() => void refetchOutfits()} />
+    <OfflineState description={t('offline.outfits')} onRetry={() => void refetchOutfits()} />
   ) : null;
 
   const list = outfits ?? [];
@@ -186,7 +193,9 @@ export function OutfitsSection({ items, state, header, onCreateOutfit }: Outfits
       ListHeaderComponent={
         <HeaderStack>
           {header}
-          {!gate && list.length > 0 ? <SectionHeader title="Your outfits" count={list.length} subtitle="Complete looks you have put together." /> : null}
+          <StaleNotice state={state} />
+          {staleError ? <RefreshError error={staleError} onRetry={() => void refetchOutfits()} retrying={outfitsQuery.isRefetching} /> : null}
+          {!gate && list.length > 0 ? <SectionHeader title={t('outfits.listTitle')} count={list.length} subtitle={t('outfits.listHint')} /> : null}
         </HeaderStack>
       }
       ListEmptyComponent={
@@ -194,9 +203,9 @@ export function OutfitsSection({ items, state, header, onCreateOutfit }: Outfits
           <EmptyState
             icon="color-palette-outline"
             accent="fashion"
-            title="No outfits yet"
-            description="Combine tops, bottoms, shoes and outerwear into a complete look, then log it when you wear it."
-            actionTitle="Create your first look"
+            title={t('outfits.emptyTitle')}
+            description={t('outfits.emptyBody')}
+            actionTitle={t('outfits.emptyAction')}
             onAction={onCreateOutfit}
           />
         )
