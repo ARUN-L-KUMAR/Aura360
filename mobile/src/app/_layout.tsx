@@ -19,6 +19,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { BiometricLockScreen } from '@/components/biometric-lock-screen';
 import { addNotificationResponseListener, notificationService } from '@/lib/notifications';
 import { installGlobalErrorHandler } from '@/lib/global-errors';
+import { isNotificationPermissionGranted } from '@/lib/notification-permission';
 import { registerForServerPush } from '@/lib/push';
 import { analytics } from '@/lib/telemetry';
 import { AuthProvider, useAuth } from '@/providers/auth';
@@ -90,11 +91,19 @@ function RootContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Keep reminders and push registration in sync at launch, but never trigger the system permission prompt from here:
+  // the first request is made by the permissions screen (after sign-in) or from Settings, with an explanation.
   useEffect(() => {
-    if (signedIn) {
+    if (!signedIn) return;
+    let cancelled = false;
+    void isNotificationPermissionGranted().then((granted) => {
+      if (cancelled || !granted) return;
       void notificationService.rescheduleAll();
       void registerForServerPush();
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [signedIn]);
 
   useEffect(() => {
