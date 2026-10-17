@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 
+import { useTranslation } from '@/i18n';
 import { duration, radius, spring, useTheme, type ModuleKey } from '@/theme';
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
   accent?: ModuleKey;
   /** Plays the pop whenever this turns true. Default true. */
   visible?: boolean;
-  /** Spoken label. Default "Done". Pass `null` when a nearby label already says it. */
+  /** Spoken label. Default "Done" (from the catalog). Pass `null` when a nearby label already says it. */
   accessibilityLabel?: string | null;
   style?: StyleProp<ViewStyle>;
 };
@@ -21,7 +22,8 @@ type Props = {
  * A completion mark: a disc that pops in with a small overshoot while the tick fades in just after (transform and
  * opacity only). Under reduce-motion it appears at once. Pair it with `haptics.success()` at the call site.
  */
-export function SuccessCheck({ size = 48, accent, visible = true, accessibilityLabel = 'Done', style }: Props) {
+export function SuccessCheck({ size = 48, accent, visible = true, accessibilityLabel, style }: Props) {
+  const { t } = useTranslation('common');
   const { colors, accent: accentFor, reduceMotion } = useTheme();
   const scale = useSharedValue(0);
   const tick = useSharedValue(0);
@@ -52,7 +54,7 @@ export function SuccessCheck({ size = 48, accent, visible = true, accessibilityL
     <View
       accessible={accessibilityLabel !== null}
       accessibilityRole="image"
-      accessibilityLabel={accessibilityLabel ?? undefined}
+      accessibilityLabel={accessibilityLabel === undefined ? t('actions.done') : (accessibilityLabel ?? undefined)}
       importantForAccessibility={accessibilityLabel === null ? 'no-hide-descendants' : 'auto'}
       style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
       <Animated.View style={[{ width: size, height: size, borderRadius: radius.full, backgroundColor: fill, alignItems: 'center', justifyContent: 'center' }, disc]}>

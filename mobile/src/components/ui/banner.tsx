@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect } from 'react';
+import { AccessibilityInfo, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { FadeIn, FadeInUp, FadeOut, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { useSeverity } from '@/components/ui/severity';
 import { Text } from '@/components/ui/text';
-import { describeSeverity, severityColors, type BannerItem, type NotifyAction, type Severity } from '@/lib/notify';
+import { useTranslation } from '@/i18n';
+import { severityColors, type BannerItem, type NotifyAction, type Severity } from '@/lib/notify';
 import { duration, layout, radius, spacing, useTheme } from '@/theme';
 
 export type BannerProps = {
@@ -29,8 +32,14 @@ export type BannerProps = {
 export function Banner({ severity = 'info', title, message, action, onDismiss, style }: BannerProps) {
   const { colors } = useTheme();
   const tone = severityColors(colors, severity);
-  const { icon, label } = describeSeverity(severity);
+  const { t } = useTranslation('common');
+  const { icon, label } = useSeverity(severity);
   const urgent = severity === 'error' || severity === 'critical';
+
+  // iOS does not announce a newly mounted alert reliably, so speak it; Android uses the live region below.
+  useEffect(() => {
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(`${label}. ${title ? `${title}. ` : ''}${message}`);
+  }, [label, title, message]);
 
   return (
     <View
@@ -67,7 +76,7 @@ export function Banner({ severity = 'info', title, message, action, onDismiss, s
       {onDismiss ? (
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={`Dismiss ${label.toLowerCase()} message`}
+          accessibilityLabel={t('banner.dismiss', { severity: label.toLocaleLowerCase() })}
           onPress={onDismiss}
           style={styles.dismiss}
           ringRadius={radius.pill}>
@@ -119,9 +128,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderWidth: 1,
     borderRadius: radius.md,
-    paddingLeft: spacing.md,
+    paddingStart: spacing.md,
     paddingVertical: spacing.sm,
-    paddingRight: spacing.sm,
+    paddingEnd: spacing.sm,
     gap: spacing.sm,
   },
   icon: { minHeight: layout.minTouchTarget - spacing.md, justifyContent: 'center' },
@@ -138,5 +147,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dismiss: { width: layout.minTouchTarget, height: layout.minTouchTarget, alignItems: 'center', justifyContent: 'center' },
-  host: { position: 'absolute', left: layout.screenPadding, right: layout.screenPadding, gap: spacing.sm },
+  host: { position: 'absolute', start: layout.screenPadding, end: layout.screenPadding, gap: spacing.sm },
 });

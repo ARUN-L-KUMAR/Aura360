@@ -4,6 +4,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { IconName } from '@/components/ui/button';
 import { PressableScale, type PressableScaleProps } from '@/components/ui/pressable-scale';
+import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
 export type IconButtonVariant = 'filled' | 'tonal' | 'ghost';
@@ -21,7 +22,7 @@ export type IconButtonProps = Omit<PressableScaleProps, 'children' | 'style' | '
   selected?: boolean;
   /** Shows a small dot for unread / new. A dot alone is not colour-only: it is also announced via `badgeLabel`. */
   badge?: boolean;
-  /** Spoken value when `badge` is on. Default "New activity". */
+  /** Spoken value when `badge` is on. Default "New activity" (from the catalog). */
   badgeLabel?: string;
   /** Layout style for the button (margin, alignSelf, ...). */
   style?: StyleProp<ViewStyle>;
@@ -43,7 +44,7 @@ export function IconButton({
   destructive,
   selected,
   badge,
-  badgeLabel = 'New activity',
+  badgeLabel,
   disabled,
   haptic = 'tap',
   style,
@@ -53,6 +54,7 @@ export function IconButton({
   ...rest
 }: IconButtonProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const [focused, setFocused] = useState(false);
   const box = BOX[size];
   const slop = Math.max(0, Math.ceil((layout.minTouchTarget - box) / 2));
@@ -79,7 +81,7 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ ...accessibilityState, disabled: !!disabled, selected }}
-      accessibilityValue={badge ? { text: badgeLabel } : undefined}
+      accessibilityValue={badge ? { text: badgeLabel ?? t('iconButton.newActivity') } : undefined}
       disabled={disabled}
       haptic={haptic}
       focusRing={false}
@@ -106,6 +108,6 @@ const DOT = spacing.sm + spacing.xs; // 12
 
 const styles = StyleSheet.create({
   box: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: spacing.xs, right: spacing.xs, width: DOT, height: DOT, borderRadius: radius.pill, borderWidth: 2 },
-  ring: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.pill, borderWidth: 2 },
+  badge: { position: 'absolute', top: spacing.xs, end: spacing.xs, width: DOT, height: DOT, borderRadius: radius.pill, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.pill, borderWidth: 2 },
 });

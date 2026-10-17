@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { spacing, useTheme } from '@/theme';
 
 export type DividerProps = {
-  /** Which ends are pulled in: none (full width), start (left only, for list rows), both. */
+  /** Which ends are pulled in: none (full width), start (start side only, for list rows), both. */
   inset?: 'none' | 'start' | 'both';
   /** How far to inset. Default 16 (screen gutter). */
   insetSize?: number;
@@ -26,7 +26,7 @@ export function Divider({ inset = 'none', insetSize = spacing.lg, strong = false
 
   const layoutStyle: ViewStyle = vertical
     ? { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginHorizontal: margin, marginTop: start, marginBottom: end }
-    : { height: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: margin, marginLeft: start, marginRight: end };
+    : { height: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: margin, marginStart: start, marginEnd: end };
 
   return (
     <View

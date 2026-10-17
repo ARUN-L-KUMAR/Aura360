@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { duration, easing, radius, spacing, useTheme } from '@/theme';
 
 export type OtpInputProps = {
@@ -81,6 +82,7 @@ export const OtpInput = forwardRef<TextInput, OtpInputProps>(function OtpInput(
   ref,
 ) {
   const { colors, reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
   const inputRef = useRef<TextInput>(null);
   useImperativeHandle(ref, () => inputRef.current as TextInput);
 
@@ -131,6 +133,7 @@ export const OtpInput = forwardRef<TextInput, OtpInputProps>(function OtpInput(
             return (
               <View
                 key={i}
+                accessibilityLabel={t('otp.digit', { index: i + 1, total: length })}
                 style={[
                   styles.box,
                   {
@@ -171,9 +174,9 @@ export const OtpInput = forwardRef<TextInput, OtpInputProps>(function OtpInput(
           selectionColor="transparent"
           cursorColor="transparent"
           returnKeyType="done"
-          accessibilityLabel={accessibilityLabel ?? label ?? `Verification code, ${length} digits`}
-          accessibilityHint={error || helper || 'Enter or paste the code'}
-          accessibilityValue={{ text: `${code.length} of ${length} digits entered` }}
+          accessibilityLabel={accessibilityLabel ?? label ?? t('otp.label', { count: length })}
+          accessibilityHint={error || helper || t('otp.hint')}
+          accessibilityValue={{ text: t('otp.progress', { filled: code.length, total: length }) }}
           accessibilityState={{ disabled: !!disabled }}
           style={[StyleSheet.absoluteFill, styles.hiddenInput]}
         />
@@ -197,7 +200,8 @@ export const OtpInput = forwardRef<TextInput, OtpInputProps>(function OtpInput(
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
-  boxes: { flexDirection: 'row', gap: spacing.sm },
+  // A one-time code reads left to right in every language, so the boxes do not mirror.
+  boxes: { flexDirection: 'row', gap: spacing.sm, direction: 'ltr' },
   disabled: { opacity: 0.55 },
   box: {
     flex: 1,
@@ -207,7 +211,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.md,
   },
-  ring: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.md, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.md, borderWidth: 2 },
   caret: { width: 2, height: spacing.xl, borderRadius: radius.sm },
   hiddenInput: { opacity: 0 },
   message: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },

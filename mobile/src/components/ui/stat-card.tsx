@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { type ComponentProps } from 'react';
+import { memo, type ComponentProps } from 'react';
 import { View } from 'react-native';
 
-import { Card, withAlpha } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { withAlpha } from '@/components/ui/logic';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -26,8 +28,9 @@ export interface StatCardProps {
 }
 
 /** Label, big tabular number, optional trend and subtitle. Reads as one element for screen readers. */
-export function StatCard({ label, value, subtitle, icon, accent, color, trend, onPress }: StatCardProps) {
+function StatCardImpl({ label, value, subtitle, icon, accent, color, trend, onPress }: StatCardProps) {
   const { colors, accent: accentFor } = useTheme();
+  const { t } = useTranslation('common');
   const a = accent ? accentFor(accent) : null;
   const iconColor = a ? a.text : (color ?? colors.textSecondary);
   const tile = a ? a.soft : color ? withAlpha(color, 0.14) : colors.cardMuted;
@@ -35,12 +38,12 @@ export function StatCard({ label, value, subtitle, icon, accent, color, trend, o
   const direction = trend ? (trend.isPositive === undefined ? 'flat' : trend.isPositive ? 'up' : 'down') : null;
   const trendTone =
     direction === 'up'
-      ? { bg: colors.successContainer, fg: colors.onSuccessContainer, icon: 'arrow-up' as const, word: 'up' }
+      ? { bg: colors.successContainer, fg: colors.onSuccessContainer, icon: 'arrow-up' as const, word: 'up' as const }
       : direction === 'down'
-        ? { bg: colors.errorContainer, fg: colors.onErrorContainer, icon: 'arrow-down' as const, word: 'down' }
-        : { bg: colors.cardMuted, fg: colors.textSecondary, icon: 'remove' as const, word: 'unchanged' };
+        ? { bg: colors.errorContainer, fg: colors.onErrorContainer, icon: 'arrow-down' as const, word: 'down' as const }
+        : { bg: colors.cardMuted, fg: colors.textSecondary, icon: 'remove' as const, word: 'unchanged' as const };
 
-  const spoken = [`${label}: ${value}`, trend ? `${trendTone.word} ${trend.value}` : null, subtitle].filter(Boolean).join(', ');
+  const spoken = [`${label}: ${value}`, trend ? t(`statCard.${trendTone.word}`, { value: trend.value }) : null, subtitle].filter(Boolean).join(', ');
 
   return (
     <Card
@@ -95,3 +98,6 @@ export function StatCard({ label, value, subtitle, icon, accent, color, trend, o
     </Card>
   );
 }
+
+/** Memoised: dashboards render a grid of these and re-render on every refetch. */
+export const StatCard = memo(StatCardImpl);

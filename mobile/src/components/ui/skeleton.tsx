@@ -1,9 +1,10 @@
-import { useEffect, useId, type ReactNode } from 'react';
+import { memo, useEffect, useId, type ReactNode } from 'react';
 import { StyleSheet, View, type DimensionValue, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
   interpolate,
+  makeMutable,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -12,9 +13,36 @@ import Animated, {
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Card } from '@/components/ui/card';
+import { useTranslation } from '@/i18n';
+import { directionSign } from '@/i18n/rtl';
 import { duration, easing, layout, radius, spacing, useTheme } from '@/theme';
 
 const SHIMMER_MS = duration.slow * 3;
+
+/**
+ * One shimmer clock for every skeleton on screen. A list of 8 rows has ~24 bars; giving each its own repeating timer
+ * would run 24 animations that drift apart. They all read this single 0..1 value instead, so they sweep in step, and
+ * it only runs while at least one skeleton is mounted (and the user has not asked for reduced motion).
+ */
+const shimmerClock = makeMutable(0);
+let shimmerUsers = 0;
+
+function useShimmerClock(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    if (shimmerUsers++ === 0) {
+      shimmerClock.set(0);
+      shimmerClock.set(withRepeat(withTiming(1, { duration: SHIMMER_MS, easing: Easing.bezier(...easing.standard) }), -1, false));
+    }
+    return () => {
+      if (--shimmerUsers === 0) {
+        cancelAnimation(shimmerClock);
+        shimmerClock.set(0);
+      }
+    };
+  }, [active]);
+  return shimmerClock;
+}
 
 export type SkeletonShape = 'box' | 'circle' | 'line';
 
@@ -31,29 +59,19 @@ export type SkeletonProps = {
 };
 
 /**
- * Loading placeholder with a soft moving highlight (translateX on the UI thread). Static when the user prefers
- * reduced motion. Hidden from screen readers: wrap groups in `SkeletonGroup` (or use a preset) to announce "Loading".
+ * Loading placeholder with a soft moving highlight (translateX on the UI thread, one clock shared by every skeleton).
+ * Static when the user prefers reduced motion. Hidden from screen readers: wrap groups in `SkeletonGroup` (or use a preset) to announce "Loading".
  */
-export function Skeleton({ shape = 'box', width, height, size = 40, rounded = 'md', style }: SkeletonProps) {
+function SkeletonImpl({ shape = 'box', width, height, size = 40, rounded = 'md', style }: SkeletonProps) {
   const { colors, reduceMotion } = useTheme();
   const gradientId = useId().replace(/\W/g, '');
   const bandWidth = useSharedValue(0);
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      cancelAnimation(progress);
-      progress.value = 0;
-      return;
-    }
-    progress.value = 0;
-    progress.value = withRepeat(withTiming(1, { duration: SHIMMER_MS, easing: Easing.bezier(...easing.standard) }), -1, false);
-    return () => cancelAnimation(progress);
-  }, [reduceMotion, progress]);
+  const progress = useShimmerClock(!reduceMotion);
+  const sign = directionSign();
 
   const band = useAnimatedStyle(() => ({
     opacity: bandWidth.value > 0 ? 1 : 0,
-    transform: [{ translateX: interpolate(progress.value, [0, 1], [-bandWidth.value, bandWidth.value]) }],
+    transform: [{ translateX: interpolate(progress.get(), [0, 1], [-bandWidth.value * sign, bandWidth.value * sign]) }],
   }));
 
   const dimensions: ViewStyle =
@@ -89,10 +107,14 @@ export function Skeleton({ shape = 'box', width, height, size = 40, rounded = 'm
   );
 }
 
+/** Skeleton bar. Memoised: list placeholders render dozens of them. */
+export const Skeleton = memo(SkeletonImpl);
+
 /** Groups skeletons into one polite "Loading" announcement; the pieces inside are not read individually. */
-export function SkeletonGroup({ children, label = 'Loading', style }: { children: ReactNode; label?: string; style?: StyleProp<ViewStyle> }) {
+export function SkeletonGroup({ children, label, style }: { children: ReactNode; label?: string; style?: StyleProp<ViewStyle> }) {
+  const { t } = useTranslation('common');
   return (
-    <View accessible accessibilityLabel={label} accessibilityState={{ busy: true }} accessibilityLiveRegion="polite" style={style}>
+    <View accessible accessibilityLabel={label ?? t('loading')} accessibilityState={{ busy: true }} accessibilityLiveRegion="polite" style={style}>
       {children}
     </View>
   );

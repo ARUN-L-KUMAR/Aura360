@@ -8,10 +8,12 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { useKeyboardHeight } from '@/components/ui/bottom-sheet';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { useSeverity } from '@/components/ui/severity';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
-import { describeSeverity, hapticFor, severityColors, type NotifyAction, type Severity, type ToastItem } from '@/lib/notify';
+import { hapticFor, severityColors, type NotifyAction, type Severity, type ToastItem } from '@/lib/notify';
 import { duration, easing, layout, radius, spacing, spring, useTheme } from '@/theme';
 
 export type ToastProps = {
@@ -34,8 +36,9 @@ const ICON_SIZE = 22;
  */
 export function Toast({ severity = 'info', title, message, action, onDismiss, style }: ToastProps) {
   const { colors, elevation } = useTheme();
+  const { t } = useTranslation('common');
   const tone = severityColors(colors, severity);
-  const { icon, label } = describeSeverity(severity);
+  const { icon, label } = useSeverity(severity);
 
   return (
     <View style={[styles.card, { backgroundColor: tone.background, borderColor: tone.border }, elevation(3), style]}>
@@ -72,7 +75,7 @@ export function Toast({ severity = 'info', title, message, action, onDismiss, st
       {onDismiss ? (
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel="Dismiss message"
+          accessibilityLabel={t('toast.dismiss')}
           onPress={onDismiss}
           style={styles.close}
           ringRadius={radius.pill}>
@@ -95,6 +98,8 @@ type ViewProps = { item: ToastItem; onDismiss: (id: string) => void };
 /** One visible toast: enter / exit motion, auto-dismiss timer (paused while touched), swipe away, announcement. */
 function ToastView({ item, onDismiss }: ViewProps) {
   const { reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
+  const { label: severityLabel } = useSeverity(item.severity);
   const { width } = useWindowDimensions();
   const progress = useSharedValue(0);
   const dragX = useSharedValue(0);
@@ -116,8 +121,7 @@ function ToastView({ item, onDismiss }: ViewProps) {
     if (item.haptic && feedback) haptics[feedback]();
     // Android reads the live region below; iOS needs an explicit announcement.
     if (Platform.OS === 'ios') {
-      const { label } = describeSeverity(item.severity);
-      AccessibilityInfo.announceForAccessibility(`${label}. ${item.title ? `${item.title}. ` : ''}${item.message}`);
+      AccessibilityInfo.announceForAccessibility(`${severityLabel}. ${item.title ? `${item.title}. ` : ''}${item.message}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -167,7 +171,7 @@ function ToastView({ item, onDismiss }: ViewProps) {
     <GestureDetector gesture={swipe}>
       <Animated.View
         accessibilityLiveRegion={assertive ? 'assertive' : 'polite'}
-        accessibilityActions={[{ name: 'dismiss', label: 'Dismiss' }]}
+        accessibilityActions={[{ name: 'dismiss', label: t('actions.dismiss') }]}
         onAccessibilityAction={(e) => {
           if (e.nativeEvent.actionName === 'dismiss') leave();
         }}
@@ -234,16 +238,16 @@ export function ToastHost({ current, onDismiss, bottomOffset = TAB_BAR_CLEARANCE
 }
 
 const styles = StyleSheet.create({
-  host: { position: 'absolute', left: layout.screenPadding, right: layout.screenPadding, alignItems: 'center' },
+  host: { position: 'absolute', start: layout.screenPadding, end: layout.screenPadding, alignItems: 'center' },
   view: { width: '100%', maxWidth: 560 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: radius.lg,
-    paddingLeft: spacing.md,
+    paddingStart: spacing.md,
     paddingVertical: spacing.xs,
-    paddingRight: spacing.xs,
+    paddingEnd: spacing.xs,
     gap: spacing.sm,
     minHeight: layout.minTouchTarget + spacing.sm,
   },

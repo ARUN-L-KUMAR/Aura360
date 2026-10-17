@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
-  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -12,6 +11,7 @@ import {
 
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { MAX_FONT_SCALE, fontWeightFamily, layout, radius, spacing, typeScale, useTheme } from '@/theme';
 
@@ -40,8 +40,8 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
     debounceMs,
     onClear,
     onCancel,
-    cancelLabel = 'Cancel',
-    placeholder = 'Search',
+    cancelLabel,
+    placeholder,
     accessibilityLabel,
     editable,
     style,
@@ -52,6 +52,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
   ref,
 ) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const inputRef = useRef<TextInput>(null);
   useImperativeHandle(ref, () => inputRef.current as TextInput);
 
@@ -103,6 +104,8 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
     onCancel?.();
   };
 
+  const placeholderText = placeholder ?? t('actions.search');
+  const cancelText = cancelLabel ?? t('actions.cancel');
   const showCancel = !!onCancel && (focused || text.length > 0);
 
   return (
@@ -134,12 +137,12 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
           ref={inputRef}
           value={text}
           onChangeText={change}
-          placeholder={placeholder}
+          placeholder={placeholderText}
           editable={!isDisabled}
           returnKeyType="search"
           enterKeyHint="search"
           accessibilityRole="search"
-          accessibilityLabel={accessibilityLabel ?? placeholder}
+          accessibilityLabel={accessibilityLabel ?? placeholderText}
           accessibilityState={{ disabled: isDisabled }}
           onFocus={(e) => {
             setFocused(true);
@@ -159,14 +162,16 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
           ]}
         />
         {text.length > 0 && !isDisabled ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('searchBar.clear')}
             hitSlop={spacing.sm}
+            scaleTo={1}
+            ringRadius={radius.pill}
             onPress={clear}
-            style={({ pressed }) => [styles.clear, { backgroundColor: pressed ? colors.cardMuted : 'transparent' }]}>
+            style={styles.clear}>
             <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-          </Pressable>
+          </PressableScale>
         ) : null}
         {focused ? <View pointerEvents="none" style={[styles.ring, { borderColor: colors.focusRing }]} /> : null}
       </View>
@@ -174,13 +179,13 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
       {showCancel ? (
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={cancelLabel}
+          accessibilityLabel={cancelText}
           scaleTo={1}
           ringRadius={radius.md}
           onPress={cancel}
           style={styles.cancel}>
           <Text variant="label" weight="semiBold" color="primaryAccent">
-            {cancelLabel}
+            {cancelText}
           </Text>
         </PressableScale>
       ) : null}
@@ -198,9 +203,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.pill,
   },
-  searchIcon: { marginLeft: spacing.md },
+  searchIcon: { marginStart: spacing.md },
   input: { flex: 1, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm },
-  clear: { borderRadius: radius.pill, padding: spacing.xs, marginRight: spacing.sm },
-  ring: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.pill, borderWidth: 2 },
+  clear: { borderRadius: radius.pill, padding: spacing.xs, marginEnd: spacing.sm },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.pill, borderWidth: 2 },
   cancel: { minHeight: layout.minTouchTarget, paddingHorizontal: spacing.xs, justifyContent: 'center' },
 });

@@ -6,11 +6,13 @@ import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import type { ModuleInfo } from '@/features/modules';
+import { useTranslation } from '@/i18n';
 import { radius, spacing, useTheme } from '@/theme';
 
 /** Stand-in for modules whose mobile screens are still being built. */
 export function ComingSoon({ module }: { module: ModuleInfo }) {
   const { accent } = useTheme();
+  const { t } = useTranslation('common');
   const a = accent(module.key);
 
   return (
@@ -19,7 +21,7 @@ export function ComingSoon({ module }: { module: ModuleInfo }) {
         variant="tinted"
         accent={module.key}
         accessible
-        accessibilityLabel={`${module.label}. ${module.blurb} Coming soon to the mobile app.`}
+        accessibilityLabel={t('comingSoon.spoken', { label: module.label, blurb: module.blurb })}
         padding="lg"
         style={{ alignItems: 'center', gap: spacing.md }}>
         <View
@@ -39,9 +41,9 @@ export function ComingSoon({ module }: { module: ModuleInfo }) {
         <Text color="textSecondary" style={{ textAlign: 'center' }}>
           {module.blurb}
         </Text>
-        <Badge label="Coming soon" severity="info" icon="time-outline" />
+        <Badge label={t('comingSoon.badge')} severity="info" icon="time-outline" />
         <Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>
-          This screen is on its way to the mobile app.
+          {t('comingSoon.body')}
         </Text>
       </Card>
     </Screen>

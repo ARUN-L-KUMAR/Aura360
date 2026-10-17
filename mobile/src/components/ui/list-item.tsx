@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { type ComponentProps, type ReactNode } from 'react';
+import { memo, type ComponentProps, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Avatar, type AvatarProps } from '@/components/ui/avatar';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { directional } from '@/i18n/rtl';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -42,8 +43,7 @@ export type ListItemProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Standard list row: leading visual, title / subtitle, meta, trailing node and chevron. At least 56pt tall. */
-export function ListItem({
+function ListItemImpl({
   title,
   subtitle,
   icon,
@@ -122,13 +122,13 @@ export function ListItem({
       ) : null}
       {trailing}
       {selected ? <Ionicons name="checkmark-circle" size={22} color={a ? a.text : colors.primaryAccent} /> : null}
-      {showChevron ? <Ionicons name="chevron-forward" size={18} color={colors.textMuted} /> : null}
+      {showChevron ? <Ionicons name={directional('chevron-forward', 'chevron-back')} size={18} color={colors.textMuted} /> : null}
     </View>
   );
 
   const insetStart = spacing.lg + (lead ? TILE + spacing.md : 0);
   const separator = divider ? (
-    <View style={{ height: StyleSheet.hairlineWidth, marginLeft: insetStart, backgroundColor: colors.border }} />
+    <View style={{ height: StyleSheet.hairlineWidth, marginStart: insetStart, backgroundColor: colors.border }} />
   ) : null;
 
   if (!pressable) {
@@ -173,3 +173,9 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: 2 },
 });
+
+/**
+ * Standard list row: leading visual, title / subtitle, meta, trailing node and chevron. At least 56pt tall and it grows
+ * with the text size. The chevron mirrors in right-to-left languages. Memoised for long lists.
+ */
+export const ListItem = memo(ListItemImpl);

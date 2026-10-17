@@ -13,9 +13,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
+import { capCount } from '@/components/ui/logic';
 import { instant, usePop } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { modules } from '@/features/modules';
+import { useTranslation } from '@/i18n';
+import { directionSign } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
 import { radius, spacing, spring, useTheme, type ModuleKey } from '@/theme';
 
@@ -24,7 +28,8 @@ export type { BottomTabBarProps };
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 interface TabConfig {
-  label: string;
+  /** Module whose compact catalog name (`common:modules.<key>.short`) labels the tab. Home has its own (`common:tabs.home`). */
+  module?: ModuleKey;
   activeIcon: IconName;
   inactiveIcon: IconName;
   /** Module whose accent colours this tab. Home uses the brand accent. */
@@ -32,16 +37,16 @@ interface TabConfig {
 }
 
 const TAB_CONFIG: Record<string, TabConfig> = {
-  index: { label: 'Home', activeIcon: 'home', inactiveIcon: 'home-outline', accent: 'ai' },
-  finance: { label: 'Finance', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', accent: 'finance' },
-  fashion: { label: 'Fashion', activeIcon: 'shirt', inactiveIcon: 'shirt-outline', accent: 'fashion' },
-  saved: { label: 'Saved', activeIcon: 'bookmark', inactiveIcon: 'bookmark-outline', accent: 'saved' },
-  fitness: { label: 'Fitness', activeIcon: 'barbell', inactiveIcon: 'barbell-outline', accent: 'fitness' },
-  food: { label: 'Food', activeIcon: 'restaurant', inactiveIcon: 'restaurant-outline', accent: 'food' },
-  skincare: { label: 'Skincare', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline', accent: 'skincare' },
-  notes: { label: 'Notes', activeIcon: 'document-text', inactiveIcon: 'document-text-outline', accent: 'notes' },
-  time: { label: 'Time', activeIcon: 'time', inactiveIcon: 'time-outline', accent: 'time' },
-  ai: { label: 'Ask Aura', activeIcon: 'chatbubble-ellipses', inactiveIcon: 'chatbubble-ellipses-outline', accent: 'ai' },
+  index: { activeIcon: 'home', inactiveIcon: 'home-outline', accent: 'ai' },
+  finance: { module: 'finance', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', accent: 'finance' },
+  fashion: { module: 'fashion', activeIcon: 'shirt', inactiveIcon: 'shirt-outline', accent: 'fashion' },
+  saved: { module: 'saved', activeIcon: 'bookmark', inactiveIcon: 'bookmark-outline', accent: 'saved' },
+  fitness: { module: 'fitness', activeIcon: 'barbell', inactiveIcon: 'barbell-outline', accent: 'fitness' },
+  food: { module: 'food', activeIcon: 'restaurant', inactiveIcon: 'restaurant-outline', accent: 'food' },
+  skincare: { module: 'skincare', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline', accent: 'skincare' },
+  notes: { module: 'notes', activeIcon: 'document-text', inactiveIcon: 'document-text-outline', accent: 'notes' },
+  time: { module: 'time', activeIcon: 'time', inactiveIcon: 'time-outline', accent: 'time' },
+  ai: { module: 'ai', activeIcon: 'chatbubble-ellipses', inactiveIcon: 'chatbubble-ellipses-outline', accent: 'ai' },
 };
 
 /** How many tabs fit on screen at once: 5 whole tabs and half of the next, so the strip visibly continues. */
@@ -49,6 +54,8 @@ const VISIBLE_TABS = 5.5;
 const MIN_ITEM_WIDTH = 64;
 const MAX_ITEM_WIDTH = 96;
 const ITEM_HEIGHT = 56;
+/** How far the strip widens with the system font size (labels are capped at 1.2x). */
+const MAX_LABEL_SCALE = 1.2;
 const PILL_HEIGHT = 32;
 const PILL_INSET = spacing.sm;
 const ICON_SIZE = 22;
@@ -69,11 +76,14 @@ export type AppTabsProps = BottomTabBarProps & {
  */
 export function AppTabs({ state, descriptors, navigation, insets, badges }: AppTabsProps) {
   const { colors, accent: accentFor, elevation, reduceMotion } = useTheme();
-  const { width: viewport } = useWindowDimensions();
+  const { t } = useTranslation('common');
+  const { width: viewport, fontScale } = useWindowDimensions();
   const glassActive = useGlassSupported();
 
   const count = state.routes.length;
-  const itemWidth = Math.round(Math.min(MAX_ITEM_WIDTH, Math.max(MIN_ITEM_WIDTH, viewport / VISIBLE_TABS)));
+  // Tabs widen with large text (up to the labels' own cap) so a label like "Skincare" is not cut off.
+  const labelScale = Math.min(MAX_LABEL_SCALE, Math.max(1, fontScale));
+  const itemWidth = Math.round(Math.min(MAX_ITEM_WIDTH * labelScale, Math.max(MIN_ITEM_WIDTH * labelScale, viewport / VISIBLE_TABS)));
   const contentWidth = count * itemWidth;
   const maxScroll = Math.max(0, contentWidth - viewport);
   const pillWidth = itemWidth - PILL_INSET * 2;
@@ -83,6 +93,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   const sized = useRef(false);
   const scrollX = useSharedValue(0);
   const initialPill = state.index * itemWidth + PILL_INSET;
+  const sign = directionSign();
   const pillX = useSharedValue(initialPill);
   const pillTarget = useSharedValue(initialPill);
 
@@ -111,12 +122,13 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   const pillStyle = useAnimatedStyle(() => {
     const distance = Math.abs(pillTarget.value - pillX.value) / itemWidth;
     return {
-      transform: [{ translateX: pillX.value }, { scaleX: reduceMotion ? 1 : 1 + Math.min(distance, MAX_STRETCH_TABS) * STRETCH_PER_TAB }],
+      transform: [{ translateX: pillX.value * sign }, { scaleX: reduceMotion ? 1 : 1 + Math.min(distance, MAX_STRETCH_TABS) * STRETCH_PER_TAB }],
     };
   });
 
-  const leftFade = useAnimatedStyle(() => ({ opacity: interpolate(scrollX.value, [0, spacing.lg], [0, 1], Extrapolation.CLAMP) }));
-  const rightFade = useAnimatedStyle(() => ({
+  // Fades sit on the start / end sides (logical), so they follow the reading direction.
+  const startFade = useAnimatedStyle(() => ({ opacity: interpolate(scrollX.value, [0, spacing.lg], [0, 1], Extrapolation.CLAMP) }));
+  const endFade = useAnimatedStyle(() => ({
     opacity: interpolate(scrollX.value, [maxScroll - spacing.lg, maxScroll], [1, 0], Extrapolation.CLAMP),
   }));
 
@@ -143,7 +155,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
         }}
         keyboardShouldPersistTaps="handled"
         // Don't snap or paginate: a free-scrolling strip is easiest to flick, and centring happens on selection.
-        contentContainerStyle={{ width: contentWidth, height: ITEM_HEIGHT }}>
+        contentContainerStyle={{ width: contentWidth, minHeight: ITEM_HEIGHT }}>
         <Animated.View
           pointerEvents="none"
           style={[styles.pill, { width: pillWidth, backgroundColor: activePill.soft }, pillStyle]}
@@ -151,8 +163,8 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const focused = state.index === index;
-          const config: TabConfig = TAB_CONFIG[route.name] ?? {
-            label: options.title ?? route.name,
+          const known = TAB_CONFIG[route.name];
+          const config: TabConfig = known ?? {
             activeIcon: 'ellipse',
             inactiveIcon: 'ellipse-outline',
             accent: 'ai',
@@ -161,7 +173,8 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
           const color = focused ? tint.text : colors.textMuted;
 
           const badge = badges?.[route.name] ?? (typeof options.tabBarBadge === 'number' ? options.tabBarBadge : undefined);
-          const label = options.tabBarAccessibilityLabel ?? config.label;
+          const title = known ? (known.module ? modules[known.module].short : t('tabs.home')) : (options.title ?? route.name);
+          const label = options.tabBarAccessibilityLabel ?? title;
 
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -176,7 +189,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={badge ? `${label}, ${badge} new` : label}
+              accessibilityLabel={badge ? t('badge.withCount', { label, count: badge }) : label}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               scaleTo={0.94}
@@ -187,13 +200,13 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
                 {badge ? (
                   <View style={[styles.badge, { backgroundColor: colors.error }]}>
                     <Text variant="caption" weight="semiBold" color="onError" numberOfLines={1} maxFontSizeMultiplier={1}>
-                      {badge > 99 ? '99+' : badge}
+                      {capCount(badge)}
                     </Text>
                   </View>
                 ) : null}
               </View>
               <Text variant="caption" weight={focused ? 'semiBold' : 'medium'} color={color} numberOfLines={1} maxFontSizeMultiplier={1.2}>
-                {config.label}
+                {title}
               </Text>
             </PressableScale>
           );
@@ -201,8 +214,8 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
       </Animated.ScrollView>
 
       {/* Edge fades: tell the user the strip continues. Each appears only on the side that has more tabs. */}
-      <Fade side="left" color={colors.glassSolid} style={leftFade} />
-      <Fade side="right" color={colors.glassSolid} style={rightFade} />
+      <Fade side="start" color={colors.glassSolid} style={startFade} />
+      <Fade side="end" color={colors.glassSolid} style={endFade} />
     </GlassSurface>
   );
 }
@@ -217,14 +230,14 @@ function TabIcon({ name, focused, color }: { name: IconName; focused: boolean; c
   );
 }
 
-function Fade({ side, color, style }: { side: 'left' | 'right'; color: string; style: ComponentProps<typeof Animated.View>['style'] }) {
+function Fade({ side, color, style }: { side: 'start' | 'end'; color: string; style: ComponentProps<typeof Animated.View>['style'] }) {
   const steps = Array.from({ length: FADE_STEPS }, (_, i) => i);
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.fade, side === 'left' ? styles.fadeLeft : styles.fadeRight, side === 'left' ? styles.rowStart : styles.rowEnd, style]}>
+      style={[styles.fade, side === 'start' ? styles.fadeStart : styles.fadeEnd, side === 'start' ? styles.rowStart : styles.rowEnd, style]}>
       {steps.map((i) => (
-        // Left: solid at the edge, fading inwards. Right: mirrored.
+        // Start: solid at the edge, fading inwards. End: mirrored.
         <View key={i} style={{ width: FADE_STEP_WIDTH, backgroundColor: color, opacity: 0.9 * (1 - i / FADE_STEPS) }} />
       ))}
     </Animated.View>
@@ -235,18 +248,18 @@ const styles = StyleSheet.create({
   bar: {
     paddingTop: spacing.xs,
     borderBottomWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
+    borderStartWidth: 0,
+    borderEndWidth: 0,
   },
   pill: {
     position: 'absolute',
     top: spacing.xs,
-    left: 0,
+    start: 0,
     height: PILL_HEIGHT,
     borderRadius: radius.pill,
   },
   item: {
-    height: ITEM_HEIGHT,
+    minHeight: ITEM_HEIGHT,
     paddingTop: spacing.xs,
     alignItems: 'center',
     gap: 2,
@@ -259,7 +272,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 0,
-    right: -spacing.sm,
+    end: -spacing.sm,
     minWidth: 16,
     height: 16,
     paddingHorizontal: spacing.xs,
@@ -267,9 +280,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fade: { position: 'absolute', top: spacing.xs, height: ITEM_HEIGHT },
-  fadeLeft: { left: 0 },
-  fadeRight: { right: 0 },
+  fade: { position: 'absolute', top: spacing.xs, bottom: 0 },
+  fadeStart: { start: 0 },
+  fadeEnd: { end: 0 },
   rowStart: { flexDirection: 'row' },
   rowEnd: { flexDirection: 'row-reverse' },
 });

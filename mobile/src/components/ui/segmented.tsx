@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import { instant } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { directionSign } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, spring, useTheme } from '@/theme';
 
@@ -57,7 +58,9 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
     }
   }, [index, segmentWidth, size, reduceMotion, x]);
 
-  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  // `x` counts from the start edge; the thumb is anchored with `start`, so only the translation needs mirroring.
+  const sign = directionSign();
+  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * sign }] }));
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -77,7 +80,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
             {
               position: 'absolute',
               top: PAD,
-              left: PAD,
+              start: PAD,
               width: segmentWidth,
               height: size.height - PAD * 2,
               borderRadius: radius.sm,

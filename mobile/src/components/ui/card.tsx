@@ -1,6 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
 import { AccentGradient } from '@/components/ui/gradient';
+import { readableOn as readableColor, withAlpha } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { neutral, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -9,34 +10,11 @@ export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
 const PADDING: Record<CardPadding, number> = { none: 0, sm: spacing.md, md: spacing.lg, lg: spacing.xl };
 
-/**
- * Adds an alpha channel to a 6-digit hex colour. Anything else (rgba(), named colours) is returned unchanged.
- * Only for legacy call sites that still pass a raw colour (`glowColor`, `color`); prefer `accent` tokens.
- */
-export function withAlpha(color: string, alpha: number): string {
-  if (!/^#[0-9a-f]{6}$/i.test(color)) return color;
-  const a = Math.round(Math.max(0, Math.min(1, alpha)) * 255)
-    .toString(16)
-    .padStart(2, '0');
-  return `${color}${a}`;
-}
-
-function luminance(hex: string): number | null {
-  if (!/^#[0-9a-f]{6}$/i.test(hex)) return null;
-  const channel = (i: number) => {
-    const c = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
-}
+export { withAlpha };
 
 /** Picks the more readable of a light and a dark foreground for a filled background. Non-hex colours get `light`. */
 export function readableOn(background: string, light: string, dark: string = neutral[950]): string {
-  const l = luminance(background);
-  if (l === null) return light;
-  const vsLight = 1.05 / (l + 0.05);
-  const vsDark = (l + 0.05) / ((luminance(dark) ?? 0) + 0.05);
-  return vsDark > vsLight ? dark : light;
+  return readableColor(background, light, dark);
 }
 
 export type CardProps = ViewProps & {

@@ -4,6 +4,7 @@ import { StyleSheet, TextInput } from 'react-native';
 
 import { Input, type InputProps } from '@/components/ui/input';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { useTranslation } from '@/i18n';
 import { layout, radius, useTheme } from '@/theme';
 
 export type PasswordFieldProps = Omit<InputProps, 'secureTextEntry' | 'rightAdornment' | 'multiline'> & {
@@ -14,12 +15,13 @@ export type PasswordFieldProps = Omit<InputProps, 'secureTextEntry' | 'rightAdor
   newPassword?: boolean;
 };
 
-/** Input with a show / hide toggle. The toggle announces its action ("Show password" / "Hide password"). */
+/** Input with a show / hide toggle. The toggle announces its action ("Show password" / "Hide password", from the catalog). */
 export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(function PasswordField(
-  { newPassword = false, label = 'Password', disabled, editable, ...rest },
+  { newPassword = false, label, disabled, editable, ...rest },
   ref,
 ) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const [visible, setVisible] = useState(false);
   const isDisabled = !!disabled || editable === false;
 
@@ -32,13 +34,13 @@ export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(function 
       textContentType={newPassword ? 'newPassword' : 'password'}
       {...rest}
       ref={ref}
-      label={label}
+      label={label ?? t('password.label')}
       disabled={isDisabled}
       secureTextEntry={!visible}
       rightAdornment={
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          accessibilityLabel={visible ? t('password.hide') : t('password.show')}
           accessibilityState={{ disabled: isDisabled }}
           disabled={isDisabled}
           haptic="select"

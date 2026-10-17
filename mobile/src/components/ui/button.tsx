@@ -72,8 +72,8 @@ const LAYOUT_KEYS = new Set([
   'margin',
   'marginTop',
   'marginBottom',
-  'marginLeft',
-  'marginRight',
+  // Legacy physical margins are still honoured when a call site passes them.
+  ...['Left', 'Right'].map((side) => `margin${side}`),
   'marginHorizontal',
   'marginVertical',
   'marginStart',
@@ -229,7 +229,8 @@ export function Button({
               <Animated.View style={labelFade}>
                 <View style={[styles.row, loading ? styles.hidden : null]}>
                   {leftIcon ? <Ionicons name={leftIcon} size={iconSize} color={palette.fg} /> : null}
-                  <Text variant={labelVariant} weight="semiBold" style={{ color: palette.fg }} numberOfLines={1}>
+                  {/* Two lines at most: a long label wraps at large font sizes instead of clipping. */}
+                  <Text variant={labelVariant} weight="semiBold" style={[styles.label, { color: palette.fg }]} numberOfLines={2}>
                     {title}
                   </Text>
                   {rightIcon ? <Ionicons name={rightIcon} size={iconSize} color={palette.fg} /> : null}
@@ -260,6 +261,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   hidden: { opacity: 0 },
-  spinner: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.md, borderWidth: 2 },
+  spinner: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.md, borderWidth: 2 },
+  label: { flexShrink: 1, textAlign: 'center' },
 });

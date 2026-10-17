@@ -1,6 +1,7 @@
-import { useCallback, useState, type ReactElement } from 'react';
-import { RefreshControl, type RefreshControlProps } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { AccessibilityInfo, RefreshControl, type RefreshControlProps } from 'react-native';
 
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
@@ -39,9 +40,20 @@ export function useRefreshControl({ onRefresh, refreshing, progressViewOffset }:
   return <PullToRefresh refreshing={controlled ? refreshing : pending} onRefresh={handleRefresh} progressViewOffset={progressViewOffset} />;
 }
 
-/** A RefreshControl with theme colours. Use directly as `refreshControl={<PullToRefresh refreshing onRefresh />}`. */
+/**
+ * A RefreshControl with theme colours. Use directly as `refreshControl={<PullToRefresh refreshing onRefresh />}`.
+ * The spinner is silent for a screen reader, so the start ("Refreshing") and the end ("Updated") are announced.
+ */
 export function PullToRefresh({ refreshing, onRefresh, ...rest }: RefreshControlProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
+  const was = useRef(false);
+  useEffect(() => {
+    if (refreshing !== was.current) {
+      AccessibilityInfo.announceForAccessibility(refreshing ? t('refresh.refreshing') : t('refresh.updated'));
+      was.current = refreshing;
+    }
+  }, [refreshing, t]);
   return (
     <RefreshControl
       tintColor={colors.primaryAccent}

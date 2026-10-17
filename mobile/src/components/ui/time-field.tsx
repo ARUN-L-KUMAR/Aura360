@@ -1,8 +1,10 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTranslation } from '@/i18n';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -30,13 +32,16 @@ type Props = {
   onChange: (hhmm: string | null) => void;
   /** Show a "Clear" link (for optional times) */
   clearable?: boolean;
+  /** Shown while no time is set. Default "Set a time". */
   placeholder?: string;
 };
 
 /** A time of day picker, in the same style as DateField. */
-export function TimeField({ label, value, onChange, clearable, placeholder = 'Set a time' }: Props) {
+export function TimeField({ label, value, onChange, clearable, placeholder }: Props) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const date = toDate(value);
+  const shown = value ? formatTime(value) : (placeholder ?? t('timeField.placeholder'));
 
   function openAndroid() {
     DateTimePickerAndroid.open({
@@ -51,11 +56,17 @@ export function TimeField({ label, value, onChange, clearable, placeholder = 'Se
 
   const clear =
     clearable && value ? (
-      <Pressable onPress={() => onChange(null)} hitSlop={8}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={label ? `${t('actions.clear')} ${label}` : t('actions.clear')}
+        scaleTo={1}
+        ringRadius={radius.sm}
+        onPress={() => onChange(null)}
+        style={{ minHeight: layout.minTouchTarget, minWidth: layout.minTouchTarget, justifyContent: 'center', alignItems: 'center' }}>
         <Text variant="label" muted>
-          Clear
+          {t('actions.clear')}
         </Text>
-      </Pressable>
+      </PressableScale>
     ) : null;
 
   return (
@@ -72,22 +83,23 @@ export function TimeField({ label, value, onChange, clearable, placeholder = 'Se
         </View>
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
-            accessibilityLabel={label ? `${label}: ${value ? formatTime(value) : 'not set'}` : undefined}
+            accessibilityLabel={label ? t('timeField.value', { label, value: value ? formatTime(value) : t('timeField.notSet') }) : shown}
+            scaleTo={1}
             onPress={openAndroid}
             style={{
               minWidth: 120,
-              minHeight: 44,
+              minHeight: layout.minTouchTarget,
               justifyContent: 'center',
               paddingHorizontal: spacing.md,
               borderRadius: radius.md,
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.borderStrong,
               backgroundColor: colors.card,
             }}>
-            <Text style={value ? undefined : { color: colors.textMuted }}>{value ? formatTime(value) : placeholder}</Text>
-          </Pressable>
+            <Text style={value ? undefined : { color: colors.textMuted }}>{shown}</Text>
+          </PressableScale>
           {clear}
         </View>
       )}

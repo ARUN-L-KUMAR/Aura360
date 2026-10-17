@@ -1,10 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useState, type ComponentProps } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, type ImageProps } from 'expo-image';
+import { memo, useState, type ComponentProps } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { hashString, initialsOf } from '@/components/ui/logic';
 import { Text, type TextVariant } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { duration, radius, useTheme, type ModuleKey } from '@/theme';
+
+export { initialsOf };
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -18,27 +22,30 @@ const STATUS_DOT: Record<AvatarSize, number> = { xs: 8, sm: 10, md: 12, lg: 16, 
 /** Palette the fallback colour is picked from (accent tokens, so contrast is guaranteed in both schemes). */
 const FALLBACK_KEYS: ModuleKey[] = ['finance', 'fitness', 'food', 'fashion', 'skincare', 'notes', 'saved', 'time', 'ai'];
 
-/** Stable 32-bit string hash, so the same name always gets the same colour. */
-function hash(value: string) {
-  let h = 0;
-  for (let i = 0; i < value.length; i++) h = (Math.imul(h, 31) + value.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-export function initialsOf(name?: string) {
-  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '';
-  const first = parts[0][0] ?? '';
-  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : '';
-  return (first + last).toUpperCase();
-}
-
-const STATUS_META: Record<AvatarStatus, { icon: IconName; label: string }> = {
-  online: { icon: 'ellipse', label: 'online' },
-  away: { icon: 'time', label: 'away' },
-  busy: { icon: 'remove-circle', label: 'busy' },
-  offline: { icon: 'ellipse-outline', label: 'offline' },
+const STATUS_ICON: Record<AvatarStatus, IconName> = {
+  online: 'ellipse',
+  away: 'time',
+  busy: 'remove-circle',
+  offline: 'ellipse-outline',
 };
+
+/** Static, per-size styles built once (an avatar can appear dozens of times in a list). */
+const sizeStyles = StyleSheet.create(
+  Object.fromEntries(
+    (Object.keys(SIZE) as AvatarSize[]).flatMap((size) => {
+      const px = SIZE[size];
+      const dot = STATUS_DOT[size];
+      return [
+        [`box_${size}`, { width: px, height: px }],
+        [
+          `disc_${size}`,
+          { width: px, height: px, borderRadius: radius.full, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+        ],
+        [`dot_${size}`, { position: 'absolute', end: 0, bottom: 0, width: dot, height: dot, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' }],
+      ] as const;
+    }),
+  ) as Record<string, ViewStyle>,
+);
 
 export type AvatarProps = {
   /** Used for initials, the deterministic fallback colour and the accessibility label. */
@@ -51,48 +58,39 @@ export type AvatarProps = {
   /** Force a module accent for the fallback instead of deriving it from `name`. */
   accent?: ModuleKey;
   accessibilityLabel?: string;
+  /** Identity of the picture for expo-image's view recycling in lists. Defaults to `uri`. */
+  recyclingKey?: string | null;
+  /** Image cache policy. Default `memory-disk`: avatars repeat across screens and are worth keeping. */
+  cachePolicy?: ImageProps['cachePolicy'];
   style?: StyleProp<ViewStyle>;
 };
 
-export function Avatar({ name, uri, size = 'md', status, accent, accessibilityLabel, style }: AvatarProps) {
+function AvatarImpl({ name, uri, size = 'md', status, accent, accessibilityLabel, recyclingKey, cachePolicy = 'memory-disk', style }: AvatarProps) {
   const { colors, accent: accentFor, reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
   const [failedUri, setFailedUri] = useState<string | null>(null);
 
   const px = SIZE[size];
   const initials = initialsOf(name);
-  const key = accent ?? FALLBACK_KEYS[hash(name?.trim().toLowerCase() ?? '') % FALLBACK_KEYS.length];
+  const key = accent ?? FALLBACK_KEYS[hashString(name?.trim().toLowerCase() ?? '') % FALLBACK_KEYS.length];
   const a = accentFor(key);
   const showImage = !!uri && failedUri !== uri;
-  const dot = STATUS_DOT[size];
-  const label = [accessibilityLabel ?? name ?? 'Profile picture', status ? STATUS_META[status].label : null].filter(Boolean).join(', ');
+  const label = [accessibilityLabel ?? name ?? t('avatar.profile'), status ? t(`avatar.${status}`) : null].filter(Boolean).join(', ');
 
   const statusColor =
     status === 'online' ? colors.successText : status === 'busy' ? colors.errorText : status === 'away' ? colors.warningText : colors.textMuted;
 
   return (
-    <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={label}
-      style={[{ width: px, height: px }, style]}>
-      <View
-        style={{
-          width: px,
-          height: px,
-          borderRadius: radius.full,
-          overflow: 'hidden',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: showImage ? colors.cardMuted : a.solid,
-        }}>
+    <View accessible accessibilityRole="image" accessibilityLabel={label} style={[sizeStyles[`box_${size}`], style]}>
+      <View style={[sizeStyles[`disc_${size}`], { backgroundColor: showImage ? colors.cardMuted : a.solid }]}>
         {showImage ? (
           <Image
             source={{ uri }}
             style={{ width: px, height: px }}
             contentFit="cover"
             transition={reduceMotion ? 0 : duration.fast}
-            cachePolicy="memory-disk"
-            recyclingKey={uri}
+            cachePolicy={cachePolicy}
+            recyclingKey={recyclingKey ?? uri}
             onError={() => setFailedUri(uri ?? null)}
             accessible={false}
           />
@@ -105,21 +103,13 @@ export function Avatar({ name, uri, size = 'md', status, accent, accessibilityLa
         )}
       </View>
       {status ? (
-        <View
-          style={{
-            position: 'absolute',
-            right: 0,
-            bottom: 0,
-            width: dot,
-            height: dot,
-            borderRadius: radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.card,
-          }}>
-          <Ionicons name={STATUS_META[status].icon} size={dot - 2} color={statusColor} />
+        <View style={[sizeStyles[`dot_${size}`], { backgroundColor: colors.card }]}>
+          <Ionicons name={STATUS_ICON[status]} size={STATUS_DOT[size] - 2} color={statusColor} />
         </View>
       ) : null}
     </View>
   );
 }
+
+/** Round avatar: photo, else initials, else a person glyph. Memoised, since lists render many of them. */
+export const Avatar = memo(AvatarImpl);

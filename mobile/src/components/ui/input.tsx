@@ -11,7 +11,6 @@ import {
 import {
   AccessibilityInfo,
   Platform,
-  Pressable,
   StyleSheet,
   TextInput,
   View,
@@ -22,7 +21,9 @@ import {
 } from 'react-native';
 
 import type { IconName } from '@/components/ui/button';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { MAX_FONT_SCALE, fontWeightFamily, normalizeWeight, radius, spacing, typeScale, useTheme } from '@/theme';
 
 export type InputProps = TextInputProps & {
@@ -80,6 +81,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   ref,
 ) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const inputRef = useRef<TextInput>(null);
   useImperativeHandle(ref, () => inputRef.current as TextInput);
 
@@ -122,6 +124,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const hasRight = showClear || !!rightAdornment;
   const showFooter = hasError || !!helper || !!showCount;
   const count = showCount ? (maxLength ? `${text.length}/${maxLength}` : `${text.length}`) : null;
+  const countLabel = showCount ? (maxLength ? t('input.charsOf', { current: text.length, max: maxLength }) : t('input.chars', { count: text.length })) : undefined;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -146,7 +149,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           },
         ]}>
         {hasLeft ? (
-          <View style={[styles.adornment, multiline ? styles.adornmentTop : null, { paddingLeft: spacing.md }]}>
+          <View style={[styles.adornment, multiline ? styles.adornmentTop : null, { paddingStart: spacing.md }]}>
             {leftIcon ? <Ionicons name={leftIcon} size={20} color={isDisabled ? colors.textDisabled : colors.textMuted} /> : null}
             {leftAdornment}
           </View>
@@ -183,8 +186,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
               color: isDisabled ? colors.textDisabled : colors.text,
               fontFamily: legacyFamily ?? fontWeightFamily.medium,
               fontSize: typeScale.body.fontSize,
-              paddingLeft: hasLeft ? spacing.sm : spacing.md,
-              paddingRight: hasRight ? spacing.sm : spacing.md,
+              paddingStart: hasLeft ? spacing.sm : spacing.md,
+              paddingEnd: hasRight ? spacing.sm : spacing.md,
               textAlignVertical: multiline ? 'top' : 'center',
             },
             userStyle,
@@ -193,18 +196,20 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 
         {showClear ? (
           <View style={[styles.adornment, multiline ? styles.adornmentTop : null]}>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
-              accessibilityLabel={label ? `Clear ${label}` : 'Clear text'}
+              accessibilityLabel={label ? t('input.clearField', { label }) : t('input.clearText')}
               hitSlop={spacing.sm}
+              scaleTo={1}
+              ringRadius={radius.pill}
               onPress={clear}
-              style={({ pressed }) => [styles.clear, { backgroundColor: pressed ? colors.cardMuted : 'transparent' }]}>
+              style={styles.clear}>
               <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
         {rightAdornment ? (
-          <View style={[styles.adornment, multiline ? styles.adornmentTop : null, { paddingRight: spacing.sm }]}>
+          <View style={[styles.adornment, multiline ? styles.adornmentTop : null, { paddingEnd: spacing.sm }]}>
             {rightAdornment}
           </View>
         ) : null}
@@ -235,7 +240,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             <View style={styles.messageText} />
           )}
           {count ? (
-            <Text variant="caption" numeric color="textMuted" accessibilityLabel={`${count.replace('/', ' of ')} characters`}>
+            <Text variant="caption" numeric color="textMuted" accessibilityLabel={countLabel}>
               {count}
             </Text>
           ) : null}
@@ -257,7 +262,7 @@ const styles = StyleSheet.create({
   adornment: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   adornmentTop: { alignSelf: 'flex-start', paddingTop: spacing.md },
   clear: { borderRadius: radius.pill, padding: spacing.xs },
-  ring: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.md, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.md, borderWidth: 2 },
   footer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
   message: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   messageIcon: { marginTop: 1 },

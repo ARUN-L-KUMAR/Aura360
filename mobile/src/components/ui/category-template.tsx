@@ -7,6 +7,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { Tabs } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
 import { modules } from '@/features/modules';
+import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /** The categories that share this template; each gets its own accent from the tertiary-derived ramps. */
@@ -34,6 +35,7 @@ type HeaderProps<T extends string> = {
  */
 export function CategoryHeader<T extends string>({ module, title, eyebrow, sections, section, onSectionChange, action }: HeaderProps<T>) {
   const { accent } = useTheme();
+  const { t } = useTranslation('common');
   const info = modules[module];
   const a = accent(module);
   const label = title ?? info.label;
@@ -46,10 +48,10 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <View style={{ width: spacing.sm, height: spacing.sm, borderRadius: radius.pill, backgroundColor: a.solid }} />
             <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1}>
-              {(eyebrow ?? info.description).toUpperCase()}
+              {(eyebrow ?? info.description).toLocaleUpperCase()}
             </Text>
           </View>
-          <Text variant="headline" numberOfLines={1}>
+          <Text variant="headline" numberOfLines={2}>
             {label}
           </Text>
         </View>
@@ -72,9 +74,9 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
       </View>
       {showSwitcher ? (
         sections.length > 4 ? (
-          <Tabs scrollable accent={module} tabs={sections} value={section} onChange={onSectionChange} accessibilityLabel={`${label} sections`} />
+          <Tabs scrollable accent={module} tabs={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
         ) : (
-          <Segmented options={sections} value={section} onChange={onSectionChange} accessibilityLabel={`${label} sections`} />
+          <Segmented options={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
         )
       ) : null}
     </View>

@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useLatest } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
 import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
+import { useSeverity } from '@/components/ui/severity';
 import { Text } from '@/components/ui/text';
-import { describeSeverity, severityColors, type Severity } from '@/lib/notify';
+import { useTranslation } from '@/i18n';
+import { severityColors, type Severity } from '@/lib/notify';
 import { duration, easing, layout, radius, spacing, useTheme } from '@/theme';
 
 export type DialogAction = {
@@ -51,11 +53,14 @@ const BUTTON_VARIANT = { primary: 'primary', secondary: 'tertiary', destructive:
  */
 export function Dialog({ visible, onClose, title, message, children, severity, actions, dismissible = true, glass = false }: DialogProps) {
   const { colors, reduceMotion, elevation } = useTheme();
-  const { width } = useWindowDimensions();
+  const { t } = useTranslation('common');
+  const { width, height } = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
   const visibleRef = useLatest(visible);
   const glassActive = useGlassSupported() && glass;
+  // Hooks cannot be conditional: read the severity words for `info` and use them only when a severity is set.
+  const { icon: severityIcon, label: severityLabel } = useSeverity(severity ?? 'info');
 
   if (visible && !mounted) setMounted(true);
 
@@ -83,7 +88,7 @@ export function Dialog({ visible, onClose, title, message, children, severity, a
 
   const Surface = glass ? GlassSurface : View;
   const tone = severity ? severityColors(colors, severity) : null;
-  const described = severity ? describeSeverity(severity) : null;
+  const described = severity ? { icon: severityIcon, label: severityLabel } : null;
   const sideBySide = actions.length === 2;
   const close = dismissible ? onClose : undefined;
 
@@ -97,7 +102,7 @@ export function Dialog({ visible, onClose, title, message, children, severity, a
             disabled={!close}
             accessible={!!close}
             accessibilityRole="button"
-            accessibilityLabel="Dismiss"
+            accessibilityLabel={t('actions.dismiss')}
             importantForAccessibility={close ? 'yes' : 'no-hide-descendants'}
           />
         </Animated.View>
@@ -107,26 +112,29 @@ export function Dialog({ visible, onClose, title, message, children, severity, a
           onAccessibilityEscape={close}
           style={[
             styles.cardWrap,
-            { width: Math.min(MAX_WIDTH, width - layout.screenPadding * 2) },
+            { width: Math.min(MAX_WIDTH, width - layout.screenPadding * 2), maxHeight: height - layout.screenPadding * 2 },
             glassActive ? null : [{ backgroundColor: glass ? colors.glassSolid : colors.card }, elevation(4)],
             cardStyle,
           ]}>
           <Surface
             style={[styles.card, glass ? null : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}>
-            {described && tone ? (
-              <View style={[styles.iconBadge, { backgroundColor: tone.background }]} accessible accessibilityLabel={described.label}>
-                <Ionicons name={described.icon} size={24} color={tone.icon} />
-              </View>
-            ) : null}
-            <Text variant="title" accessibilityRole="header" style={styles.centered}>
-              {title}
-            </Text>
-            {message ? (
-              <Text variant="body" color="textSecondary" style={styles.centered}>
-                {message}
+            {/* Scrolls when large text makes the copy taller than the screen; the actions stay pinned below it. */}
+            <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} bounces={false} showsVerticalScrollIndicator={false}>
+              {described && tone ? (
+                <View style={[styles.iconBadge, { backgroundColor: tone.background }]} accessible accessibilityLabel={described.label}>
+                  <Ionicons name={described.icon} size={24} color={tone.icon} />
+                </View>
+              ) : null}
+              <Text variant="title" accessibilityRole="header" style={styles.centered}>
+                {title}
               </Text>
-            ) : null}
-            {children}
+              {message ? (
+                <Text variant="body" color="textSecondary" style={styles.centered}>
+                  {message}
+                </Text>
+              ) : null}
+              {children}
+            </ScrollView>
 
             <View style={[styles.actions, sideBySide ? styles.actionsRow : null]}>
               {actions.map((action, index) => (
@@ -157,6 +165,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'stretch',
     overflow: 'hidden',
+    flexShrink: 1,
   },
   iconBadge: {
     width: layout.minTouchTarget,
@@ -167,6 +176,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   centered: { textAlign: 'center' },
+  body: { flexGrow: 0, flexShrink: 1 },
+  bodyContent: { gap: spacing.md },
   actions: { gap: spacing.sm, marginTop: spacing.sm },
   actionsRow: { flexDirection: 'row', flexWrap: 'wrap' },
   actionHalf: { flexGrow: 1, flexBasis: MIN_ACTION_WIDTH },

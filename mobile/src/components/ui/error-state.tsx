@@ -5,62 +5,29 @@ import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
 import { useBlockMotion } from '@/components/ui/motion';
+import { classifyError, type ErrorKind } from '@/components/ui/logic';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { ApiError } from '@/lib/api';
 import { radius, spacing, useTheme } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export type ErrorKind = 'generic' | 'network' | 'timeout' | 'sessionExpired' | 'notFound';
+export type { ErrorKind };
 
-type Preset = { icon: IconName; title: string; message: string; actionLabel: string };
-
-const PRESETS: Record<ErrorKind, Preset> = {
-  generic: {
-    icon: 'alert-circle-outline',
-    title: 'Something went wrong',
-    message: "We couldn't load this just now. Please try again.",
-    actionLabel: 'Try again',
-  },
-  network: {
-    icon: 'cloud-offline-outline',
-    title: "Can't connect",
-    message: 'Check your internet connection and try again.',
-    actionLabel: 'Try again',
-  },
-  timeout: {
-    icon: 'time-outline',
-    title: 'That took too long',
-    message: 'The server is slow to respond. Give it a moment and try again.',
-    actionLabel: 'Try again',
-  },
-  sessionExpired: {
-    icon: 'lock-closed-outline',
-    title: 'Session expired',
-    message: 'Sign in again to pick up where you left off.',
-    actionLabel: 'Sign in',
-  },
-  notFound: {
-    icon: 'search-outline',
-    title: 'Not found',
-    message: 'This may have been moved or deleted.',
-    actionLabel: 'Go back',
-  },
+/** Icons per kind. The words live in `common:errorState.<kind>`. */
+const PRESET_ICONS: Record<ErrorKind, IconName> = {
+  generic: 'alert-circle-outline',
+  network: 'cloud-offline-outline',
+  timeout: 'time-outline',
+  sessionExpired: 'lock-closed-outline',
+  notFound: 'search-outline',
 };
 
 /** Maps a thrown value (usually an `ApiError`) to the matching `ErrorState` kind. */
 export function errorKindFromError(e: unknown): ErrorKind {
-  if (e instanceof ApiError) {
-    if (e.status === 0) return (e.data as { timeout?: boolean } | undefined)?.timeout ? 'timeout' : 'network';
-    if (e.status === 401) return 'sessionExpired';
-    if (e.status === 404) return 'notFound';
-    if (e.status === 408 || e.status === 504) return 'timeout';
-    return 'generic';
-  }
-  if (e instanceof Error) {
-    if (e.name === 'AbortError') return 'timeout';
-    if (/network request failed|failed to fetch|network error|offline/i.test(e.message)) return 'network';
-  }
+  if (e instanceof ApiError) return classifyError({ status: e.status, timeout: !!(e.data as { timeout?: boolean } | undefined)?.timeout });
+  if (e instanceof Error) return classifyError({ name: e.name, message: e.message });
   return 'generic';
 }
 
@@ -84,11 +51,13 @@ export type ErrorStateProps = {
 /** Error with a way forward. Announced to screen readers as an alert. */
 export function ErrorState({ kind, error, title, message, icon, onRetry, retryLabel, retrying, size = 'full', style }: ErrorStateProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const motion = useBlockMotion();
-  const preset = PRESETS[kind ?? (error !== undefined ? errorKindFromError(error) : 'generic')];
-  const heading = title ?? preset.title;
-  const body = message ?? preset.message;
-  const action = retryLabel ?? preset.actionLabel;
+  const resolved = kind ?? (error !== undefined ? errorKindFromError(error) : 'generic');
+  const presetIcon = PRESET_ICONS[resolved];
+  const heading = title ?? t(`errorState.${resolved}.title`);
+  const body = message ?? t(`errorState.${resolved}.message`);
+  const action = retryLabel ?? t(`errorState.${resolved}.action`);
 
   if (size === 'inline') {
     return (
@@ -109,7 +78,7 @@ export function ErrorState({ kind, error, title, message, icon, onRetry, retryLa
           },
           style,
         ]}>
-        <Ionicons name={icon ?? preset.icon} size={24} color={colors.onErrorContainer} />
+        <Ionicons name={icon ?? presetIcon} size={24} color={colors.onErrorContainer} />
         <View style={{ flex: 1 }}>
           <Text variant="label" weight="semiBold" style={{ color: colors.onErrorContainer }}>
             {heading}
@@ -139,7 +108,7 @@ export function ErrorState({ kind, error, title, message, icon, onRetry, retryLa
           marginBottom: spacing.xs,
           backgroundColor: colors.errorContainer,
         }}>
-        <Ionicons name={icon ?? preset.icon} size={32} color={colors.onErrorContainer} />
+        <Ionicons name={icon ?? presetIcon} size={32} color={colors.onErrorContainer} />
       </View>
       <Text variant="title" style={{ textAlign: 'center' }}>
         {heading}

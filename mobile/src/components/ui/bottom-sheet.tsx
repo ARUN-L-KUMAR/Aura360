@@ -19,12 +19,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
+import { clampIndex, pickSnap, resolveSnapHeights, snapOffsets, type SnapPoint } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { duration, easing, layout, radius, spacing, spring, useTheme } from '@/theme';
 
-/** A pixel height, or a percentage of the screen height. */
-export type SnapPoint = number | `${number}%`;
+export type { SnapPoint };
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -92,9 +93,6 @@ const CLOSE_MARGIN = spacing.xxxl;
 /** Seconds of velocity projected ahead when deciding which snap point a flick lands on. */
 const PROJECTION = 0.15;
 
-const toPixels = (point: SnapPoint, screenHeight: number) =>
-  typeof point === 'number' ? point : (parseFloat(point) / 100) * screenHeight;
-
 /* Reanimated shared values are mutated by design (`sv.value = ...`); the React Compiler lint cannot see that. */
 /* eslint-disable react-hooks/immutability */
 
@@ -123,6 +121,7 @@ export function BottomSheet({
   accessibilityLabel,
 }: BottomSheetProps) {
   const { colors, reduceMotion, elevation } = useTheme();
+  const { t } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const keyboard = useKeyboardHeight();
@@ -135,15 +134,14 @@ export function BottomSheet({
   // Visible heights, smallest first, capped at the screen.
   const heights = useMemo(() => {
     if (snapPoints === 'auto') return [] as number[];
-    const px = snapPoints.map((p) => Math.min(maxHeight, Math.max(0, toPixels(p, windowHeight))));
-    return Array.from(new Set(px)).sort((a, b) => a - b);
+    return resolveSnapHeights(snapPoints, windowHeight, maxHeight);
   }, [snapPoints, maxHeight, windowHeight]);
 
   const [autoHeight, setAutoHeight] = useState(0);
   const sheetHeight = auto ? autoHeight : (heights[heights.length - 1] ?? 0);
   /** translateY at each snap, top-most (smallest) first. */
   const offsets = useMemo(
-    () => (auto ? [0] : [...heights].reverse().map((h) => sheetHeight - h)),
+    () => (auto ? [0] : snapOffsets(heights, sheetHeight)),
     [auto, heights, sheetHeight],
   );
   const closedY = sheetHeight + CLOSE_MARGIN;
@@ -234,7 +232,8 @@ export function BottomSheet({
     onSnapRef.current?.(index);
   }, [onSnapRef]);
 
-  const canDrag = dismissible || (!auto && heights.length > 1);
+  const resizable = !auto && heights.length > 1;
+  const canDrag = dismissible || resizable;
 
   const scrollNative = useMemo(() => Gesture.Native(), []);
   const pan = useMemo(() => {
@@ -268,17 +267,9 @@ export function BottomSheet({
         const top = offs[0] ?? 0;
         if (scrollable && translateY.value <= top + 0.5 && scrollY.value > 0.5) return;
         const projected = translateY.value + e.velocityY * PROJECTION;
-        let best = 0;
-        let bestDistance = Math.abs(projected - offs[0]);
-        for (let i = 1; i < offs.length; i++) {
-          const d = Math.abs(projected - offs[i]);
-          if (d < bestDistance) {
-            best = i;
-            bestDistance = d;
-          }
-        }
         // Compare against "fully hidden" (the sheet's own height), not the extra shadow margin.
-        if (dismissible && Math.abs(projected - (closedSv.value - CLOSE_MARGIN)) < bestDistance) {
+        const best = pickSnap(projected, offs, closedSv.value - CLOSE_MARGIN, dismissible);
+        if (best < 0) {
           scheduleOnRN(requestDismiss);
           return;
         }
@@ -334,7 +325,7 @@ export function BottomSheet({
             disabled={!dismissible}
             accessible={dismissible}
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('actions.close')}
             importantForAccessibility={dismissible ? 'yes' : 'no-hide-descendants'}
           />
         </Animated.View>
@@ -359,7 +350,26 @@ export function BottomSheet({
                   auto ? styles.shrink : styles.fill,
                   glass ? null : { backgroundColor: colors.card, borderColor: colors.border },
                 ]}>
-                <View style={styles.handleZone} accessible={false}>
+                <View
+                  style={styles.handleZone}
+                  // With several snap points the handle is the screen-reader way to resize the sheet (a drag is not possible).
+                  accessible={resizable}
+                  accessibilityRole={resizable ? 'adjustable' : undefined}
+                  accessibilityLabel={resizable ? t('bottomSheet.handle') : undefined}
+                  accessibilityHint={resizable ? t('bottomSheet.handleHint') : undefined}
+                  accessibilityActions={
+                    resizable
+                      ? [
+                          { name: 'increment', label: t('bottomSheet.expand') },
+                          { name: 'decrement', label: t('bottomSheet.collapse') },
+                        ]
+                      : undefined
+                  }
+                  onAccessibilityAction={(e) => {
+                    const step = e.nativeEvent.actionName === 'increment' ? 1 : e.nativeEvent.actionName === 'decrement' ? -1 : 0;
+                    const next = clampIndex(snapIndex + step, heights.length);
+                    if (step !== 0 && next !== snapIndex) snapTo(next);
+                  }}>
                   <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
                 </View>
 
@@ -375,7 +385,7 @@ export function BottomSheet({
                     {dismissible ? (
                       <PressableScale
                         accessibilityRole="button"
-                        accessibilityLabel="Close"
+                        accessibilityLabel={t('actions.close')}
                         haptic="tap"
                         onPress={requestDismiss}
                         style={styles.closeButton}
@@ -416,19 +426,15 @@ export function BottomSheet({
   );
 }
 
-function clampIndex(index: number, count: number) {
-  return Math.min(Math.max(0, index), Math.max(0, count - 1));
-}
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexShrink: 1 },
   anchor: { flex: 1, justifyContent: 'flex-end' },
   /** Gives the shadow (iOS) and the elevation outline (Android) a shape to follow; the surface paints over it. */
-  shadowCaster: { borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+  shadowCaster: { borderTopStartRadius: radius.xl, borderTopEndRadius: radius.xl },
   surface: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopStartRadius: radius.xl,
+    borderTopEndRadius: radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: 0,
     overflow: 'hidden',
@@ -439,8 +445,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: layout.minTouchTarget,
-    paddingLeft: layout.screenPadding,
-    paddingRight: spacing.sm,
+    paddingStart: layout.screenPadding,
+    paddingEnd: spacing.sm,
     gap: spacing.sm,
   },
   headerContent: { flex: 1 },

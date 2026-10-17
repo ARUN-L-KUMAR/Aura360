@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { Platform, View } from 'react-native';
 
 import { OfflineBanner } from '@/components/offline-banner';
+import { useTranslation } from '@/i18n';
 import { fontFamily, typeScale, useTheme } from '@/theme';
 
 /**
@@ -19,6 +20,7 @@ function modal(title: string, reduceMotion: boolean) {
 
 export default function AppLayout() {
   const { colors, reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack
@@ -36,26 +38,26 @@ export default function AppLayout() {
           animation: reduceMotion ? 'fade' : 'default',
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-        <Stack.Screen name="notifications/index" options={{ title: 'Notifications' }} />
-        <Stack.Screen name="notifications/settings" options={{ title: 'Alerts & reminders' }} />
+        <Stack.Screen name="settings" options={{ title: t('screens.settings') }} />
+        <Stack.Screen name="notifications/index" options={{ title: t('screens.notifications') }} />
+        <Stack.Screen name="notifications/settings" options={{ title: t('screens.alertsReminders') }} />
         <Stack.Screen name="module/[slug]" options={{ title: '' }} />
-        <Stack.Screen name="finance/transaction" options={modal('Transaction', reduceMotion)} />
-        <Stack.Screen name="finance/budget" options={modal('Budget', reduceMotion)} />
-        <Stack.Screen name="finance/goal" options={modal('Goal', reduceMotion)} />
-        <Stack.Screen name="finance/contribute" options={modal('Add money', reduceMotion)} />
-        <Stack.Screen name="finance/balances" options={modal('Money on hand', reduceMotion)} />
-        <Stack.Screen name="food/meal" options={modal('Log food', reduceMotion)} />
-        <Stack.Screen name="food/targets" options={modal('Daily targets', reduceMotion)} />
-        <Stack.Screen name="fitness/entry" options={modal('Fitness entry', reduceMotion)} />
-        <Stack.Screen name="fitness/workout" options={modal('Workout', reduceMotion)} />
-        <Stack.Screen name="time/log" options={modal('Time log', reduceMotion)} />
-        <Stack.Screen name="notes/edit" options={modal('Note', reduceMotion)} />
-        <Stack.Screen name="saved/add" options={modal('Save a link', reduceMotion)} />
-        <Stack.Screen name="saved/item" options={modal('Saved item', reduceMotion)} />
-        <Stack.Screen name="fashion/add" options={modal('Clothing Item', reduceMotion)} />
-        <Stack.Screen name="fashion/outfit" options={modal('Curated Look', reduceMotion)} />
-        <Stack.Screen name="ai/history" options={modal('Conversations', reduceMotion)} />
+        <Stack.Screen name="finance/transaction" options={modal(t('screens.transaction'), reduceMotion)} />
+        <Stack.Screen name="finance/budget" options={modal(t('screens.budget'), reduceMotion)} />
+        <Stack.Screen name="finance/goal" options={modal(t('screens.goal'), reduceMotion)} />
+        <Stack.Screen name="finance/contribute" options={modal(t('screens.addMoney'), reduceMotion)} />
+        <Stack.Screen name="finance/balances" options={modal(t('screens.moneyOnHand'), reduceMotion)} />
+        <Stack.Screen name="food/meal" options={modal(t('screens.logFood'), reduceMotion)} />
+        <Stack.Screen name="food/targets" options={modal(t('screens.dailyTargets'), reduceMotion)} />
+        <Stack.Screen name="fitness/entry" options={modal(t('screens.fitnessEntry'), reduceMotion)} />
+        <Stack.Screen name="fitness/workout" options={modal(t('screens.workout'), reduceMotion)} />
+        <Stack.Screen name="time/log" options={modal(t('screens.timeLog'), reduceMotion)} />
+        <Stack.Screen name="notes/edit" options={modal(t('screens.note'), reduceMotion)} />
+        <Stack.Screen name="saved/add" options={modal(t('screens.saveLink'), reduceMotion)} />
+        <Stack.Screen name="saved/item" options={modal(t('screens.savedItem'), reduceMotion)} />
+        <Stack.Screen name="fashion/add" options={modal(t('screens.clothingItem'), reduceMotion)} />
+        <Stack.Screen name="fashion/outfit" options={modal(t('screens.curatedLook'), reduceMotion)} />
+        <Stack.Screen name="ai/history" options={modal(t('screens.conversations'), reduceMotion)} />
       </Stack>
       <OfflineBanner />
     </View>

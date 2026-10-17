@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { type ComponentProps, type ReactNode } from 'react';
+import { memo, type ComponentProps, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { capCount } from '@/components/ui/logic';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { radius, spacing, useTheme } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -16,14 +18,6 @@ const SEVERITY_ICON: Record<BadgeSeverity, IconName | undefined> = {
   warning: 'warning',
   error: 'alert-circle',
   neutral: undefined,
-};
-
-const SEVERITY_NAME: Record<BadgeSeverity, string> = {
-  info: 'Info',
-  success: 'Success',
-  warning: 'Warning',
-  error: 'Error',
-  neutral: 'Status',
 };
 
 export type BadgeProps = {
@@ -63,9 +57,9 @@ function useSeverityColors(severity: BadgeSeverity) {
 
 /**
  * Status indicator. `label` badges always carry text (and an icon by default); `count` badges carry the number;
- * `dot` is a bare indicator, so give it an `accessibilityLabel` ("Unread").
+ * `dot` is a bare indicator, so give it an `accessibilityLabel` ("Unread"). Memoised.
  */
-export function Badge({
+function BadgeImpl({
   variant = 'label',
   severity,
   label,
@@ -78,6 +72,7 @@ export function Badge({
   style,
 }: BadgeProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const tone = severity ?? (variant === 'label' ? 'neutral' : 'error');
   const c = useSeverityColors(tone);
 
@@ -87,7 +82,7 @@ export function Badge({
       <View
         accessible
         accessibilityRole="image"
-        accessibilityLabel={accessibilityLabel ?? SEVERITY_NAME[tone]}
+        accessibilityLabel={accessibilityLabel ?? t(`severity.${tone}`)}
         style={[{ width: dot, height: dot, borderRadius: radius.full, backgroundColor: c.solid, borderWidth: 1, borderColor: colors.card }, style]}
       />
     );
@@ -95,7 +90,7 @@ export function Badge({
 
   if (variant === 'count') {
     if (count <= 0 && !showZero) return null;
-    const text = count > max ? `${max}+` : String(count);
+    const text = capCount(count, max);
     const h = size === 'sm' ? spacing.md + spacing.xs : spacing.lg + spacing.xs;
     return (
       <View
@@ -152,14 +147,16 @@ export function Badge({
   );
 }
 
-/** Pins a badge to the top-right corner of its children (icon button, avatar, tab icon). */
+/** Pins a badge to the top corner at the end of its children (icon button, avatar, tab icon). */
 export function BadgeOverlay({ badge, children, style }: { badge: ReactNode; children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ alignSelf: 'flex-start' }, style]}>
       {children}
-      <View pointerEvents="none" style={{ position: 'absolute', top: -spacing.xs, right: -spacing.xs }}>
+      <View pointerEvents="none" style={{ position: 'absolute', top: -spacing.xs, end: -spacing.xs }}>
         {badge}
       </View>
     </View>
   );
 }
+
+export const Badge = memo(BadgeImpl);

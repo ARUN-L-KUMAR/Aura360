@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { type ComponentProps, type ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { memo, type ComponentProps, type ReactNode } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { readableOn, withAlpha } from '@/components/ui/card';
+import { readableOn } from '@/components/ui/card';
+import { withAlpha } from '@/components/ui/logic';
 import { usePop } from '@/components/ui/motion';
-import { PressableScale } from '@/components/ui/pressable-scale';
+import { hitSlopOf, PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -61,14 +63,17 @@ function useChipColors({ accent, color }: Pick<ChipBase, 'accent' | 'color'>, se
  * The visual is 28 / 36pt tall; the hit area is padded to 44pt. Selecting or deselecting plays a small scale pop
  * (transform only, skipped under reduce-motion) and a selection haptic.
  */
-export function Chip(props: ChipProps) {
+function ChipImpl(props: ChipProps) {
   const pop = usePop(props.selectable !== false && !!props.selected);
   return (
-    <Animated.View style={[{ alignSelf: 'flex-start' }, pop]}>
+    <Animated.View style={[styles.wrap, pop]}>
       <ChipView {...props} />
     </Animated.View>
   );
 }
+
+/** Memoised: filter rows re-render on every keystroke of their screen, and only the toggled chip changes. */
+export const Chip = memo(ChipImpl);
 
 function ChipView({
   label,
@@ -86,6 +91,7 @@ function ChipView({
   accessibilityHint,
 }: ChipProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('common');
   const isSelected = selectable && selected;
   const c = useChipColors({ accent, color }, isSelected);
   const iconSize = ICON[size];
@@ -121,9 +127,9 @@ function ChipView({
     borderColor: c.border,
     backgroundColor: c.bg,
   };
-  const hitSlop = { top: verticalSlop, bottom: verticalSlop, left: spacing.xs, right: spacing.xs };
+  const hitSlop = hitSlopOf(verticalSlop, spacing.xs);
   const a11yState = { selected: isSelected, disabled: !!disabled };
-  const a11yLabel = typeof count === 'number' ? `${label}, ${count}` : label;
+  const a11yLabel = typeof count === 'number' ? t('chip.withCount', { label, value: count }) : label;
 
   if (!onRemove) {
     if (!onPress) {
@@ -153,33 +159,38 @@ function ChipView({
   return (
     <View style={[container, { opacity: disabled ? 0.45 : 1 }]}>
       {onPress ? (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={a11yLabel}
           accessibilityState={a11yState}
-          disabled={disabled}
-          hitSlop={{ top: verticalSlop, bottom: verticalSlop, left: spacing.xs, right: 0 }}
+          scaleTo={1}
+          hitSlop={hitSlopOf(verticalSlop)}
+          ringRadius={radius.pill}
+          // The whole chip is dimmed when disabled, so the control itself stays enabled-looking and just ignores taps.
           onPress={() => {
+            if (disabled) return;
             haptics.select();
             onPress();
           }}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}>
+          style={styles.bodyRow}>
           {body}
-        </Pressable>
+        </PressableScale>
       ) : (
-        <View accessible accessibilityLabel={a11yLabel} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}>
+        <View accessible accessibilityLabel={a11yLabel} style={styles.bodyRow}>
           {body}
         </View>
       )}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={removeLabel ?? `Remove ${label}`}
-        disabled={disabled}
-        hitSlop={{ top: verticalSlop, bottom: verticalSlop, left: spacing.sm, right: spacing.sm }}
-        onPress={onRemove}
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, borderRadius: radius.pill })}>
+        accessibilityLabel={removeLabel ?? t('chip.remove', { label })}
+        accessibilityState={{ disabled: !!disabled }}
+        scaleTo={1}
+        hitSlop={hitSlopOf(verticalSlop, spacing.md)}
+        ringRadius={radius.pill}
+        onPress={disabled ? undefined : onRemove}
+        style={styles.remove}>
         <Ionicons name="close" size={iconSize + 2} color={isSelected ? c.fg : colors.textSecondary} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -190,7 +201,7 @@ export type TagProps = ChipBase & {
 };
 
 /** Non-interactive label pill (category, status text). Has no press, selected or remove behaviour. */
-export function Tag({ label, icon, accent, color, size = 'sm', tone }: TagProps) {
+function TagImpl({ label, icon, accent, color, size = 'sm', tone }: TagProps) {
   const { colors, accent: accentFor } = useTheme();
   const resolved = tone ?? (accent || color ? 'accent' : 'neutral');
   const a = accent ? accentFor(accent) : null;
@@ -221,6 +232,9 @@ export function Tag({ label, icon, accent, color, size = 'sm', tone }: TagProps)
   );
 }
 
+/** Quiet label pill. Memoised. */
+export const Tag = memo(TagImpl);
+
 /** Wrapping group of chips (form fields). */
 export function ChipGroup({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{children}</View>;
@@ -234,3 +248,9 @@ export function ChipRow({ children }: { children: ReactNode }) {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: { alignSelf: 'flex-start' },
+  bodyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
+  remove: { borderRadius: radius.pill, paddingHorizontal: spacing.xs },
+});

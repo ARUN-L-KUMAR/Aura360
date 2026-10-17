@@ -4,6 +4,7 @@ import { useContext, type ComponentProps } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { readableOn } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { layout, palettes, radius, spacing, useTheme, type ModuleKey } from '@/theme';
@@ -20,26 +21,14 @@ export interface FloatingActionProps {
   accessibilityLabel: string;
   /** Visible text: turns the button into an extended FAB (icon + label). */
   label?: string;
-  /** Position override for the wrapper (e.g. `{ left: 16 }`). */
+  /** Position override for the wrapper (e.g. `{ start: 16 }`). */
   style?: StyleProp<ViewStyle>;
-}
-
-/** Relative luminance of a #rgb / #rrggbb colour, or null when the string is not one. */
-function luminance(hex: string): number | null {
-  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const full = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
-  const [r, g, b] = [0, 2, 4].map((i) => {
-    const c = parseInt(full.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 const FAB_SIZE = 56;
 
 /**
- * Floating action button: 56pt, elevation 3, accent fill, press-scale + haptic. Sits bottom-right above the safe area
+ * Floating action button: 56pt, elevation 3, accent fill, press-scale + haptic. Sits at the bottom end (right in LTR) above the safe area
  * (inside the tab navigator the tab bar already covers it). `label` makes it an extended FAB.
  */
 export function FloatingAction({ icon = 'add', onPress, color, accent, accessibilityLabel, label, style }: FloatingActionProps) {
@@ -55,15 +44,14 @@ export function FloatingAction({ icon = 'add', onPress, color, accent, accessibi
     content = a.onSolid;
   } else if (color) {
     fill = color;
-    const lum = luminance(color);
     // Pick the content colour with the higher contrast ratio.
-    content = lum === null || (lum + 0.05) / 0.05 < 1.05 / (lum + 0.05) ? colors.primaryText : palettes.dark.background;
+    content = readableOn(color, colors.primaryText, palettes.dark.background);
   }
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrap, { right: layout.screenPadding, bottom: spacing.lg + (inTabs ? 0 : insets.bottom) }, style]}>
+      style={[styles.wrap, { end: layout.screenPadding, bottom: spacing.lg + (inTabs ? 0 : insets.bottom) }, style]}>
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}

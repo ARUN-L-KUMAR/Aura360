@@ -3,8 +3,11 @@ import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, t
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 import { instant } from '@/components/ui/motion';
+import { capCount } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
+import { directionSign, isRTL } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, spring, useTheme, type ModuleKey } from '@/theme';
 
@@ -33,15 +36,18 @@ const INDICATOR_HEIGHT = 3;
 
 /**
  * In-screen tabs, underline style. The indicator slides with translateX / scaleX on the UI thread. Selected state is
- * the indicator + semi-bold label, not colour alone.
+ * the indicator + semi-bold label, not colour alone. In right-to-left languages the tabs run right to left and the
+ * indicator follows. Labels wrap to two lines at large text sizes.
  */
 export function Tabs<T extends string>({ tabs, value, onChange, scrollable = false, accent, accessibilityLabel, style }: Props<T>) {
   const { colors, accent: accentFor, reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
   const palette = accent ? accentFor(accent) : null;
   const selectedText = palette?.text ?? colors.primaryAccent;
   const indicatorColor = palette?.solid ?? colors.primary;
 
   const [width, setWidth] = useState(0);
+  const [rowWidth, setRowWidth] = useState(0);
   const [boxes, setBoxes] = useState<Record<number, Box>>({});
   const scrollRef = useRef<ScrollView>(null);
   const placed = useRef(false);
@@ -51,10 +57,13 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
 
   const index = Math.max(
     0,
-    tabs.findIndex((t) => t.value === value),
+    tabs.findIndex((tab) => tab.value === value),
   );
   const fixedWidth = tabs.length ? width / tabs.length : 0;
-  const box: Box | undefined = scrollable ? boxes[index] : width ? { x: index * fixedWidth, w: fixedWidth } : undefined;
+  // `x` is measured from the start edge: onLayout reports physical coordinates, so flip them in right-to-left.
+  const measured = boxes[index];
+  const startBox: Box | undefined = measured && isRTL() ? (rowWidth ? { x: rowWidth - measured.x - measured.w, w: measured.w } : undefined) : measured;
+  const box: Box | undefined = scrollable ? startBox : width ? { x: index * fixedWidth, w: fixedWidth } : undefined;
   const boxX = box?.x;
   const boxW = box?.w;
 
@@ -79,9 +88,10 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
     scrollRef.current?.scrollTo({ x: Math.max(0, boxX + boxW / 2 - width / 2), animated: !reduceMotion });
   }, [scrollable, boxX, boxW, width, reduceMotion]);
 
+  const sign = directionSign();
   const indicatorStyle = useAnimatedStyle(() => ({
     opacity: visible.value,
-    transform: [{ translateX: x.value }, { scaleX: w.value }],
+    transform: [{ translateX: x.value * sign }, { scaleX: w.value }],
   }));
 
   const items = tabs.map((tab, i) => {
@@ -102,7 +112,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
         }>
         <PressableScale
           accessibilityRole="tab"
-          accessibilityLabel={hasCount ? `${tab.label}, ${count}` : tab.label}
+          accessibilityLabel={hasCount ? t('tabs.withCount', { label: tab.label, value: count }) : tab.label}
           accessibilityState={{ selected, disabled: !!tab.disabled }}
           disabled={tab.disabled}
           scaleTo={1}
@@ -113,7 +123,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
             onChange(tab.value);
           }}
           style={styles.item}>
-          <Text variant="label" weight={selected ? 'semiBold' : 'medium'} color={selected ? selectedText : 'textSecondary'} numberOfLines={1}>
+          <Text variant="label" weight={selected ? 'semiBold' : 'medium'} color={selected ? selectedText : 'textSecondary'} numberOfLines={2} style={styles.label}>
             {tab.label}
           </Text>
           {hasCount ? (
@@ -124,7 +134,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
                 numeric
                 maxFontSizeMultiplier={1.2}
                 color={selected ? (palette?.text ?? colors.onPrimaryContainer) : 'textSecondary'}>
-                {count > 99 ? '99+' : count}
+                {capCount(count)}
               </Text>
             </View>
           ) : null}
@@ -148,7 +158,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
       style={[styles.root, { borderBottomColor: colors.border }, style]}>
       {scrollable ? (
         <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.row}>
+          <View style={styles.row} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
             {items}
             {indicator}
           </View>
@@ -175,11 +185,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
   },
+  label: { flexShrink: 1, textAlign: 'center' },
   count: {
     minWidth: 20,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.pill,
     alignItems: 'center',
   },
-  indicator: { position: 'absolute', left: 0, bottom: 0, width: 1, height: INDICATOR_HEIGHT },
+  indicator: { position: 'absolute', start: 0, bottom: 0, width: 1, height: INDICATOR_HEIGHT },
 });

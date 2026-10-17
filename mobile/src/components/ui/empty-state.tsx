@@ -4,27 +4,21 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/button';
-import { withAlpha } from '@/components/ui/card';
+import { withAlpha } from '@/components/ui/logic';
 import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export type EmptyStateVariant = 'empty' | 'noResults' | 'offline';
 
-const PRESETS: Record<EmptyStateVariant, { icon: IconName; title: string; description?: string }> = {
-  empty: { icon: 'sparkles-outline', title: 'Nothing here yet' },
-  noResults: {
-    icon: 'search-outline',
-    title: 'No results',
-    description: 'Try a different search or clear your filters.',
-  },
-  offline: {
-    icon: 'cloud-offline-outline',
-    title: "You're offline",
-    description: 'Connect to the internet to see the latest.',
-  },
+/** Icons per variant. The words live in `common:emptyState.<variant>`. */
+const PRESET_ICONS: Record<EmptyStateVariant, IconName> = {
+  empty: 'sparkles-outline',
+  noResults: 'search-outline',
+  offline: 'cloud-offline-outline',
 };
 
 export interface EmptyStateProps {
@@ -62,33 +56,35 @@ export function EmptyState({
   secondaryActionTitle,
   onSecondaryAction,
   onClearFilters,
-  clearFiltersLabel = 'Clear filters',
+  clearFiltersLabel,
   accent,
   color,
   style,
 }: EmptyStateProps) {
   const { colors, accent: accentFor } = useTheme();
+  const { t } = useTranslation('common');
   const motion = useBlockMotion();
-  const preset = PRESETS[variant];
   const a = accent ? accentFor(accent) : null;
   const iconColor = a ? a.text : (color ?? colors.textSecondary);
   const tile = a ? a.soft : color ? withAlpha(color, 0.12) : colors.cardMuted;
 
-  const heading = title ?? preset.title;
-  const body = description ?? preset.description;
+  const heading = title ?? t(`emptyState.${variant}.title`);
+  // The plain "empty" variant has a headline only; the other two explain what to do next.
+  const body = description ?? (variant === 'empty' ? undefined : t(`emptyState.${variant}.description`));
+  const clearLabel = clearFiltersLabel ?? t('emptyState.clearFilters');
 
   // noResults: "Clear filters" is the primary action unless the caller supplied one.
   const primary =
     actionTitle && onAction
       ? { title: actionTitle, onPress: onAction }
       : variant === 'noResults' && onClearFilters
-        ? { title: clearFiltersLabel, onPress: onClearFilters }
+        ? { title: clearLabel, onPress: onClearFilters }
         : null;
   const secondary =
     secondaryActionTitle && onSecondaryAction
       ? { title: secondaryActionTitle, onPress: onSecondaryAction }
       : primary && actionTitle && onAction && variant === 'noResults' && onClearFilters
-        ? { title: clearFiltersLabel, onPress: onClearFilters }
+        ? { title: clearLabel, onPress: onClearFilters }
         : null;
 
   return (
@@ -108,7 +104,7 @@ export function EmptyState({
             marginBottom: spacing.xs,
             backgroundColor: tile,
           }}>
-          <Ionicons name={icon ?? preset.icon} size={32} color={iconColor} />
+          <Ionicons name={icon ?? PRESET_ICONS[variant]} size={32} color={iconColor} />
         </View>
       )}
 

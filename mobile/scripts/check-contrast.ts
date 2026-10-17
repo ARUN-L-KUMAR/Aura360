@@ -70,6 +70,15 @@ for (const scheme of ['light', 'dark'] as const) {
   }
   pairs.push([c.onDanger, c.danger, 4.5, 'onDanger on danger']);
 
+  // Shared UI library combinations that the generic loops above do not reach.
+  pairs.push(
+    [c.primaryAccent, c.cardMuted, 4.5, 'primaryAccent on cardMuted (ghost button pressed)'],
+    [c.textInverse, c.textSecondary, 4.5, 'textInverse on textSecondary (neutral count badge)'],
+    [c.borderStrong, c.cardMuted, 3, 'borderStrong on cardMuted (toggle thumb off, segmented thumb edge)'],
+    [c.primary, c.cardMuted, 3, 'primary on cardMuted (progress fill on track)'],
+    [c.onPrimaryContainer, c.cardMuted, 4.5, 'onPrimaryContainer on cardMuted'],
+  );
+
   for (const key of Object.keys(categoryRamps) as ModuleKey[]) {
     const a = categoryAccent(key, scheme);
     pairs.push(
@@ -78,6 +87,8 @@ for (const scheme of ['light', 'dark'] as const) {
       [a.text, a.soft, 4.5, `accent ${key}: text on soft`],
       [a.solid, c.card, 3, `accent ${key}: solid on card`],
       [a.solid, c.background, 3, `accent ${key}: solid on background`],
+      [a.solid, c.cardMuted, 3, `accent ${key}: solid on cardMuted (progress track)`],
+      [a.text, c.cardMuted, 4.5, `accent ${key}: text on cardMuted`],
       [a.text, c.glassSolid, 4.5, `accent ${key}: text on glassSolid`],
     );
   }

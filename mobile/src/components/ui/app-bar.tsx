@@ -16,8 +16,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GlassSurface, useGlassSupported } from '@/components/ui/glass-surface';
+import { capCount } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
 import { duration, layout, radius, spacing, typeScale, useTheme } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -54,11 +57,12 @@ export type AppBarAction = {
 /** 44pt icon button for app bars (back, search, menu...). */
 export function AppBarButton({ icon, label, onPress, disabled, badge }: AppBarAction) {
   const { colors } = useTheme();
-  const count = badge && badge > 0 ? badge : 0;
+  const { t } = useTranslation('common');
+  const count = badge && badge > 0 ? Math.floor(badge) : 0;
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={count ? `${label}, ${count} new` : label}
+      accessibilityLabel={count ? t('badge.withCount', { label, count }) : label}
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
@@ -68,7 +72,7 @@ export function AppBarButton({ icon, label, onPress, disabled, badge }: AppBarAc
       {count ? (
         <View style={[styles.badge, { backgroundColor: colors.error }]}>
           <Text variant="caption" weight="semiBold" color="onError" numberOfLines={1} maxFontSizeMultiplier={1}>
-            {count > 99 ? '99+' : count}
+            {capCount(count)}
           </Text>
         </View>
       ) : null}
@@ -108,7 +112,7 @@ export function TopAppBar({
   scrollY,
   large = false,
   onBack,
-  backLabel = 'Back',
+  backLabel,
   leading,
   actions = [],
   centerTitle = Platform.OS === 'ios',
@@ -117,6 +121,7 @@ export function TopAppBar({
   style,
 }: TopAppBarProps) {
   const { colors, reduceMotion } = useTheme();
+  const { t } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const blur = useGlassSupported();
   const [scrolled, setScrolled] = useState(false);
@@ -173,12 +178,12 @@ export function TopAppBar({
           </Animated.View>
         ) : null}
 
-        {leading ?? (onBack ? <AppBarButton icon="chevron-back" label={backLabel} onPress={onBack} /> : null)}
+        {leading ?? (onBack ? <AppBarButton icon={directional('chevron-back', 'chevron-forward')} label={backLabel ?? t('actions.back')} onPress={onBack} /> : null)}
 
         {centerTitle ? (
           <View style={styles.spacer} />
         ) : (
-          <Animated.View style={[styles.leadingTitle, { paddingLeft: hasLeading ? spacing.xs : layout.screenPadding - spacing.xs }, titleStyle]}>
+          <Animated.View style={[styles.leadingTitle, { paddingStart: hasLeading ? spacing.xs : layout.screenPadding - spacing.xs }, titleStyle]}>
             {titleNode}
           </Animated.View>
         )}
@@ -212,8 +217,8 @@ export function LargeTitle({ title, subtitle, scrollY }: { title: string; subtit
 }
 
 const styles = StyleSheet.create({
-  bar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  glassEdge: { borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0 },
+  bar: { position: 'absolute', top: 0, start: 0, end: 0, zIndex: 10 },
+  glassEdge: { borderTopWidth: 0, borderStartWidth: 0, borderEndWidth: 0 },
   row: {
     height: APP_BAR_HEIGHT,
     flexDirection: 'row',
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   spacer: { flex: 1 },
-  leadingTitle: { flex: 1, justifyContent: 'center', paddingRight: spacing.sm },
+  leadingTitle: { flex: 1, justifyContent: 'center', paddingEnd: spacing.sm },
   centerTitle: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   button: {
     width: layout.minTouchTarget,
@@ -233,7 +238,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: spacing.xs,
-    right: spacing.xs,
+    end: spacing.xs,
     minWidth: 16,
     height: 16,
     paddingHorizontal: spacing.xs,

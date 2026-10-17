@@ -3,7 +3,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import { useEffect } from 'react';
 
 import { instant } from '@/components/ui/motion';
-import { PressableScale } from '@/components/ui/pressable-scale';
+import { hitSlopOf, PressableScale } from '@/components/ui/pressable-scale';
+import { directionSign } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, spring, useTheme, type ModuleKey } from '@/theme';
 
@@ -37,7 +38,9 @@ export function Toggle({ value, onValueChange, disabled, accent, accessibilityLa
     progress.set(reduceMotion ? withTiming(value ? 1 : 0, instant) : withSpring(value ? 1 : 0, spring.gentle));
   }, [value, reduceMotion, progress]);
 
-  const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: progress.get() * TRAVEL }] }));
+  // The thumb rests at the start edge when off, so it travels toward the end: negative translateX in RTL.
+  const sign = directionSign();
+  const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: progress.get() * TRAVEL * sign }] }));
   // Colour changes are layered and faded in with opacity (never an animated backgroundColor); the thumb's off face stays opaque underneath.
   const onTrack = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, progress.get())) }));
 
@@ -54,7 +57,7 @@ export function Toggle({ value, onValueChange, disabled, accent, accessibilityLa
       scaleTo={1}
       focusRing
       ringRadius={radius.full}
-      hitSlop={{ top: (layout.minTouchTarget - TRACK_HEIGHT) / 2, bottom: (layout.minTouchTarget - TRACK_HEIGHT) / 2, left: spacing.sm, right: spacing.sm }}
+      hitSlop={hitSlopOf((layout.minTouchTarget - TRACK_HEIGHT) / 2, spacing.sm)}
       onPress={() => {
         haptics.select();
         onValueChange(!value);
@@ -82,7 +85,7 @@ const styles = StyleSheet.create({
   },
   thumb: {
     position: 'absolute',
-    left: INSET - 1,
+    start: INSET - 1,
     width: THUMB,
     height: THUMB,
     borderRadius: radius.full,
