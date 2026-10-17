@@ -4,7 +4,8 @@
     "notifications": "Notifications",
     "switchToLight": "Switch to light mode",
     "switchToDark": "Switch to dark mode",
-    "settings": "Open settings"
+    "settings": "Open settings",
+    "title": "Home"
   },
   "greetingWithName": "{{greeting}}, {{name}}",
   "loading": "Loading dashboard",
@@ -17,17 +18,42 @@
   },
   "quickActions": {
     "title": "Quick actions",
-    "note": { "label": "New note", "hint": "Opens the note editor" },
-    "transaction": { "label": "Transaction", "hint": "Opens the add transaction form" },
-    "meal": { "label": "Log meal", "hint": "Opens the meal form" },
-    "workout": { "label": "Workout", "hint": "Opens the workout form" }
+    "note": {
+      "label": "New note",
+      "hint": "Opens the note editor"
+    },
+    "transaction": {
+      "label": "Transaction",
+      "hint": "Opens the add transaction form"
+    },
+    "meal": {
+      "label": "Log meal",
+      "hint": "Opens the meal form"
+    },
+    "workout": {
+      "label": "Workout",
+      "hint": "Opens the workout form"
+    }
   },
   "overview": {
-    "title": "Overview",
-    "total": { "label": "Total activities", "subtitle": "This month" },
-    "finance": { "label": "Finance logs" },
-    "fitness": { "label": "Fitness sessions" },
-    "food": { "label": "Meals tracked" }
+    "title": "Today at a glance",
+    "total": {
+      "label": "Activities this month",
+      "delta": "{{value}} vs yesterday",
+      "today": "{{count}} today"
+    },
+    "finance": {
+      "label": "Finance logs"
+    },
+    "fitness": {
+      "label": "Fitness sessions"
+    },
+    "food": {
+      "label": "Meals tracked"
+    },
+    "share": "{{percent}}% of entries",
+    "tileLabel": "{{label}}: {{value}}, {{percent}} percent of all your entries",
+    "tileHint": "Opens {{module}}"
   },
   "month": {
     "title": "This month",
@@ -36,7 +62,11 @@
     "income": "Income",
     "expense": "Spent",
     "investment": "Invested",
-    "figureLabel": "{{label}} this month, {{amount}}"
+    "figureLabel": "{{label}} this month, {{amount}}",
+    "net": "Net",
+    "chartLabel": "Income, spending and investments this month",
+    "cardLabel": "{{title}}. {{income}}, {{expense}}, {{investment}}. {{net}}",
+    "cardHint": "Opens finance"
   },
   "activity": {
     "title": "Activity overview",
@@ -44,7 +74,14 @@
     "chartLabel_one": "Activity for the last day: {{summary}}",
     "chartLabel_other": "Activity over the last {{count}} days: {{summary}}",
     "point": "{{day}} {{value}}",
-    "separator": ", "
+    "separator": ", ",
+    "streak": {
+      "title": "Active days",
+      "current_one": "{{count}} day streak",
+      "current_other": "{{count}} day streak",
+      "summary": "Active on {{done}} of {{total}} days",
+      "dotsLabel": "{{done}} of {{total}} days active, today is {{day}}"
+    }
   },
   "modules": {
     "title": "Your modules",
@@ -52,7 +89,9 @@
     "entries_one": "{{count}} entry",
     "entries_other": "{{count}} entries",
     "cardLabel": "{{label}}, {{entries}}. {{description}}",
-    "cardHint": "Opens {{label}}"
+    "cardHint": "Opens {{label}}",
+    "unit_one": "entry",
+    "unit_other": "entries"
   },
   "recent": {
     "title": "Recent transactions",
@@ -66,18 +105,36 @@
       "title": "No recent activity",
       "description": "Your latest transactions will appear here.",
       "action": "Add transaction"
-    }
+    },
+    "investment": "Invested",
+    "transfer": "Transfer",
+    "rowHint": "Opens finance"
   },
   "shortcuts": {
     "title": "Shortcuts",
-    "targets": { "label": "Daily targets", "subtitle": "Workouts and goals" },
-    "insights": { "label": "Health insights", "subtitle": "Meals and nutrition" },
-    "ask": { "label": "Ask Aura", "subtitle": "Questions about your data" }
+    "targets": {
+      "label": "Daily targets",
+      "subtitle": "Workouts and goals"
+    },
+    "insights": {
+      "label": "Health insights",
+      "subtitle": "Meals and nutrition"
+    },
+    "ask": {
+      "label": "Ask Aura",
+      "subtitle": "Questions about your data"
+    }
   },
   "module": {
     "notFound": {
       "title": "Section not found",
       "message": "This section does not exist."
     }
+  },
+  "hero": {
+    "today": "Today",
+    "streak": "Day streak",
+    "month": "This month",
+    "statLabel": "{{label}}: {{value}}"
   }
 }

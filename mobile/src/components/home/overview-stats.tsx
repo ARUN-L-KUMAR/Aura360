@@ -1,47 +1,118 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
+import { memo, useMemo } from 'react';
 import { View } from 'react-native';
 
-import { Grid, gridCell } from '@/components/home/grid';
+import { activitySeries, dayDelta, sharePercent, todayIndexOf, totalEntries } from '@/components/home/derive';
+import { Decor } from '@/components/home/decor';
 import { Section } from '@/components/home/section';
+import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
-import { StatCard } from '@/components/ui/stat-card';
+import { Text } from '@/components/ui/text';
+import { AnimatedNumber } from '@/components/viz/animated-number';
+import { ProgressRing } from '@/components/viz/progress-ring';
+import { StatTile, type StatTileDelta } from '@/components/viz/stat-tile';
 import type { Dashboard } from '@/features/dashboard/use-dashboard';
-import type { IconName, ModuleKey } from '@/features/modules';
-import { useTranslation } from '@/i18n';
-import type { TFunction } from 'i18next';
+import { modules, type IconName } from '@/features/modules';
+import { getDeviceLocale, useTranslation } from '@/i18n';
+import { todayIso } from '@/lib/format';
+import { haptics } from '@/lib/haptics';
+import { layout, spacing, useTheme } from '@/theme';
 
-type Stat = { key: string; label: string; value: number; icon: IconName; accent?: ModuleKey; subtitle?: string; href?: string };
+type GlanceModule = { key: 'finance' | 'fitness' | 'food'; icon: IconName };
 
-function statsFor(data: Dashboard, t: TFunction<'home'>): Stat[] {
-  return [
-    { key: 'total', label: t('overview.total.label'), value: data.totalActivities, icon: 'pulse-outline', subtitle: t('overview.total.subtitle') },
-    { key: 'finance', label: t('overview.finance.label'), value: data.counts.finance, icon: 'wallet-outline', accent: 'finance', href: '/finance' },
-    { key: 'fitness', label: t('overview.fitness.label'), value: data.counts.fitness, icon: 'barbell-outline', accent: 'fitness', href: '/fitness' },
-    { key: 'food', label: t('overview.food.label'), value: data.counts.food, icon: 'restaurant-outline', accent: 'food', href: '/food' },
-  ];
-}
+const GLANCE: GlanceModule[] = [
+  { key: 'finance', icon: 'wallet-outline' },
+  { key: 'fitness', icon: 'barbell-outline' },
+  { key: 'food', icon: 'restaurant-outline' },
+];
 
-/** The four headline numbers. Module stats open their module. */
-export function OverviewStats({ data, index }: { data: Dashboard; index: number }) {
+const RING_SIZE = spacing.xxxl + spacing.lg; // 64
+/** Three tiles per row on a normal phone; they wrap (and grow) when text is large or the screen is narrow. */
+const TILE_MIN_WIDTH = layout.minTouchTarget * 2;
+
+type TileProps = { moduleKey: GlanceModule['key']; icon: IconName; value: number; percent: number; onOpen: (href: string) => void };
+
+/** One module headline: a ring for its share of all entries around the module icon, the count and the label. */
+const GlanceTile = memo(function GlanceTile({ moduleKey, icon, value, percent, onOpen }: TileProps) {
+  const { t } = useTranslation('home');
+  const { accent } = useTheme();
+  const a = accent(moduleKey);
+  const info = modules[moduleKey];
+  const label = t(`overview.${moduleKey}.label`);
+
+  return (
+    <Card
+      accent={moduleKey}
+      padding="sm"
+      accessibilityLabel={t('overview.tileLabel', { label, value: value.toLocaleString(getDeviceLocale()), percent })}
+      accessibilityHint={t('overview.tileHint', { module: info.label })}
+      onPress={() => {
+        haptics.tap();
+        onOpen(info.href);
+      }}
+      style={{ flexGrow: 1, flexBasis: 0, minWidth: TILE_MIN_WIDTH, alignItems: 'center', gap: spacing.sm }}>
+      <Decor>
+        <ProgressRing value={percent} max={100} size={RING_SIZE} accent={moduleKey}>
+          <Ionicons name={icon} size={22} color={a.text} />
+        </ProgressRing>
+      </Decor>
+      <AnimatedNumber value={value} variant="title" />
+      <Text variant="caption" weight="medium" numberOfLines={2} style={{ textAlign: 'center' }}>
+        {label}
+      </Text>
+      <Text variant="caption" color="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
+        {t('overview.share', { percent })}
+      </Text>
+    </Card>
+  );
+});
+
+/**
+ * Today at a glance: the month's activity total with its last-7-days line and a day-on-day change, then finance,
+ * fitness and food, each as a ring (its share of all your entries) around the module icon with the count. Module tiles
+ * open their module. Everything is computed from the dashboard payload.
+ */
+export const OverviewStats = memo(function OverviewStats({ data, index }: { data: Dashboard; index: number }) {
   const { t } = useTranslation('home');
   const router = useRouter();
+
+  const total = useMemo(() => {
+    const series = activitySeries(data.chart);
+    const todayIndex = todayIndexOf(data.chart, todayIso());
+    const change = dayDelta(series, todayIndex);
+    const delta: StatTileDelta | undefined = change
+      ? { direction: change.direction, text: t('overview.total.delta', { value: change.amount.toLocaleString(getDeviceLocale()) }) }
+      : undefined;
+    return { series, delta, today: todayIndex >= 0 ? series[todayIndex] : 0 };
+  }, [data.chart, t]);
+
+  const entries = totalEntries(data.counts);
+  const open = (href: string) => router.push(href as Href);
+
   return (
     <Section index={index}>
       <SectionHeader title={t('overview.title')} />
-      <Grid>
-        {statsFor(data, t).map((stat) => (
-          <View key={stat.key} style={gridCell}>
-            <StatCard
-              label={stat.label}
-              value={stat.value}
-              icon={stat.icon}
-              accent={stat.accent}
-              subtitle={stat.subtitle}
-              onPress={stat.href ? () => router.push(stat.href as Href) : undefined}
-            />
-          </View>
+      <StatTile
+        label={t('overview.total.label')}
+        value={data.totalActivities}
+        icon="pulse-outline"
+        delta={total.delta}
+        sparkline={total.series}
+        chartLabel={t('overview.total.today', { count: total.today })}
+      />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+        {GLANCE.map((item) => (
+          <GlanceTile
+            key={item.key}
+            moduleKey={item.key}
+            icon={item.icon}
+            value={data.counts[item.key]}
+            percent={sharePercent(data.counts[item.key], entries)}
+            onOpen={open}
+          />
         ))}
-      </Grid>
+      </View>
     </Section>
   );
-}
+});

@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { memo } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Section } from '@/components/home/section';
+import { Gradient } from '@/components/ui/gradient';
+import { withAlpha } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
@@ -20,58 +22,73 @@ const ACTIONS: QuickAction[] = [
   { key: 'workout', icon: 'barbell-outline', accent: 'fitness', href: '/fitness/workout' },
 ];
 
-/** Past this system font scale the four tiles no longer fit in one row, so they wrap into two columns. */
-const WRAP_FONT_SCALE = 1.2;
+const CHIP = layout.minTouchTarget;
+const ICON = spacing.xl + spacing.xs; // 28
+const WATERMARK = spacing.xxxl + spacing.xl; // 72
+/** Slightly deeper squish than a row: these are big, bold targets. */
+const PRESS_SCALE = 0.95;
+const CHIP_ALPHA = 0.2;
+const WATERMARK_ALPHA = 0.16;
 
-const QuickActionTile = memo(function QuickActionTile({ action, wrap, onPress }: { action: QuickAction; wrap: boolean; onPress: (href: string) => void }) {
+const QuickActionTile = memo(function QuickActionTile({ action, onPress }: { action: QuickAction; onPress: (href: string) => void }) {
   const { t } = useTranslation('home');
   const { accent } = useTheme();
   const a = accent(action.accent);
+  const label = t(`quickActions.${action.key}.label`);
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={t(`quickActions.${action.key}.label`)}
+      accessibilityLabel={label}
       accessibilityHint={t(`quickActions.${action.key}.hint`)}
       haptic="tap"
+      scaleTo={PRESS_SCALE}
       ringRadius={radius.lg}
       onPress={() => onPress(action.href)}
       style={{
         flexGrow: 1,
-        flexBasis: wrap ? '45%' : 0,
+        flexBasis: '45%',
         minHeight: layout.minTouchTarget * 2,
-        alignItems: 'center',
-        justifyContent: 'center',
+        overflow: 'hidden',
         gap: spacing.sm,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xs,
+        padding: spacing.md,
         borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: a.border,
-        backgroundColor: a.soft,
       }}>
-      <Ionicons name={action.icon} size={26} color={a.text} />
-      <Text variant="caption" weight="medium" style={{ textAlign: 'center' }}>
-        {t(`quickActions.${action.key}.label`)}
+      {/* Solid accent that deepens along the diagonal; the foreground uses the accent's own on-colour. */}
+      <Gradient from={a.solid} to={a.text} direction="diagonal" />
+      <View pointerEvents="none" style={{ position: 'absolute', end: -spacing.sm, bottom: -spacing.sm, opacity: WATERMARK_ALPHA }}>
+        <Ionicons name={action.icon} size={WATERMARK} color={a.onSolid} />
+      </View>
+      <View
+        style={{
+          width: CHIP,
+          height: CHIP,
+          borderRadius: radius.pill,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: withAlpha(a.onSolid, CHIP_ALPHA),
+        }}>
+        <Ionicons name={action.icon} size={ICON} color={a.onSolid} />
+      </View>
+      <Text variant="label" weight="semiBold" numberOfLines={2} style={{ color: a.onSolid }}>
+        {label}
       </Text>
     </PressableScale>
   );
 });
 
-/** One-tap entry points to the forms people use most. */
-export function QuickActions({ index }: { index: number }) {
+/** One-tap entry points to the forms people use most: bold accent tiles with a large icon and a press squish. */
+export const QuickActions = memo(function QuickActions({ index }: { index: number }) {
   const { t } = useTranslation('home');
-  const { fontScale } = useWindowDimensions();
   const router = useRouter();
   const open = (href: string) => router.push(href as Href);
-  const wrap = fontScale > WRAP_FONT_SCALE;
   return (
     <Section index={index}>
       <SectionHeader title={t('quickActions.title')} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
         {ACTIONS.map((action) => (
-          <QuickActionTile key={action.key} action={action} wrap={wrap} onPress={open} />
+          <QuickActionTile key={action.key} action={action} onPress={open} />
         ))}
       </View>
     </Section>
   );
-}
+});

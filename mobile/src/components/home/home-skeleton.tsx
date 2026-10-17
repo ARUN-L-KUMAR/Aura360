@@ -12,13 +12,28 @@ function SectionTitle({ width = '40%' }: { width?: `${number}%` }) {
   return <Skeleton shape="line" width={width} height={spacing.lg} />;
 }
 
-/** Placeholder with the same blocks as the loaded dashboard: stats, quick actions, chart, month, modules, list. */
+/**
+ * Placeholder with the same blocks as the loaded dashboard, in the same order: at a glance (wide tile + three ring
+ * tiles), quick actions (2 x 2), activity bars, month donut, module tiles, recent list. The hero above it is real.
+ */
 export function HomeSkeleton() {
   const { t } = useTranslation('home');
   return (
     <SkeletonGroup label={t('loading')} style={{ gap: layout.sectionGap }}>
       <View style={{ gap: spacing.md }}>
-        <SectionTitle width="30%" />
+        <SectionTitle width="40%" />
+        <Skeleton height={layout.minTouchTarget * 2 + spacing.lg} rounded="lg" />
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          {THREE.map((i) => (
+            <View key={i} style={{ flex: 1 }}>
+              <Skeleton height={layout.minTouchTarget * 3} rounded="lg" />
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={{ gap: spacing.md }}>
+        <SectionTitle width="35%" />
         <Grid>
           {FOUR.map((i) => (
             <View key={i} style={gridCell}>
@@ -29,24 +44,13 @@ export function HomeSkeleton() {
       </View>
 
       <View style={{ gap: spacing.md }}>
-        <SectionTitle width="35%" />
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          {FOUR.map((i) => (
-            <View key={i} style={{ flex: 1 }}>
-              <Skeleton height={layout.minTouchTarget * 2} rounded="lg" />
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={{ gap: spacing.md }}>
         <SectionTitle width="45%" />
         <Skeleton height={layout.minTouchTarget * 4} rounded="lg" />
       </View>
 
       <View style={{ gap: spacing.md }}>
         <SectionTitle width="30%" />
-        <Skeleton height={layout.minTouchTarget + spacing.xl} rounded="lg" />
+        <Skeleton height={layout.minTouchTarget * 3 + spacing.md} rounded="lg" />
       </View>
 
       <View style={{ gap: spacing.md }}>
