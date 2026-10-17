@@ -62,7 +62,7 @@ for (const ext of ['.ts', '.tsx']) {
 
 const { SCENES } = require(path.join(SRC, 'illustrations', 'registry'));
 const { scenePalette } = require(path.join(SRC, 'illustrations', 'palette'));
-const { neutral } = require(path.join(SRC, 'theme', 'colors'));
+const { neutral, categoryRamps } = require(path.join(SRC, 'theme', 'colors'));
 
 // --- render ----------------------------------------------------------------------------------------------------------
 const WIDTH = 640;
@@ -97,22 +97,19 @@ for (const name of names) {
   const def = SCENES[name];
   const variants = def.variants?.length ? def.variants : [undefined];
   const h = Math.round(WIDTH / def.aspect);
-  const accent = name.includes(':') ? name.split(':')[1] : undefined;
+  // Scene names are `<moduleKey>-<what>` (e.g. finance-hero): the prefix picks the accent, anything else uses the brand accent.
+  const prefix = name.split('-')[0];
+  const accent = categoryRamps[prefix] ? prefix : 'ai';
   const cells = [];
   variants.forEach((variant, row) => {
     ['light', 'dark'].forEach((scheme, col) => {
       let inner;
       try {
-        inner = layerMarkup(def, WIDTH, h, scenePalette(scheme, accent ?? name.replace(/-.*/, '')), variant);
-      } catch {
-        // Fall back to the brand accent when the scene name is not a module key.
-        try {
-          inner = layerMarkup(def, WIDTH, h, scenePalette(scheme), variant);
-        } catch (e) {
-          console.error(`FAIL ${name}${variant ? ' / ' + variant : ''} (${scheme}): ${e.message}`);
-          failed++;
-          return;
-        }
+        inner = layerMarkup(def, WIDTH, h, scenePalette(scheme, accent), variant);
+      } catch (e) {
+        console.error(`FAIL ${name}${variant ? ' / ' + variant : ''} (${scheme}): ${e.message}`);
+        failed++;
+        return;
       }
       const x = col * (WIDTH + GAP) + GAP;
       const y = row * (h + GAP) + GAP;
