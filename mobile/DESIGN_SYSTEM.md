@@ -197,6 +197,25 @@ logic in `src/features/search/match.ts`.
 **Session expiry.** When the server ends the session, `useAuth().sessionExpired` is true and the sign-in screen shows
 a banner until the user signs in again.
 
+## Illustrations and data visuals
+
+**Illustrations** are drawn in code so they follow the palette, the module accent and light / dark mode. A scene is a pure
+`react-native-svg` component in `src/illustrations/scenes/` (layers back to front; colours only from the `ScenePalette`, no
+literals, no text), registered in `registry.heroes.ts` (wide banners, e.g. `home-hero` with morning / day / evening / night
+variants, `finance-hero`, `fitness-hero`) or `registry.spot.ts` (small scenes for empty states, errors, onboarding). Scene names are
+`<moduleKey>-<what>` so the module accent is picked from the prefix. Draw them in the app with `<Illustration scene="..." />`
+(idle drift per layer, scroll parallax via `scrollY`, hidden from screen readers unless given a label) or `<HeroBanner>` (art on
+top, text below on a solid surface so contrast is guaranteed). `EmptyState` and `ErrorState` choose a scene automatically from
+their variant or icon (`ui/empty-scenes.ts`).
+
+**Previewing art:** `npm run render:art -- <name>` renders scenes to `mobile/.art-preview/<name>.png` (light left, dark right, one
+row per variant) with no phone needed. Look at the PNG after every change.
+
+**Data visuals** (`components/viz`): `ProgressRing`, `Sparkline`, `MiniBars`, `DonutChart`, `AnimatedNumber`, `StreakDots` and
+`StatTile`. Never invent data to fill a chart. Every chart has a spoken summary, and status is never colour-only (icons, markers,
+percentages). Geometry lives in `features/viz/geometry.ts` and is unit-tested. Charts draw their final state at once under
+reduce-motion. They do not mirror in right-to-left layouts yet.
+
 ## Rules of thumb
 
 - A new colour, size or spacing value means a new token, added in `src/theme/` with its contrast check, not a literal.
