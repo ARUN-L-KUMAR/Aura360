@@ -6,6 +6,7 @@ import Animated from 'react-native-reanimated';
 
 import { LiveRestTimer } from '@/components/fitness/live-rest-timer';
 import { RestTimer } from '@/components/fitness/rest-timer';
+import { QueryError } from '@/components/fitness/section-kit';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
@@ -35,8 +36,10 @@ import {
 } from '@/features/fitness/session-store';
 import { formatDuration, isWorkout, lastPerformanceByExercise } from '@/features/fitness/stats';
 import { COMMON_EXERCISES, type Exercise } from '@/features/fitness/types';
-import { ApiError } from '@/lib/api';
+import { useErrorMessage } from '@/features/fitness/use-error-message';
+import { getDeviceLocale, i18n, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
@@ -59,60 +62,65 @@ export function TrainSection({ header, onFinished }: { header: ReactNode; onFini
 // ─── No workout running ───────────────────────────────────────────────────────
 
 function StartWorkout({ header }: { header: ReactNode }) {
-  const [title, setTitle] = useState('Workout');
+  const { t } = useTranslation('fitness');
+  const [title, setTitle] = useState(() => i18n.t('fitness:train.defaultTitle'));
   const recent = useRecentFitness();
 
   const lastWorkout = useMemo(() => (recent.data ?? []).find((entry) => isWorkout(entry) && (entry.exercises?.length ?? 0) > 0), [recent.data]);
 
   function startEmpty() {
     haptics.tap();
-    sessionActions.start(title.trim() || 'Workout');
+    sessionActions.start(title.trim() || t('train.defaultTitle'));
+    analytics.track('workout_started', { source: 'manual' });
   }
 
   function repeatLast() {
     if (!lastWorkout?.exercises) return;
     haptics.tap();
     sessionActions.start(
-      title.trim() || 'Workout',
+      title.trim() || t('train.defaultTitle'),
       lastWorkout.exercises.map((ex) => buildExercise({ name: ex.name, sets: ex.sets, reps: ex.reps }, ex)),
     );
+    analytics.track('workout_started', { source: 'manual' });
   }
 
   return (
     <Screen onRefresh={() => recent.refetch()} refreshing={recent.isRefetching}>
       {header}
 
+      {recent.isError ? <QueryError error={recent.error} hasData retrying={recent.isFetching} onRetry={() => recent.refetch()} /> : null}
+
       <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="Start a workout" subtitle="Name it, then add exercises as you go." />
+        <SectionHeader title={t('train.startTitle')} subtitle={t('train.startSubtitle')} />
         <Input
-          label="Workout name"
+          label={t('train.workoutName')}
           value={title}
           onChangeText={setTitle}
-          placeholder="For example, Push day"
+          placeholder={t('train.workoutNamePlaceholder')}
           autoCapitalize="sentences"
           returnKeyType="done"
           onSubmitEditing={startEmpty}
         />
-        <Button title="Start empty workout" leftIcon="play" haptic={false} onPress={startEmpty} />
+        <Button title={t('train.startEmpty')} leftIcon="play" haptic={false} onPress={startEmpty} />
       </Card>
 
       {lastWorkout?.exercises ? (
         <Card style={{ gap: spacing.sm }}>
-          <SectionHeader title="Repeat your last workout" />
+          <SectionHeader title={t('train.repeatTitle')} />
           <Text variant="body" numberOfLines={3}>
             {lastWorkout.exercises.map((ex) => ex.name).join(' · ')}
           </Text>
           <Text variant="caption" color="textSecondary">
-            Weights and reps are filled in from last time.
+            {t('train.repeatHint')}
           </Text>
-          <Button title="Repeat last workout" variant="secondary" leftIcon="repeat" haptic={false} onPress={repeatLast} />
+          <Button title={t('train.repeatButton')} variant="secondary" leftIcon="repeat" haptic={false} onPress={repeatLast} />
         </Card>
       ) : null}
 
       <RestTimer />
 
       <Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>
-        Or open the Coach tab to build a plan and start any day of it here.
+        {t('train.coachHint')}
       </Text>
     </Screen>
   );
@@ -122,7 +130,9 @@ function StartWorkout({ header }: { header: ReactNode }) {
 
 function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; session: LiveSession; onFinished: () => void }) {
   useKeepAwake();
+  const { t } = useTranslation('fitness');
   const notify = useNotify();
+  const errorMessage = useErrorMessage();
   const save = useSaveFitness();
   const recent = useRecentFitness();
 
@@ -136,38 +146,43 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
     const { doneSets, volume } = sessionTotals(session);
     if (doneSets === 0) {
       const discardIt = await notify.confirm({
-        title: 'No sets completed',
-        message: 'Tick off at least one set to save a workout. Discard it instead?',
-        confirmLabel: 'Discard',
-        cancelLabel: 'Keep going',
+        title: t('train.noSetsTitle'),
+        message: t('train.noSetsMessage'),
+        confirmLabel: t('train.discard'),
+        cancelLabel: t('train.keepGoing'),
         destructive: true,
       });
       if (discardIt) sessionActions.discard();
       return;
     }
     const ok = await notify.confirm({
-      title: 'Finish workout?',
-      message: `${doneSets} sets · ${Math.round(volume).toLocaleString()} kg · ${formatDuration(elapsedSeconds(session, Date.now()))}`,
-      confirmLabel: 'Finish and save',
-      cancelLabel: 'Not yet',
+      title: t('train.finishTitle'),
+      message: t('train.finishMessage', {
+        sets: doneSets,
+        volume: Math.round(volume).toLocaleString(getDeviceLocale()),
+        time: formatDuration(elapsedSeconds(session, Date.now())),
+      }),
+      confirmLabel: t('train.finishConfirm'),
+      cancelLabel: t('train.notYet'),
     });
     if (!ok) return;
     try {
       await save.mutateAsync({ input: buildWorkoutPayload(session, Date.now(), toIsoDay(new Date())) });
       sessionActions.discard();
-      notify.success('Workout saved');
+      notify.success(t('train.saved'));
+      analytics.track('workout_finished');
       onFinished();
     } catch (e) {
-      notify.error(e instanceof ApiError ? e.message : 'Could not save. Your workout is still here, try again.');
+      notify.error(errorMessage(e, t('train.saveFailed')));
     }
   }
 
   async function discard() {
     const ok = await notify.confirm({
-      title: 'Discard workout?',
-      message: 'Everything logged in this session will be lost.',
-      confirmLabel: 'Discard',
-      cancelLabel: 'Keep',
+      title: t('train.discardTitle'),
+      message: t('train.discardMessage'),
+      confirmLabel: t('train.discard'),
+      cancelLabel: t('train.keep'),
       destructive: true,
     });
     if (ok) sessionActions.discard();
@@ -178,7 +193,7 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
       {header}
 
       <Card style={{ gap: spacing.md }}>
-        <Input label="Workout name" value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
+        <Input label={t('train.workoutName')} value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
         <LiveSummary session={session} />
       </Card>
 
@@ -186,7 +201,7 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
 
       {session.exercises.length === 0 ? (
         <Text variant="body" color="textSecondary" style={{ textAlign: 'center' }}>
-          Add your first exercise below.
+          {t('train.addFirst')}
         </Text>
       ) : null}
 
@@ -197,8 +212,8 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
       <AddExercise names={knownNames} lastByName={lastByName} />
 
       <View style={{ gap: spacing.sm }}>
-        <Button title="Finish workout" leftIcon="checkmark" onPress={finish} loading={save.isPending} />
-        <Button title="Discard workout" variant="ghost" onPress={discard} disabled={save.isPending} />
+        <Button title={t('train.finish')} leftIcon="checkmark" onPress={finish} loading={save.isPending} />
+        <Button title={t('train.discardButton')} variant="ghost" onPress={discard} disabled={save.isPending} />
       </View>
     </Screen>
   );
@@ -206,6 +221,7 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
 
 /** Elapsed time, pause control and running totals. Owns the one-second clock so the exercise list does not re-render. */
 function LiveSummary({ session }: { session: LiveSession }) {
+  const { t } = useTranslation('fitness');
   const now = useNow(true);
   const seconds = elapsedSeconds(session, now);
   const { doneSets, totalSets, volume } = sessionTotals(session);
@@ -215,23 +231,24 @@ function LiveSummary({ session }: { session: LiveSession }) {
     <View style={{ gap: spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
         <View style={{ flexShrink: 1, gap: spacing.xs }}>
-          <Text variant="display" numeric accessibilityLabel={`Elapsed time ${formatDuration(seconds)}`}>
+          {/* Not a live region: a clock that spoke every second would drown out everything else. */}
+          <Text variant="display" numeric accessibilityLabel={t('train.elapsed', { time: formatDuration(seconds) })}>
             {formatDuration(seconds)}
           </Text>
-          {paused ? <Tag label="Paused" icon="pause" tone="neutral" /> : null}
+          {paused ? <Tag label={t('train.paused')} icon="pause" tone="neutral" /> : null}
         </View>
         <IconButton
           icon={paused ? 'play' : 'pause'}
           variant="tonal"
           size="lg"
-          accessibilityLabel={paused ? 'Resume workout' : 'Pause workout'}
+          accessibilityLabel={paused ? t('actions.resumeWorkout') : t('train.pause')}
           onPress={() => sessionActions.togglePause()}
         />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.sm }}>
-        <Metric label="Sets" value={`${doneSets}/${totalSets}`} />
-        <Metric label="Volume" value={`${Math.round(volume).toLocaleString()} kg`} />
-        <Metric label="Burn, estimated" value={`${Math.round((seconds / 60) * 7.5 + doneSets * 4)} kcal`} />
+        <Metric label={t('train.sets')} value={`${doneSets}/${totalSets}`} />
+        <Metric label={t('train.volume')} value={t('units.kg', { value: Math.round(volume).toLocaleString(getDeviceLocale()) })} />
+        <Metric label={t('train.burnEstimated')} value={t('units.kcal', { value: Math.round((seconds / 60) * 7.5 + doneSets * 4) })} />
       </View>
     </View>
   );
@@ -239,6 +256,7 @@ function LiveSummary({ session }: { session: LiveSession }) {
 
 /** Shows the rest countdown when one is running; buzzes and announces once when it ends. */
 function LiveRest({ session }: { session: LiveSession }) {
+  const { t } = useTranslation('fitness');
   const now = useNow(true);
   const rest = restRemainingSeconds(session, now);
 
@@ -246,10 +264,10 @@ function LiveRest({ session }: { session: LiveSession }) {
   useEffect(() => {
     if (rest === 0) {
       haptics.success();
-      AccessibilityInfo.announceForAccessibility('Rest over. Next set when you are ready.');
+      AccessibilityInfo.announceForAccessibility(t('train.restOver'));
       sessionActions.skipRest();
     }
-  }, [rest]);
+  }, [rest, t]);
 
   return rest !== null && rest > 0 ? <LiveRestTimer remaining={rest} total={session.restTotalSec} /> : null;
 }
@@ -271,6 +289,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 const SET_BUTTON = layout.minTouchTarget + spacing.xs;
 
 const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exercise: LiveExercise; last?: Exercise; index: number }) {
+  const { t } = useTranslation('fitness');
   const notify = useNotify();
   const substitutes = useSubstitutes();
   const [swapOpen, setSwapOpen] = useState(false);
@@ -283,15 +302,16 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
 
   async function removeExercise() {
     const ok = await notify.confirm({
-      title: `Remove ${exercise.name}?`,
-      message: 'Its sets in this session will be removed too.',
-      confirmLabel: 'Remove',
+      title: t('train.removeExerciseTitle', { name: exercise.name }),
+      message: t('train.removeExerciseMessage'),
+      confirmLabel: t('train.remove'),
+      cancelLabel: t('actions.cancel'),
       destructive: true,
     });
     if (ok) sessionActions.removeExercise(exercise.id);
   }
 
-  const lastText = last?.weight ? `last ${last.weight} kg × ${last.reps ?? '-'}` : null;
+  const lastText = last?.weight ? t('train.lastTime', { weight: last.weight, reps: last.reps ?? '-' }) : null;
 
   return (
     <Animated.View {...motion}>
@@ -302,33 +322,33 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
               {exercise.name}
             </Text>
             <Text variant="caption" color="textSecondary">
-              {[exercise.category, `${exercise.restSeconds}s rest`, lastText].filter(Boolean).join(' · ')}
+              {[exercise.category, t('units.secondsRest', { value: exercise.restSeconds }), lastText].filter(Boolean).join(' · ')}
             </Text>
           </View>
-          <IconButton icon="swap-horizontal" size="sm" accessibilityLabel={`Swap ${exercise.name}`} onPress={openSwap} />
-          <IconButton icon="trash-outline" size="sm" destructive accessibilityLabel={`Remove ${exercise.name}`} onPress={removeExercise} />
+          <IconButton icon="swap-horizontal" size="sm" accessibilityLabel={t('train.swap', { name: exercise.name })} onPress={openSwap} />
+          <IconButton icon="trash-outline" size="sm" destructive accessibilityLabel={t('train.removeExercise', { name: exercise.name })} onPress={removeExercise} />
         </View>
 
         {swapOpen ? (
           <Card variant="flat" padding="sm" style={{ gap: spacing.xs }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text variant="label" weight="semiBold">
-                Swap with
+              <Text variant="label" weight="semiBold" accessibilityRole="header">
+                {t('train.swapWith')}
               </Text>
-              <IconButton icon="close" size="sm" accessibilityLabel="Close suggestions" onPress={() => setSwapOpen(false)} />
+              <IconButton icon="close" size="sm" accessibilityLabel={t('train.closeSuggestions')} onPress={() => setSwapOpen(false)} />
             </View>
             {substitutes.isPending ? <SkeletonList count={2} avatar={false} /> : null}
             {substitutes.isError ? (
               <ErrorState
                 size="inline"
-                title="Couldn't get suggestions"
-                message="Check your connection and try again."
+                error={substitutes.error}
+                retryLabel={t('actions.tryAgain')}
                 onRetry={() => substitutes.mutate({ exerciseName: exercise.name, targetMuscle: exercise.category })}
               />
             ) : null}
             {substitutes.isSuccess && substitutes.data.length === 0 ? (
               <Text variant="body" color="textSecondary">
-                No swaps found for this exercise.
+                {t('train.swapEmpty')}
               </Text>
             ) : null}
             {(substitutes.data ?? []).map((option) => (
@@ -336,7 +356,7 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
                 key={option.name}
                 title={option.name}
                 subtitle={`${option.equipment} · ${option.whyItWorks}`}
-                accessibilityHint="Replaces this exercise"
+                accessibilityHint={t('train.swapHint')}
                 onPress={() => {
                   sessionActions.replaceExercise(exercise.id, option.name);
                   setSwapOpen(false);
@@ -347,14 +367,14 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
         ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ width: spacing.xxl }}>
-            SET
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ width: spacing.xxl, textTransform: 'uppercase' }}>
+            {t('train.columnSet')}
           </Text>
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center' }}>
-            KG
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center', textTransform: 'uppercase' }}>
+            {t('train.columnKg')}
           </Text>
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center' }}>
-            REPS
+          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center', textTransform: 'uppercase' }}>
+            {t('train.columnReps')}
           </Text>
           <View style={{ width: SET_BUTTON }} />
         </View>
@@ -364,10 +384,10 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
         ))}
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.xs }}>
-          <Button title="Add set" variant="secondary" size="sm" leftIcon="add" fullWidth={false} onPress={() => sessionActions.addSet(exercise.id)} />
+          <Button title={t('train.addSet')} variant="secondary" size="sm" leftIcon="add" fullWidth={false} onPress={() => sessionActions.addSet(exercise.id)} />
           {exercise.sets.length > 1 ? (
             <Button
-              title="Remove last set"
+              title={t('train.removeLastSet')}
               variant="ghost"
               size="sm"
               fullWidth={false}
@@ -382,6 +402,7 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
 
 const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: { exerciseId: string; index: number; weight: number; reps: number; done: boolean }) {
   const { accent, colors } = useTheme();
+  const { t } = useTranslation('fitness');
   const fitness = accent('fitness');
   const motion = useListMotion(0);
   // Keep what is being typed as text so "7." or an empty box does not jump while editing.
@@ -390,7 +411,7 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
 
   return (
     <Animated.View {...motion} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-      <Text variant="label" numeric color="textSecondary" style={{ width: spacing.xxl }}>
+      <Text variant="label" numeric color="textSecondary" style={{ width: spacing.xxl }} accessibilityElementsHidden importantForAccessibility="no">
         {index + 1}
       </Text>
       <Input
@@ -403,7 +424,7 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
         }}
         keyboardType="decimal-pad"
         selectTextOnFocus
-        accessibilityLabel={`Set ${index + 1} weight in kilograms`}
+        accessibilityLabel={t('train.setWeight', { n: index + 1 })}
         style={{ textAlign: 'center' }}
       />
       <Input
@@ -416,15 +437,15 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
         }}
         keyboardType="number-pad"
         selectTextOnFocus
-        accessibilityLabel={`Set ${index + 1} reps`}
+        accessibilityLabel={t('train.setReps', { n: index + 1 })}
         style={{ textAlign: 'center' }}
       />
       <PressableScale
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
-        accessibilityLabel={`Set ${index + 1} done`}
-        accessibilityHint="Starts the rest timer when checked"
-        accessibilityActions={[{ name: 'delete', label: 'Remove set' }]}
+        accessibilityLabel={t('train.setDone', { n: index + 1 })}
+        accessibilityHint={t('train.setDoneHint')}
+        accessibilityActions={[{ name: 'delete', label: t('train.removeSet') }]}
         onAccessibilityAction={(e) => {
           if (e.nativeEvent.actionName === 'delete') sessionActions.removeSet(exerciseId, index);
         }}
@@ -451,6 +472,7 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
 });
 
 function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<string, Exercise> }) {
+  const { t } = useTranslation('fitness');
   const [text, setText] = useState('');
 
   const suggestions = useMemo(() => {
@@ -470,12 +492,12 @@ function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<s
 
   return (
     <Card style={{ gap: spacing.md }}>
-      <SectionHeader title="Add exercise" />
+      <SectionHeader title={t('train.addExercise')} />
       <Input
         value={text}
         onChangeText={setText}
-        placeholder="Search or type a name"
-        accessibilityLabel="Exercise name"
+        placeholder={t('train.searchExercise')}
+        accessibilityLabel={t('train.exerciseName')}
         autoCapitalize="words"
         returnKeyType="done"
         onSubmitEditing={() => add(text)}
@@ -486,7 +508,7 @@ function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<s
           <Chip key={name} label={name} accent="fitness" selectable={false} icon="add" onPress={() => add(name)} />
         ))}
       </ChipGroup>
-      {canAddCustom ? <Button title={`Add “${text.trim()}”`} variant="secondary" leftIcon="add" haptic={false} onPress={() => add(text)} /> : null}
+      {canAddCustom ? <Button title={t('train.addCustom', { name: text.trim() })} variant="secondary" leftIcon="add" haptic={false} onPress={() => add(text)} /> : null}
     </Card>
   );
 }

@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
+import { directional } from '@/i18n/rtl';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /** Bottom padding for scroll content that has a floating action button (56pt button + 16pt inset + breathing room). */
@@ -30,7 +31,7 @@ export function PeriodStepper({ label, accent, previousLabel, nextLabel, onPrevi
   const a = accentFor(accent);
   return (
     <Card padding="none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, paddingHorizontal: spacing.xs }}>
-      <IconButton icon="chevron-back" accessibilityLabel={previousLabel} onPress={onPrevious} haptic="select" />
+      <IconButton icon={directional('chevron-back', 'chevron-forward')} accessibilityLabel={previousLabel} onPress={onPrevious} haptic="select" />
       {onLabelPress ? (
         <PressableScale
           accessibilityRole="button"
@@ -51,7 +52,7 @@ export function PeriodStepper({ label, accent, previousLabel, nextLabel, onPrevi
           </Text>
         </View>
       )}
-      <IconButton icon="chevron-forward" accessibilityLabel={nextLabel} onPress={onNext} disabled={nextDisabled} haptic="select" />
+      <IconButton icon={directional('chevron-forward', 'chevron-back')} accessibilityLabel={nextLabel} onPress={onNext} disabled={nextDisabled} haptic="select" />
     </Card>
   );
 }

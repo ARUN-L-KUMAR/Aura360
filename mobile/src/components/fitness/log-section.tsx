@@ -17,6 +17,7 @@ import { Text } from '@/components/ui/text';
 import { useFitnessEntries } from '@/features/fitness/hooks';
 import { isWorkout } from '@/features/fitness/stats';
 import type { FitnessEntry } from '@/features/fitness/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, monthKey, monthLabel, shiftMonth } from '@/lib/format';
 import { layout, spacing } from '@/theme';
 
@@ -30,6 +31,7 @@ const Separator = () => <View style={{ height: layout.itemGap }} />;
 
 export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogWorkout: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation('fitness');
   const [month, setMonth] = useState(monthKey());
   const entries = useFitnessEntries(`${month}-01`, lastDayOf(month));
   const isCurrent = month === monthKey();
@@ -54,8 +56,8 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
       <PeriodStepper
         accent="fitness"
         label={monthLabel(month)}
-        previousLabel="Previous month"
-        nextLabel="Next month"
+        previousLabel={t('log.previousMonth')}
+        nextLabel={t('log.nextMonth')}
         onPrevious={() => setMonth(shiftMonth(month, -1))}
         onNext={() => setMonth(shiftMonth(month, 1))}
         nextDisabled={isCurrent}
@@ -74,9 +76,9 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
         <EmptyState
           accent="fitness"
           icon="barbell-outline"
-          title={`Nothing logged in ${monthLabel(month)}`}
-          description="Track your strength, cardio and exercises to see your progress."
-          actionTitle="Log a workout"
+          title={t('log.emptyTitle', { month: monthLabel(month) })}
+          description={t('log.emptyDescription')}
+          actionTitle={t('actions.logWorkout')}
           onAction={onLogWorkout}
         />
       ) : null}
@@ -84,7 +86,7 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
       {workouts.length > 0 ? (
         <>
           <FitnessSummary entries={workouts} />
-          <SectionHeader title="Workouts" count={workouts.length} />
+          <SectionHeader title={t('log.workouts')} count={workouts.length} />
         </>
       ) : null}
     </View>
@@ -94,7 +96,7 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
     <View style={{ gap: layout.sectionGap }}>
       {others.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
-          <SectionHeader title="Measurements and goals" count={others.length} />
+          <SectionHeader title={t('log.measurementsAndGoals')} count={others.length} />
           <Card padding="none" style={{ overflow: 'hidden' }}>
             {others.map((entry, index) => (
               <EntryRow key={entry.id} entry={entry} divider={index < others.length - 1} />
@@ -103,11 +105,11 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
         </View>
       ) : null}
 
-      <Button title="Log a measurement or goal" variant="tertiary" leftIcon="scale-outline" onPress={() => openEntry(router)} />
+      <Button title={t('log.logMeasurement')} variant="tertiary" leftIcon="scale-outline" onPress={() => openEntry(router)} />
 
       {list.length > 0 ? (
         <Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>
-          Latest entry {formatDay(list[0].date)}
+          {t('log.latestEntry', { date: formatDay(list[0].date) })}
         </Text>
       ) : null}
     </View>
@@ -124,6 +126,8 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
       refreshControl={refreshControl}
       contentContainerStyle={[padding, { paddingBottom: FAB_CLEARANCE }]}
       keyboardShouldPersistTaps="handled"
+      initialNumToRender={6}
+      windowSize={7}
     />
   );
 }

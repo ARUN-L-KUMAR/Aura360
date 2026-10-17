@@ -11,7 +11,9 @@ import { Text } from '@/components/ui/text';
 import { buildExercise, sessionActions, useLiveSession } from '@/features/fitness/session-store';
 import { useSaveMeal } from '@/features/food/hooks';
 import type { MealType } from '@/features/food/types';
+import { getDeviceLocale, i18n, useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -53,10 +55,10 @@ export function parseWidget(raw: string, lang?: string): Widget | null {
     return {
       kind: 'workout',
       data: {
-        title: parsed.title || 'Workout',
-        focus: parsed.difficulty || (Array.isArray(parsed.targetMuscles) ? parsed.targetMuscles.join(', ') : 'Strength'),
+        title: parsed.title || i18n.t('ai:widgets.defaultWorkout'),
+        focus: parsed.difficulty || (Array.isArray(parsed.targetMuscles) ? parsed.targetMuscles.join(', ') : i18n.t('ai:widgets.defaultFocus')),
         durationMinutes: typeof parsed.duration === 'number' ? parsed.duration : Number.parseInt(String(parsed.duration ?? parsed.durationMinutes ?? '45'), 10) || 45,
-        exercises: (parsed.exercises ?? []).map((ex: any) => ({ name: ex.name || 'Exercise', sets: ex.sets ?? 3, reps: ex.reps ?? '10', notes: ex.weight ? String(ex.weight) : ex.notes })),
+        exercises: (parsed.exercises ?? []).map((ex: any) => ({ name: ex.name || i18n.t('ai:widgets.defaultExercise'), sets: ex.sets ?? 3, reps: ex.reps ?? '10', notes: ex.weight ? String(ex.weight) : ex.notes })),
       },
     };
   }
@@ -65,12 +67,12 @@ export function parseWidget(raw: string, lang?: string): Widget | null {
     const items = Array.isArray(parsed.items)
       ? parsed.items
       : Array.isArray(parsed.ingredients)
-        ? parsed.ingredients.map((ing: any) => ({ name: typeof ing === 'string' ? ing : ing.name || 'Ingredient', portion: typeof ing === 'object' ? ing.portion : undefined }))
+        ? parsed.ingredients.map((ing: any) => ({ name: typeof ing === 'string' ? ing : ing.name || i18n.t('ai:widgets.defaultIngredient'), portion: typeof ing === 'object' ? ing.portion : undefined }))
         : [];
     return {
       kind: 'meal',
       data: {
-        title: parsed.name || parsed.title || parsed.mealTitle || 'Meal',
+        title: parsed.name || parsed.title || parsed.mealTitle || i18n.t('ai:widgets.defaultMeal'),
         mealType: ['breakfast', 'lunch', 'dinner', 'snack'].includes(parsed.mealType) ? parsed.mealType : 'lunch',
         calories: Number(parsed.calories) || 0,
         protein: Number(parsed.macros?.protein ?? parsed.protein) || 0,
@@ -85,10 +87,10 @@ export function parseWidget(raw: string, lang?: string): Widget | null {
     return {
       kind: 'finance',
       data: {
-        title: parsed.title || 'Budget plan',
+        title: parsed.title || i18n.t('ai:widgets.defaultBudget'),
         totalIncome: Number(parsed.totalIncome) || 0,
         currency: parsed.currency || '₹',
-        categories: (parsed.categories ?? []).map((c: any) => ({ name: c.name || 'Category', percentage: Number(c.percentage) || 0, description: c.description })),
+        categories: (parsed.categories ?? []).map((c: any) => ({ name: c.name || i18n.t('ai:widgets.defaultCategory'), percentage: Number(c.percentage) || 0, description: c.description })),
         advice: parsed.advice || parsed.notes,
       },
     };
@@ -98,7 +100,7 @@ export function parseWidget(raw: string, lang?: string): Widget | null {
     return {
       kind: 'fashion',
       data: {
-        title: parsed.title || 'Outfit idea',
+        title: parsed.title || i18n.t('ai:widgets.defaultOutfit'),
         vibe: parsed.vibe || '',
         occasion: parsed.occasion || '',
         palette: Array.isArray(parsed.palette) ? parsed.palette : [],
@@ -148,15 +150,16 @@ function Heading({ icon, module, title, subtitle }: { icon: keyof typeof Ionicon
 function WorkoutWidget({ data }: { data: WorkoutData }) {
   const router = useRouter();
   const { confirm } = useNotify();
+  const { t } = useTranslation('ai');
   const { session } = useLiveSession();
 
   async function start() {
     if (session) {
       const replace = await confirm({
-        title: 'Replace current workout?',
-        message: `"${session.title}" is still in progress.`,
-        confirmLabel: 'Replace',
-        cancelLabel: 'Keep current',
+        title: t('widgets.replaceTitle'),
+        message: t('widgets.replaceMessage', { title: session.title }),
+        confirmLabel: t('widgets.replace'),
+        cancelLabel: t('widgets.keepCurrent'),
         destructive: true,
       });
       if (!replace) return;
@@ -165,14 +168,15 @@ function WorkoutWidget({ data }: { data: WorkoutData }) {
       data.title,
       data.exercises.map((ex) => buildExercise({ name: ex.name, sets: Number(ex.sets) || undefined, reps: ex.reps })),
     );
+    analytics.track('workout_started', { source: 'coach' });
     router.navigate('/fitness');
   }
 
   return (
     <Card variant="tinted" accent="fitness" style={styles.card}>
-      <Heading icon="barbell-outline" module="fitness" title={data.title} subtitle={`${data.focus} · about ${data.durationMinutes} min`} />
+      <Heading icon="barbell-outline" module="fitness" title={data.title} subtitle={t('widgets.workoutSubtitle', { focus: data.focus, minutes: data.durationMinutes })} />
       {data.exercises.map((ex, index) => (
-        <View key={`${ex.name}-${index}`} accessible accessibilityLabel={`${ex.name}, ${ex.sets} sets of ${ex.reps}`} style={styles.row}>
+        <View key={`${ex.name}-${index}`} accessible accessibilityLabel={t('widgets.exerciseSpoken', { name: ex.name, sets: ex.sets, reps: ex.reps })} style={styles.row}>
           <Text style={styles.grow} numberOfLines={2}>
             {ex.name}
           </Text>
@@ -181,7 +185,7 @@ function WorkoutWidget({ data }: { data: WorkoutData }) {
           </Text>
         </View>
       ))}
-      <Button title="Start this workout" leftIcon="play" onPress={() => void start()} />
+      <Button title={t('widgets.startWorkout')} leftIcon="play" onPress={() => void start()} />
     </Card>
   );
 }
@@ -189,6 +193,7 @@ function WorkoutWidget({ data }: { data: WorkoutData }) {
 function MealWidget({ data }: { data: MealData }) {
   const save = useSaveMeal();
   const notify = useNotify();
+  const { t } = useTranslation(['ai', 'food']);
   const [logged, setLogged] = useState(false);
 
   async function log() {
@@ -208,29 +213,29 @@ function MealWidget({ data }: { data: MealData }) {
         },
       });
       setLogged(true);
-      notify.success('Meal logged');
-    } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not log this meal.');
+      notify.success(t('ai:widgets.mealLogged'));
+      analytics.track('meal_logged', { source: 'ai' });
+    } catch {
+      notify.error(t('ai:widgets.mealFailed'));
     }
   }
 
   return (
     <Card variant="tinted" accent="food" style={styles.card}>
-      <Heading icon="restaurant-outline" module="food" title={data.title} subtitle={data.mealType[0].toUpperCase() + data.mealType.slice(1)} />
+      <Heading icon="restaurant-outline" module="food" title={data.title} subtitle={t(`food:mealTypes.${data.mealType}`)} />
       <View style={styles.macroRow}>
-        <Macro label="kcal" value={Math.round(data.calories)} />
-        <Macro label="Protein" value={`${Math.round(data.protein)}g`} />
-        <Macro label="Carbs" value={`${Math.round(data.carbs)}g`} />
-        <Macro label="Fats" value={`${Math.round(data.fats)}g`} />
+        <Macro label={t('ai:widgets.kcal')} value={Math.round(data.calories)} />
+        <Macro label={t('food:rings.protein')} value={t('food:units.grams', { value: Math.round(data.protein) })} />
+        <Macro label={t('food:rings.carbs')} value={t('food:units.grams', { value: Math.round(data.carbs) })} />
+        <Macro label={t('food:rings.fats')} value={t('food:units.grams', { value: Math.round(data.fats) })} />
       </View>
       {data.items.slice(0, 8).map((item, index) => (
         <Text key={`${item.name}-${index}`} variant="caption" color="textSecondary">
-          • {item.name}
-          {item.portion ? ` (${item.portion})` : ''}
+          {item.portion ? t('ai:widgets.itemWithPortion', { name: item.name, portion: item.portion }) : t('ai:widgets.item', { name: item.name })}
         </Text>
       ))}
       <Button
-        title={logged ? 'Logged' : 'Log this meal'}
+        title={logged ? t('ai:widgets.logged') : t('ai:widgets.logMeal')}
         leftIcon={logged ? 'checkmark' : 'add'}
         onPress={() => void log()}
         loading={save.isPending}
@@ -259,19 +264,20 @@ const FINANCE_BAR_ACCENTS: ModuleKey[] = ['finance', 'time', 'food', 'fashion', 
 
 function FinanceWidget({ data }: { data: FinanceData }) {
   const { accent } = useTheme();
+  const { t } = useTranslation('ai');
   const total = data.categories.reduce((sum, c) => sum + c.percentage, 0);
-  const money = (value: number) => (data.currency === '₹' ? formatMoney(value) : `${data.currency}${Math.round(value).toLocaleString()}`);
+  const money = (value: number) => (data.currency === '₹' ? formatMoney(value) : `${data.currency}${Math.round(value).toLocaleString(getDeviceLocale())}`);
 
   return (
     <Card variant="tinted" accent="finance" style={styles.card}>
-      <Heading icon="wallet-outline" module="finance" title={data.title} subtitle={data.totalIncome ? `Based on ${money(data.totalIncome)}` : undefined} />
+      <Heading icon="wallet-outline" module="finance" title={data.title} subtitle={data.totalIncome ? t('widgets.basedOn', { amount: money(data.totalIncome) }) : undefined} />
       {data.categories.map((category, index) => {
         const amount = data.totalIncome ? `${money((data.totalIncome * category.percentage) / 100)} · ` : '';
         return (
           <View
             key={`${category.name}-${index}`}
             accessible
-            accessibilityLabel={`${category.name}, ${amount}${category.percentage} percent${category.description ? `, ${category.description}` : ''}`}
+            accessibilityLabel={t('widgets.categorySpoken', { name: category.name, amount, percentage: category.percentage, description: category.description ? `, ${category.description}` : '' })}
             style={styles.categoryBlock}>
             <View style={styles.row}>
               <Text style={styles.grow} numberOfLines={2}>
@@ -293,7 +299,7 @@ function FinanceWidget({ data }: { data: FinanceData }) {
       })}
       {total !== 100 && data.categories.length > 0 ? (
         <Text variant="caption" color="textSecondary">
-          Allocations add up to {total}%.
+          {t('widgets.allocations', { total })}
         </Text>
       ) : null}
       {data.advice ? (
@@ -307,12 +313,13 @@ function FinanceWidget({ data }: { data: FinanceData }) {
 
 function FashionWidget({ data }: { data: FashionData }) {
   const { colors } = useTheme();
+  const { t } = useTranslation('ai');
   const swatches = data.palette.slice(0, 8);
   return (
     <Card variant="tinted" accent="fashion" style={styles.card}>
       <Heading icon="shirt-outline" module="fashion" title={data.title} subtitle={[data.vibe, data.occasion].filter(Boolean).join(' · ')} />
       {swatches.length > 0 ? (
-        <View accessible accessibilityLabel={`Palette: ${swatches.map((swatch) => swatch.name).join(', ')}`} style={styles.swatchRow}>
+        <View accessible accessibilityLabel={t('widgets.paletteSpoken', { names: swatches.map((swatch) => swatch.name).join(', ') })} style={styles.swatchRow}>
           {swatches.map((swatch, index) => (
             // The colour values come from the assistant's reply; the border keeps pale swatches visible.
             <View key={`${swatch.hex}-${index}`} style={[styles.swatch, { backgroundColor: swatch.hex, borderColor: colors.borderStrong }]} />
@@ -320,7 +327,7 @@ function FashionWidget({ data }: { data: FashionData }) {
         </View>
       ) : null}
       {data.items.map((item, index) => (
-        <View key={`${item.name}-${index}`} accessible accessibilityLabel={`${item.name}, ${item.category}, ${item.color}`} style={styles.row}>
+        <View key={`${item.name}-${index}`} accessible accessibilityLabel={t('widgets.itemSpoken', { name: item.name, category: item.category, color: item.color })} style={styles.row}>
           <View style={[styles.swatchSmall, { backgroundColor: item.colorHex || colors.cardMuted, borderColor: colors.borderStrong }]} />
           <View style={styles.grow}>
             <Text numberOfLines={2}>{item.name}</Text>

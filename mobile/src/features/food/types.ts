@@ -1,3 +1,5 @@
+import { i18n } from '@/i18n';
+
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export type Meal = {
@@ -60,10 +62,10 @@ export type MacroTargets = { calories: number; protein: number; carbs: number; f
 export const DEFAULT_TARGETS: MacroTargets = { calories: 2200, protein: 160, carbs: 230, fats: 65, waterMl: 2500 };
 
 export const MEAL_TYPES: { value: MealType; label: string; icon: 'cafe-outline' | 'sunny-outline' | 'moon-outline' | 'nutrition-outline' }[] = [
-  { value: 'breakfast', label: 'Breakfast', icon: 'cafe-outline' },
-  { value: 'lunch', label: 'Lunch', icon: 'sunny-outline' },
-  { value: 'dinner', label: 'Dinner', icon: 'moon-outline' },
-  { value: 'snack', label: 'Snacks', icon: 'nutrition-outline' },
+  { value: 'breakfast', get label() { return i18n.t('food:mealTypes.breakfast'); }, icon: 'cafe-outline' },
+  { value: 'lunch', get label() { return i18n.t('food:mealTypes.lunch'); }, icon: 'sunny-outline' },
+  { value: 'dinner', get label() { return i18n.t('food:mealTypes.dinner'); }, icon: 'moon-outline' },
+  { value: 'snack', get label() { return i18n.t('food:mealTypes.snack'); }, icon: 'nutrition-outline' },
 ];
 
 export type MealTotals = { calories: number; protein: number; carbs: number; fats: number };

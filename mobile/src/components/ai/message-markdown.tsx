@@ -6,6 +6,8 @@ import Markdown, { type RenderRules } from 'react-native-markdown-display';
 import { AiWidget, parseWidget } from '@/components/ai/widgets';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { MAX_FONT_SCALE, fontFamily, radius, spacing, typeScale, useTheme } from '@/theme';
 
@@ -13,14 +15,16 @@ import { MAX_FONT_SCALE, fontFamily, radius, spacing, typeScale, useTheme } from
 const CodeBlock = memo(function CodeBlock({ code, language }: { code: string; language?: string }) {
   const { colors } = useTheme();
   const notify = useNotify();
-  const label = language || 'Code';
+  const { t } = useTranslation('ai');
+  const label = language || t('markdown.code');
 
   async function copy() {
     try {
       await Clipboard.setStringAsync(code);
-      notify.success('Copied');
+      notify.success(t('bubble.copied'));
+      analytics.track('ai_message_copied');
     } catch {
-      notify.error('Could not copy to the clipboard');
+      notify.error(t('bubble.copyFailed'));
     }
   }
 
@@ -30,7 +34,7 @@ const CodeBlock = memo(function CodeBlock({ code, language }: { code: string; la
         <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1} style={styles.codeLabel}>
           {label}
         </Text>
-        <Button title="Copy" variant="ghost" size="sm" leftIcon="copy-outline" fullWidth={false} onPress={() => void copy()} accessibilityLabel={`Copy ${label.toLowerCase()} code`} />
+        <Button title={t('markdown.copy')} variant="ghost" size="sm" leftIcon="copy-outline" fullWidth={false} onPress={() => void copy()} accessibilityLabel={t('markdown.copyLabel', { language: label })} />
       </View>
       <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} contentContainerStyle={styles.codeScroll}>
         <Text variant="label" weight="regular" style={{ fontFamily: fontFamily.mono }} selectable>
@@ -60,8 +64,8 @@ export const MessageMarkdown = memo(function MessageMarkdown({ content }: { cont
       link: { color: colors.primaryAccent, textDecorationLine: 'underline' },
       bullet_list: { marginBottom: spacing.sm },
       ordered_list: { marginBottom: spacing.sm },
-      bullet_list_icon: { color: colors.textSecondary, marginRight: spacing.sm },
-      ordered_list_icon: { color: colors.textSecondary, marginRight: spacing.sm },
+      bullet_list_icon: { color: colors.textSecondary, marginEnd: spacing.sm },
+      ordered_list_icon: { color: colors.textSecondary, marginEnd: spacing.sm },
       list_item: { marginBottom: spacing.xs },
       code_inline: {
         backgroundColor: colors.cardMuted,
@@ -75,8 +79,8 @@ export const MessageMarkdown = memo(function MessageMarkdown({ content }: { cont
       },
       blockquote: {
         backgroundColor: colors.cardMuted,
-        borderLeftColor: accent('ai').solid,
-        borderLeftWidth: spacing.xs,
+        borderStartColor: accent('ai').solid,
+        borderStartWidth: spacing.xs,
         borderRadius: radius.sm,
         marginHorizontal: 0,
         marginBottom: spacing.sm,
@@ -136,7 +140,7 @@ export const MessageMarkdown = memo(function MessageMarkdown({ content }: { cont
 const styles = StyleSheet.create({
   markdown: { marginBottom: -spacing.sm },
   codeBlock: { borderRadius: radius.md, borderWidth: 1, marginBottom: spacing.sm, overflow: 'hidden' },
-  codeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingLeft: spacing.md, paddingRight: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth },
+  codeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingStart: spacing.md, paddingEnd: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth },
   codeLabel: { flexShrink: 1 },
   codeScroll: { padding: spacing.md },
 });

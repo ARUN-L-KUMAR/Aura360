@@ -18,6 +18,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
+import { useTranslation } from '@/i18n';
+import { directionSign } from '@/i18n/rtl';
 import { duration, easing, motionDuration, radius, spacing, spring, useTheme } from '@/theme';
 
 import {
@@ -40,13 +42,6 @@ const EASE_STANDARD = Easing.bezier(...easing.standard);
 const HALF_FAB = FAB_SIZE / 2;
 const BADGE_MAX = 9;
 
-const ACCESSIBILITY_ACTIONS = [
-  { name: 'activate' },
-  { name: 'moveLeft', label: 'Move to left edge' },
-  { name: 'moveRight', label: 'Move to right edge' },
-  { name: 'moveUp', label: 'Move up' },
-  { name: 'moveDown', label: 'Move down' },
-] as const;
 
 type Props = {
   /** Fade the bubble out (keyboard open, chat tab, sheet open). */
@@ -64,6 +59,9 @@ type Props = {
  */
 function FabImpl({ hidden, badge, onOpen }: Props) {
   const { accent, colors, elevation, reduceMotion } = useTheme();
+  const { t } = useTranslation('ai');
+  // `x` is the distance from the start edge. Screen translations are physical, so they flip in a right-to-left layout.
+  const dir = directionSign();
   const ai = accent('ai');
   const { width, height } = useWindowDimensions();
   const { top, bottom } = useSafeAreaInsets();
@@ -117,22 +115,22 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
         scheduleOnRN(dragStart);
       })
       .onUpdate((e) => {
-        x.set(clamp(startX.get() + e.translationX, 0, bounds.width - FAB_SIZE));
+        x.set(clamp(startX.get() + dir * e.translationX, 0, bounds.width - FAB_SIZE));
         y.set(clamp(startY.get() + e.translationY, bounds.minY, bounds.maxY));
       })
       .onEnd((e) => {
-        const projected = x.get() + HALF_FAB + e.velocityX * FLING_PROJECTION;
-        const toRight = projected > bounds.width / 2;
+        const projected = x.get() + HALF_FAB + dir * e.velocityX * FLING_PROJECTION;
+        const toEnd = projected > bounds.width / 2;
         const targetY = clamp(y.get() + e.velocityY * FLING_PROJECTION, bounds.minY, bounds.maxY);
-        x.set(settle(toRight ? bounds.maxX : bounds.minX, reduceMotion, bouncy));
+        x.set(settle(toEnd ? bounds.maxX : bounds.minX, reduceMotion, bouncy));
         y.set(settle(targetY, reduceMotion, gentle));
-        scheduleOnRN(rememberPlacement, toRight ? 'right' : 'left', targetY);
+        scheduleOnRN(rememberPlacement, toEnd ? 'end' : 'start', targetY);
         scheduleOnRN(haptics.impact);
       })
       .onFinalize(() => {
         scheduleOnRN(dragEnd);
       });
-  }, [bounds, idle, reduceMotion, startX, startY, x, y]);
+  }, [bounds, dir, idle, reduceMotion, startX, startY, x, y]);
 
   const moveTo = useCallback(
     (side: Side, nextY: number) => {
@@ -152,11 +150,12 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
         case 'activate':
           onOpen();
           break;
+        // The actions are named by what is on screen: the left edge is the start side in LTR and the end side in RTL.
         case 'moveLeft':
-          moveTo('left', y.get());
+          moveTo(dir === 1 ? 'start' : 'end', y.get());
           break;
         case 'moveRight':
-          moveTo('right', y.get());
+          moveTo(dir === 1 ? 'end' : 'start', y.get());
           break;
         case 'moveUp':
           moveTo(sessionPlacement.side, y.get() - step);
@@ -166,7 +165,7 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
           break;
       }
     },
-    [bounds, moveTo, onOpen, y],
+    [bounds, dir, moveTo, onOpen, y],
   );
 
   const anchorStyle = useAnimatedStyle(() => {
@@ -175,7 +174,7 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
     return {
       opacity: (1 - fade.get()) * (1 - PEEK_FADE * peek.get()),
       transform: [
-        { translateX: x.get() + side * PEEK_SHIFT * tuck },
+        { translateX: dir * (x.get() + side * PEEK_SHIFT * tuck) },
         { translateY: y.get() },
         { scale: 1 - (1 - PEEK_SCALE) * tuck },
       ],
@@ -187,7 +186,14 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
     transform: [{ scale: 1 + PULSE_GROWTH * pulse.get() }],
   }));
 
-  const label = badge > 0 ? `Ask Aura AI assistant, ${badge} ${badge === 1 ? 'draft' : 'drafts'} waiting` : 'Ask Aura AI assistant';
+  const label = badge > 0 ? t('fab.labelWithDrafts', { count: badge }) : t('fab.label');
+  const accessibilityActions = [
+    { name: 'activate' },
+    { name: 'moveLeft', label: t('fab.moveLeft') },
+    { name: 'moveRight', label: t('fab.moveRight') },
+    { name: 'moveUp', label: t('fab.moveUp') },
+    { name: 'moveDown', label: t('fab.moveDown') },
+  ];
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -201,8 +207,8 @@ function FabImpl({ hidden, badge, onOpen }: Props) {
           <PressableScale
             accessibilityRole="button"
             accessibilityLabel={label}
-            accessibilityHint="Opens the assistant. Drag to move it, or use the actions menu."
-            accessibilityActions={ACCESSIBILITY_ACTIONS}
+            accessibilityHint={t('fab.hint')}
+            accessibilityActions={accessibilityActions}
             onAccessibilityAction={onAccessibilityAction}
             haptic="tap"
             scaleTo={0.92}
@@ -233,7 +239,7 @@ const styles = StyleSheet.create({
   anchor: {
     position: 'absolute',
     top: 0,
-    left: 0,
+    start: 0,
     width: FAB_SIZE,
     height: FAB_SIZE,
   },
@@ -251,7 +257,7 @@ const styles = StyleSheet.create({
   onlineDot: {
     position: 'absolute',
     top: spacing.sm,
-    right: spacing.sm,
+    end: spacing.sm,
     width: spacing.sm,
     height: spacing.sm,
     borderRadius: radius.pill,
@@ -260,7 +266,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: -spacing.xs,
-    right: -spacing.xs,
+    end: -spacing.xs,
     minWidth: spacing.lg + spacing.xs,
     height: spacing.lg + spacing.xs,
     paddingHorizontal: spacing.xs,

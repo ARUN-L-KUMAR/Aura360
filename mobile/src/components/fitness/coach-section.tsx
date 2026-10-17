@@ -16,9 +16,20 @@ import { Text } from '@/components/ui/text';
 import { useGenerateSplit, useRecentFitness } from '@/features/fitness/hooks';
 import { buildExercise, sessionActions, useLiveSession } from '@/features/fitness/session-store';
 import { lastPerformanceByExercise } from '@/features/fitness/stats';
-import { COACH_EQUIPMENT, COACH_GOALS, COACH_LEVELS, type CoachDay, type CoachProgram } from '@/features/fitness/types';
-import { ApiError } from '@/lib/api';
+import {
+  COACH_EQUIPMENT,
+  COACH_GOALS,
+  COACH_LEVELS,
+  coachEquipmentLabel,
+  coachGoalLabel,
+  coachLevelLabel,
+  type CoachDay,
+  type CoachProgram,
+} from '@/features/fitness/types';
+import { useErrorMessage } from '@/features/fitness/use-error-message';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, spacing, useTheme } from '@/theme';
 
@@ -28,6 +39,8 @@ const DAY_OPTIONS = [2, 3, 4, 5, 6].map((value) => ({ value: String(value), labe
 export function CoachSection({ header, onStarted }: { header: ReactNode; onStarted: () => void }) {
   const { accent, colors } = useTheme();
   const notify = useNotify();
+  const { t } = useTranslation('fitness');
+  const errorMessage = useErrorMessage();
   const recent = useRecentFitness();
   const { session } = useLiveSession();
   const generate = useGenerateSplit();
@@ -62,9 +75,9 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
       setProgram(split);
       setDayIndex(0);
       AsyncStorage.setItem(PROGRAM_KEY, JSON.stringify(split)).catch(() => {});
-      notify.success('Your plan is ready');
+      notify.success(t('coach.ready'));
     } catch (e) {
-      notify.error(e instanceof ApiError || e instanceof Error ? e.message : 'Could not build a plan.');
+      notify.error(errorMessage(e, t('coach.buildFailed')));
     }
   }
 
@@ -75,14 +88,15 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
         day.exercises.map((exercise) => buildExercise(exercise, lastByName.get(exercise.name.trim().toLowerCase()))),
       );
       haptics.success();
+      analytics.track('workout_started', { source: 'coach' });
       onStarted();
     };
     if (session) {
       const ok = await notify.confirm({
-        title: 'Replace current workout?',
-        message: `"${session.title}" is still in progress. Starting this day will discard it.`,
-        confirmLabel: 'Replace',
-        cancelLabel: 'Keep current',
+        title: t('coach.replaceTitle'),
+        message: t('coach.replaceMessage', { title: session.title }),
+        confirmLabel: t('coach.replace'),
+        cancelLabel: t('coach.keepCurrent'),
         destructive: true,
       });
       if (ok) begin();
@@ -97,9 +111,9 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
     setProgram(null);
     AsyncStorage.removeItem(PROGRAM_KEY).catch(() => {});
     notify.toast({
-      message: 'Saved plan cleared',
+      message: t('coach.cleared'),
       action: {
-        label: 'Undo',
+        label: t('actions.undo'),
         onPress: () => {
           setProgram(previous);
           AsyncStorage.setItem(PROGRAM_KEY, JSON.stringify(previous)).catch(() => {});
@@ -119,43 +133,43 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Ionicons name="sparkles" size={20} color={accent('ai').text} />
             <Text variant="title" accessibilityRole="header">
-              Build my plan
+              {t('coach.title')}
             </Text>
           </View>
 
-          <Field label="Goal">
+          <Field label={t('coach.goal')}>
             <ChipGroup>
               {COACH_GOALS.map((value) => (
-                <Chip key={value} label={value} selected={goal === value} accent="fitness" onPress={() => setGoal(value)} />
+                <Chip key={value} label={coachGoalLabel(value)} selected={goal === value} accent="fitness" onPress={() => setGoal(value)} />
               ))}
             </ChipGroup>
           </Field>
-          <Field label="Equipment">
+          <Field label={t('coach.equipmentLabel')}>
             <ChipGroup>
               {COACH_EQUIPMENT.map((value) => (
-                <Chip key={value} label={value} selected={equipment === value} accent="fitness" onPress={() => setEquipment(value)} />
+                <Chip key={value} label={coachEquipmentLabel(value)} selected={equipment === value} accent="fitness" onPress={() => setEquipment(value)} />
               ))}
             </ChipGroup>
           </Field>
-          <Field label="Experience">
+          <Field label={t('coach.experience')}>
             <ChipGroup>
               {COACH_LEVELS.map((value) => (
-                <Chip key={value} label={value} selected={level === value} accent="fitness" onPress={() => setLevel(value)} />
+                <Chip key={value} label={coachLevelLabel(value)} selected={level === value} accent="fitness" onPress={() => setLevel(value)} />
               ))}
             </ChipGroup>
           </Field>
-          <Field label="Days per week">
-            <Segmented options={DAY_OPTIONS} value={String(days)} onChange={(value) => setDays(Number(value))} accessibilityLabel="Days per week" />
+          <Field label={t('coach.daysPerWeek')}>
+            <Segmented options={DAY_OPTIONS} value={String(days)} onChange={(value) => setDays(Number(value))} accessibilityLabel={t('coach.daysPerWeek')} />
           </Field>
 
-          <Button title={program ? 'Build a new plan' : 'Build my plan'} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
+          <Button title={program ? t('coach.buildNew') : t('coach.title')} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
         </Card>
       </Animated.View>
 
       {generate.isPending ? (
         <View style={{ gap: spacing.sm }}>
           <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
-            Designing your week. This can take up to half a minute.
+            {t('coach.designing')}
           </Text>
           <SkeletonCard lines={3} />
         </View>
@@ -175,12 +189,12 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
                 {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
                 {program.progressiveOverloadTip ? (
                   <Text variant="caption" color="textSecondary">
-                    Progression: {program.progressiveOverloadTip}
+                    {t('coach.progression', { tip: program.progressiveOverloadTip })}
                   </Text>
                 ) : null}
                 {program.recoveryStrategy ? (
                   <Text variant="caption" color="textSecondary">
-                    Recovery: {program.recoveryStrategy}
+                    {t('coach.recovery', { tip: program.recoveryStrategy })}
                   </Text>
                 ) : null}
               </Card>
@@ -189,7 +203,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
                 {program.days.map((item, index) => (
                   <Chip
                     key={item.dayNumber}
-                    label={item.isRestDay ? `Day ${item.dayNumber} · rest` : `Day ${item.dayNumber}`}
+                    label={item.isRestDay ? t('coach.dayRest', { n: item.dayNumber }) : t('coach.day', { n: item.dayNumber })}
                     selected={index === dayIndex}
                     accent="fitness"
                     onPress={() => setDayIndex(index)}
@@ -200,14 +214,14 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
               <Card style={{ gap: spacing.md }}>
                 <SectionHeader
                   title={day.name}
-                  subtitle={`${day.focus}${day.targetDurationMinutes ? ` · about ${day.targetDurationMinutes} min` : ''}`}
+                  subtitle={day.targetDurationMinutes ? t('coach.focusAndDuration', { focus: day.focus, minutes: day.targetDurationMinutes }) : day.focus}
                 />
 
                 {day.isRestDay || day.exercises.length === 0 ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                     <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
                     <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
-                      Rest and recovery day. Walk, stretch and sleep well.
+                      {t('coach.restDay')}
                     </Text>
                   </View>
                 ) : (
@@ -223,7 +237,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
                           </Text>
                         </View>
                         <Text variant="caption" color="textSecondary">
-                          {[exercise.category, exercise.restSeconds ? `${exercise.restSeconds}s rest` : null, exercise.rpe ? `RPE ${exercise.rpe}` : null]
+                          {[exercise.category, exercise.restSeconds ? t('units.secondsRest', { value: exercise.restSeconds }) : null, exercise.rpe ? t('coach.rpe', { value: exercise.rpe }) : null]
                             .filter(Boolean)
                             .join(' · ')}
                         </Text>
@@ -234,13 +248,13 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
                         ) : null}
                       </View>
                     ))}
-                    <Button title="Start this workout" leftIcon="play" haptic={false} onPress={() => startDay(day)} />
+                    <Button title={t('coach.startWorkout')} leftIcon="play" haptic={false} onPress={() => startDay(day)} />
                   </>
                 )}
               </Card>
             </>
           ) : null}
-          <Button title="Clear saved plan" variant="ghost" size="sm" fullWidth={false} onPress={clearPlan} style={{ alignSelf: 'center' }} />
+          <Button title={t('coach.clear')} variant="ghost" size="sm" fullWidth={false} onPress={clearPlan} style={{ alignSelf: 'center' }} />
         </Animated.View>
       ) : null}
     </Screen>

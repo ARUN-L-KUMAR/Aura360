@@ -11,7 +11,9 @@ import { IconButton } from '@/components/ui/icon-button';
 import { useListMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
 import type { AiMessage } from '@/features/ai/types';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { duration, easing, radius, spacing, useTheme } from '@/theme';
 
@@ -44,7 +46,7 @@ function plainText(markdown: string) {
 function formatTime(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(getDeviceLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 /** One bouncing dot. Static (half opacity) when the user prefers reduced motion. */
@@ -98,6 +100,7 @@ function TypingDots() {
 function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActions = false, showTime = false }: Props) {
   const { colors, accent } = useTheme();
   const notify = useNotify();
+  const { t } = useTranslation('ai');
   const [revealed, setRevealed] = useState(false);
   // Only a message that has just been created fades in; older ones (scrolled back into view) appear instantly.
   const [fresh] = useState(() => Date.now() - Date.parse(message.createdAt) < 2500);
@@ -105,11 +108,12 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
   const copy = useCallback(async () => {
     try {
       await Clipboard.setStringAsync(message.content);
-      notify.success('Copied');
+      notify.success(t('bubble.copied'));
+      analytics.track('ai_message_copied');
     } catch {
-      notify.error('Could not copy to the clipboard');
+      notify.error(t('bubble.copyFailed'));
     }
-  }, [message.content, notify]);
+  }, [message.content, notify, t]);
 
   const retry = useCallback(() => onRetry?.(message.id), [message.id, onRetry]);
 
@@ -147,9 +151,9 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
           onLongPress={longPress}
           delayLongPress={450}
           accessibilityRole="text"
-          accessibilityLabel={`You said: ${message.content}`}
-          accessibilityHint="Long press to copy"
-          accessibilityActions={[{ name: 'copy', label: 'Copy message' }]}
+          accessibilityLabel={t('bubble.youSaid', { text: message.content })}
+          accessibilityHint={t('bubble.copyHint')}
+          accessibilityActions={[{ name: 'copy', label: t('bubble.copyMessage') }]}
           onAccessibilityAction={onAccessibilityAction}
           style={[styles.userBubble, { backgroundColor: a.solid }]}>
           <Text style={{ color: a.onSolid }}>{message.content}</Text>
@@ -190,7 +194,7 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
           <View
             accessible
             accessibilityLiveRegion="polite"
-            accessibilityLabel="Aura is thinking"
+            accessibilityLabel={t('bubble.thinking')}
             style={[styles.assistantBubble, styles.thinking, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <TypingDots />
           </View>
@@ -201,12 +205,12 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
             <View
               accessible
               accessibilityRole="alert"
-              accessibilityLabel={`Aura could not reply: ${message.content}`}
+              accessibilityLabel={t('bubble.errorSpoken', { text: message.content })}
               style={[styles.assistantBubble, styles.errorBubble, { backgroundColor: colors.errorContainer, borderColor: colors.errorBorder }]}>
               <View style={styles.errorHeader}>
                 <Ionicons name="alert-circle" size={18} color={colors.onErrorContainer} />
                 <Text variant="label" weight="semiBold" style={{ color: colors.onErrorContainer }}>
-                  Couldn&apos;t get a reply
+                  {t('bubble.errorTitle')}
                 </Text>
               </View>
               <Text style={{ color: colors.onErrorContainer }}>{message.content}</Text>
@@ -218,9 +222,9 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
               delayLongPress={450}
               accessible={mergeForReader}
               accessibilityRole="text"
-              accessibilityLabel={`Aura said: ${plainText(message.content)}`}
-              accessibilityHint="Long press to copy"
-              accessibilityActions={[{ name: 'copy', label: 'Copy reply' }]}
+              accessibilityLabel={t('bubble.auraSaid', { text: plainText(message.content) })}
+              accessibilityHint={t('bubble.copyHint')}
+              accessibilityActions={[{ name: 'copy', label: t('bubble.copyReply') }]}
               onAccessibilityAction={onAccessibilityAction}
               style={[styles.assistantBubble, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <MessageMarkdown content={message.content} />
@@ -233,28 +237,28 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
             <View style={styles.toolRow}>
               <Ionicons name="shield-checkmark-outline" size={18} color={a.text} />
               <Text variant="label" weight="semiBold" color="textSecondary">
-                Needs your confirmation
+                {t('bubble.needsConfirmation')}
               </Text>
             </View>
             <Text weight="semiBold">{message.pendingAction.summary}</Text>
             {message.actionStatus === 'pending' ? (
               <View style={styles.buttonRow}>
                 <View style={styles.buttonCell}>
-                  <Button title="Cancel" variant="secondary" onPress={() => onCancel(message.id)} disabled={disabled} />
+                  <Button title={t('bubble.cancel')} variant="secondary" onPress={() => onCancel(message.id)} disabled={disabled} />
                 </View>
                 <View style={styles.buttonCell}>
-                  <Button title="Confirm" leftIcon="checkmark" onPress={() => onConfirm(message.id)} disabled={disabled} />
+                  <Button title={t('bubble.confirm')} leftIcon="checkmark" onPress={() => onConfirm(message.id)} disabled={disabled} />
                 </View>
               </View>
             ) : (
-              <View accessible accessibilityLabel={message.actionStatus === 'confirmed' ? 'Confirmed' : 'Cancelled'} style={styles.toolRow}>
+              <View accessible accessibilityLabel={message.actionStatus === 'confirmed' ? t('bubble.confirmed') : t('bubble.cancelled')} style={styles.toolRow}>
                 <Ionicons
                   name={message.actionStatus === 'confirmed' ? 'checkmark-circle' : 'close-circle-outline'}
                   size={18}
                   color={message.actionStatus === 'confirmed' ? colors.successText : colors.textSecondary}
                 />
                 <Text variant="label" color={message.actionStatus === 'confirmed' ? 'successText' : 'textSecondary'}>
-                  {message.actionStatus === 'confirmed' ? 'Confirmed' : 'Cancelled'}
+                  {message.actionStatus === 'confirmed' ? t('bubble.confirmed') : t('bubble.cancelled')}
                 </Text>
               </View>
             )}
@@ -263,15 +267,15 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
 
         {!message.isStreaming && toolsUsed > 0 && !message.pendingAction ? (
           <Text variant="caption" color="textMuted">
-            Used {toolsUsed} {toolsUsed === 1 ? 'tool' : 'tools'} · {[...new Set((message.trace ?? []).map((t) => t.tool.replace(/_/g, ' ')))].slice(0, 3).join(', ')}
+            {t('bubble.toolsUsed', { count: toolsUsed, names: [...new Set((message.trace ?? []).map((trace) => trace.tool.replace(/_/g, ' ')))].slice(0, 3).join(', ') })}
           </Text>
         ) : null}
 
         {(showActions || (message.isError && canRetry)) && message.content && !message.isStreaming ? (
           <View style={styles.actionRow}>
-            {message.isError && canRetry ? <Button title="Try again" variant="secondary" size="sm" leftIcon="refresh" fullWidth={false} onPress={retry} /> : null}
-            <IconButton icon="copy-outline" size="sm" accessibilityLabel="Copy reply" onPress={() => void copy()} />
-            {!message.isError && canRetry ? <IconButton icon="refresh" size="sm" accessibilityLabel="Regenerate reply" onPress={retry} /> : null}
+            {message.isError && canRetry ? <Button title={t('bubble.tryAgain')} variant="secondary" size="sm" leftIcon="refresh" fullWidth={false} onPress={retry} /> : null}
+            <IconButton icon="copy-outline" size="sm" accessibilityLabel={t('bubble.copyReply')} onPress={() => void copy()} />
+            {!message.isError && canRetry ? <IconButton icon="refresh" size="sm" accessibilityLabel={t('bubble.regenerate')} onPress={retry} /> : null}
           </View>
         ) : null}
 
@@ -284,13 +288,13 @@ function BubbleImpl({ message, disabled, onConfirm, onCancel, onRetry, showActio
 export const MessageBubble = memo(BubbleImpl);
 
 const styles = StyleSheet.create({
-  userRow: { alignItems: 'flex-end', paddingLeft: spacing.xxxl, gap: spacing.xs },
-  userBubble: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: radius.lg, borderBottomRightRadius: spacing.xs, maxWidth: '100%' },
-  timeEnd: { textAlign: 'right' },
-  modelRow: { flexDirection: 'row', gap: spacing.md, paddingRight: spacing.sm },
+  userRow: { alignItems: 'flex-end', paddingStart: spacing.xxxl, gap: spacing.xs },
+  userBubble: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: radius.lg, borderBottomEndRadius: spacing.xs, maxWidth: '100%' },
+  timeEnd: { textAlign: 'auto' },
+  modelRow: { flexDirection: 'row', gap: spacing.md, paddingEnd: spacing.sm },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   modelColumn: { flex: 1, gap: spacing.xs },
-  assistantBubble: { borderWidth: 1, borderRadius: radius.lg, borderBottomLeftRadius: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  assistantBubble: { borderWidth: 1, borderRadius: radius.lg, borderBottomStartRadius: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   thinking: { alignSelf: 'flex-start', paddingVertical: spacing.lg },
   errorBubble: { gap: spacing.xs },
   errorHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

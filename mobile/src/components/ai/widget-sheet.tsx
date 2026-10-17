@@ -18,6 +18,7 @@ import { GlassSurface } from '@/components/ui/glass-surface';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import type { AiMessage } from '@/features/ai/types';
+import { useTranslation } from '@/i18n';
 import { duration, easing, layout, motionDuration, radius, spacing, spring, useTheme } from '@/theme';
 
 import {
@@ -64,6 +65,7 @@ type SheetHeaderProps = { pageTitle: string; onNewChat: () => void; onOpenFull: 
 
 const SheetHeader = memo(function SheetHeader({ pageTitle, onNewChat, onOpenFull, onClose }: SheetHeaderProps) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('ai');
   const ai = accent('ai');
   return (
     <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -73,20 +75,20 @@ const SheetHeader = memo(function SheetHeader({ pageTitle, onNewChat, onOpenFull
         </View>
         <View style={styles.headerText}>
           <Text variant="label" weight="bold" accessibilityRole="header">
-            Aura Assistant
+            {t('sheet.title')}
           </Text>
           <View style={styles.contextRow}>
             <View style={[styles.contextDot, { backgroundColor: colors.success }]} />
             <Text variant="caption" color="textSecondary" numberOfLines={1} style={styles.headerText}>
-              Working on {pageTitle}
+              {t('sheet.workingOn', { page: pageTitle })}
             </Text>
           </View>
         </View>
       </View>
       <View style={styles.headerActions}>
-        <HeaderButton icon="create-outline" label="New Chat" onPress={onNewChat} />
-        <HeaderButton icon="expand-outline" label="Open Full AI Page" onPress={onOpenFull} />
-        <HeaderButton icon="close" label="Close" onPress={onClose} />
+        <HeaderButton icon="create-outline" label={t('sheet.newChat')} onPress={onNewChat} />
+        <HeaderButton icon="expand-outline" label={t('sheet.openFull')} onPress={onOpenFull} />
+        <HeaderButton icon="close" label={t('sheet.close')} onPress={onClose} />
       </View>
     </View>
   );
@@ -100,12 +102,14 @@ type TabButtonProps = { tab: WidgetTab; label: string; selected: boolean; draftC
 
 const TabButton = memo(function TabButton({ tab, label, selected, draftCount, onSelect }: TabButtonProps) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('ai');
   const ai = accent('ai');
-  const hint = tab === 'for_you' ? ', new suggestions' : tab === 'drafts' && draftCount > 0 ? `, ${draftCount} waiting` : '';
+  const spoken =
+    tab === 'for_you' ? t('sheet.tabNew', { label }) : tab === 'drafts' && draftCount > 0 ? t('sheet.tabWaiting', { label, count: draftCount }) : label;
   return (
     <Pressable
       accessibilityRole="tab"
-      accessibilityLabel={`${label}${hint}`}
+      accessibilityLabel={spoken}
       accessibilityState={{ selected }}
       onPress={() => onSelect(tab)}
       style={styles.tab}>
@@ -169,6 +173,7 @@ function SheetImpl({
   onCancel,
 }: WidgetSheetProps) {
   const { colors, reduceMotion } = useTheme();
+  const { t } = useTranslation('ai');
   const { height: screenHeight } = useWindowDimensions();
   const { top, bottom } = useSafeAreaInsets();
   const keyboardVisible = useKeyboardVisible();
@@ -247,7 +252,7 @@ function SheetImpl({
       navigationBarTranslucent
       onRequestClose={onClose}>
       <GestureHandlerRootView style={styles.fill}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close assistant" onPress={onClose} style={StyleSheet.absoluteFill}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('sheet.closeAssistant')} onPress={onClose} style={StyleSheet.absoluteFill}>
           <Animated.View style={[styles.fill, { backgroundColor: colors.overlay }, scrimStyle]} />
         </Pressable>
 
@@ -322,8 +327,8 @@ const styles = StyleSheet.create({
   },
   glass: {
     flex: 1,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopStartRadius: radius.xl,
+    borderTopEndRadius: radius.xl,
     overflow: 'hidden',
   },
   handleRow: {
@@ -339,8 +344,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.sm,
+    paddingStart: spacing.lg,
+    paddingEnd: spacing.sm,
     paddingBottom: spacing.xs,
     gap: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -394,8 +399,8 @@ const styles = StyleSheet.create({
   },
   tabIndicator: {
     position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
+    start: spacing.md,
+    end: spacing.md,
     bottom: 0,
     height: 2,
     borderRadius: radius.pill,

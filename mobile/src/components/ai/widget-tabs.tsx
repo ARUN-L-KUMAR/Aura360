@@ -6,7 +6,9 @@ import { MessageBubble } from '@/components/ai/message-bubble';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import type { AiMessage } from '@/features/ai/types';
-import { fontWeightFamily, layout, radius, spacing, typeScale, useTheme } from '@/theme';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
+import { MAX_FONT_SCALE, fontWeightFamily, layout, radius, spacing, typeScale, useTheme } from '@/theme';
 
 import { COMPOSER_MAX_HEIGHT, FOR_YOU_ITEMS, type ForYouItem, type IconName, type QuickPrompt } from './widget-constants';
 
@@ -53,7 +55,7 @@ const QuickPromptRow = memo(function QuickPromptRow({ item, onPress }: QuickProm
       haptic="tap"
       ringRadius={radius.md}
       style={[styles.quickPrompt, { backgroundColor: colors.cardMuted, borderColor: colors.border }]}>
-      <Ionicons name="arrow-forward" size={16} color={accent('ai').text} />
+      <Ionicons name={directional('arrow-forward', 'arrow-back')} size={16} color={accent('ai').text} />
       <Text variant="caption" weight="medium" style={styles.flex}>
         {item.prompt}
       </Text>
@@ -73,20 +75,22 @@ type ComposerProps = {
 
 const Composer = memo(function Composer({ value, onChangeText, onSend, onStop, busy, pageTitle, modelName }: ComposerProps) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('ai');
   const ai = accent('ai');
   const canSend = value.trim().length > 0;
   return (
     <View style={[styles.composer, { borderTopColor: colors.border }]}>
       <Text variant="caption" muted>
-        Model: {modelName}
+        {t('chat.model', { name: modelName })}
       </Text>
       <View style={styles.composerRow}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
-          placeholder={`Message Aura about ${pageTitle}…`}
+          placeholder={t('tabs.composerPlaceholder', { page: pageTitle })}
           placeholderTextColor={colors.textMuted}
-          accessibilityLabel="Message to Aura"
+          accessibilityLabel={t('tabs.composerLabel')}
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
           multiline
           maxLength={3000}
           style={[styles.input, { backgroundColor: colors.cardMuted, borderColor: colors.borderStrong, color: colors.text }]}
@@ -94,7 +98,7 @@ const Composer = memo(function Composer({ value, onChangeText, onSend, onStop, b
         {busy ? (
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Stop response"
+            accessibilityLabel={t('tabs.stop')}
             onPress={onStop}
             haptic="tap"
             ringRadius={radius.pill}
@@ -104,7 +108,7 @@ const Composer = memo(function Composer({ value, onChangeText, onSend, onStop, b
         ) : (
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Send message"
+            accessibilityLabel={t('chat.send')}
             accessibilityState={{ disabled: !canSend }}
             disabled={!canSend}
             onPress={onSend}
@@ -149,6 +153,7 @@ export const ChatTab = memo(function ChatTab({
   onStop,
 }: ChatTabProps) {
   const { accent } = useTheme();
+  const { t } = useTranslation('ai');
   const ai = accent('ai');
 
   const renderMessage = useCallback(
@@ -166,8 +171,8 @@ export const ChatTab = memo(function ChatTab({
           icon="sparkles"
           iconColor={ai.text}
           tileColor={ai.soft}
-          title={`How can I help with ${pageTitle}?`}
-          body="Ask questions, request style recommendations, log transactions, or draft entries.">
+          title={t('tabs.emptyTitle', { page: pageTitle })}
+          body={t('tabs.emptyBody')}>
           <View style={styles.quickPrompts}>
             {quickPrompts.map((item) => (
               <QuickPromptRow key={item.label} item={item} onPress={onSend} />
@@ -182,6 +187,8 @@ export const ChatTab = memo(function ChatTab({
           renderItem={renderMessage}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={MESSAGE_LIST_STYLE}
+          initialNumToRender={10}
+          windowSize={7}
         />
       )}
       <Composer
@@ -203,11 +210,12 @@ export const ChatTab = memo(function ChatTab({
 
 const ForYouCard = memo(function ForYouCard({ item, onPress }: { item: ForYouItem; onPress: (prompt: string) => void }) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('ai');
   const tone = accent(item.module);
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}. ${item.desc}`}
+      accessibilityLabel={t('tabs.forYouSpoken', { title: item.title, desc: item.desc })}
       onPress={() => onPress(item.prompt)}
       haptic="tap"
       ringRadius={radius.lg}
@@ -247,39 +255,40 @@ type DraftCardProps = { message: AiMessage; onConfirm: (id: string) => void; onC
 
 const DraftCard = memo(function DraftCard({ message, onConfirm, onCancel }: DraftCardProps) {
   const { colors } = useTheme();
-  const summary = message.pendingAction?.summary || `Execute ${message.pendingAction?.tool}`;
+  const { t } = useTranslation('ai');
+  const summary = message.pendingAction?.summary || t('tabs.draftFallback', { tool: message.pendingAction?.tool ?? '' });
   return (
     <View style={[styles.draftCard, { backgroundColor: colors.card, borderColor: colors.warningBorder }]}>
       <View style={styles.draftHeader}>
         <Ionicons name="alert-circle" size={18} color={colors.warningText} />
         <Text variant="label" weight="bold" color="warningText">
-          Pending Confirmation
+          {t('tabs.pending')}
         </Text>
       </View>
       <Text variant="body">{summary}</Text>
       <View style={styles.draftActions}>
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={`Approve: ${summary}`}
+          accessibilityLabel={t('tabs.approveSpoken', { summary })}
           onPress={() => onConfirm(message.id)}
           haptic="tap"
           ringRadius={radius.md}
           style={[styles.draftButton, { backgroundColor: colors.success }]}>
           <Ionicons name="checkmark" size={16} color={colors.onSuccess} />
           <Text variant="label" weight="bold" color="onSuccess">
-            Approve
+            {t('tabs.approve')}
           </Text>
         </PressableScale>
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel={`Cancel: ${summary}`}
+          accessibilityLabel={t('tabs.cancelSpoken', { summary })}
           onPress={() => onCancel(message.id)}
           haptic="tap"
           ringRadius={radius.md}
           style={[styles.draftButton, styles.outlined, { backgroundColor: colors.cardMuted, borderColor: colors.borderStrong }]}>
           <Ionicons name="close" size={16} color={colors.textSecondary} />
           <Text variant="label" weight="bold" color="textSecondary">
-            Cancel
+            {t('bubble.cancel')}
           </Text>
         </PressableScale>
       </View>
@@ -295,6 +304,7 @@ export type DraftsTabProps = {
 
 export const DraftsTab = memo(function DraftsTab({ drafts, onConfirm, onCancel }: DraftsTabProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation('ai');
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<AiMessage>) => <DraftCard message={item} onConfirm={onConfirm} onCancel={onCancel} />,
     [onCancel, onConfirm],
@@ -306,8 +316,8 @@ export const DraftsTab = memo(function DraftsTab({ drafts, onConfirm, onCancel }
         icon="checkmark-done"
         iconColor={colors.successText}
         tileColor={colors.successContainer}
-        title="Nothing waiting for review"
-        body="When Aura drafts actions, transactions, or items for your approval, they appear here."
+        title={t('tabs.draftsEmptyTitle')}
+        body={t('tabs.draftsEmptyBody')}
       />
     );
   }

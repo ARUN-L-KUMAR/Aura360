@@ -1,6 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 
+import { i18n } from '@/i18n';
 import { spacing, type ModuleKey } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -61,59 +62,59 @@ export const COMPOSER_MAX_HEIGHT = 120;
 export type WidgetTab = 'chat' | 'for_you' | 'drafts';
 
 export const WIDGET_TABS: { key: WidgetTab; label: string }[] = [
-  { key: 'chat', label: 'Chat' },
-  { key: 'for_you', label: 'For You' },
-  { key: 'drafts', label: 'Drafts' },
+  { key: 'chat', get label() { return i18n.t('ai:widget.tabs.chat'); } },
+  { key: 'for_you', get label() { return i18n.t('ai:widget.tabs.for_you'); } },
+  { key: 'drafts', get label() { return i18n.t('ai:widget.tabs.drafts'); } },
 ];
 
 export const MODULE_NAMES: Record<string, string> = {
-  index: 'Dashboard',
-  finance: 'Finance & Expenses',
-  fashion: 'Fashion & Style',
-  saved: 'Saved Items',
-  fitness: 'Fitness & Workouts',
-  food: 'Food & Nutrition',
-  skincare: 'Skincare Routine',
-  notes: 'Notes & Ideas',
-  time: 'Time Tracker',
-  ai: 'Ask Aura',
+  get index() { return i18n.t('ai:widget.modules.index'); },
+  get finance() { return i18n.t('ai:widget.modules.finance'); },
+  get fashion() { return i18n.t('ai:widget.modules.fashion'); },
+  get saved() { return i18n.t('ai:widget.modules.saved'); },
+  get fitness() { return i18n.t('ai:widget.modules.fitness'); },
+  get food() { return i18n.t('ai:widget.modules.food'); },
+  get skincare() { return i18n.t('ai:widget.modules.skincare'); },
+  get notes() { return i18n.t('ai:widget.modules.notes'); },
+  get time() { return i18n.t('ai:widget.modules.time'); },
+  get ai() { return i18n.t('ai:widget.modules.ai'); },
 };
 
 export type QuickPrompt = { label: string; prompt: string };
 
 export const CONTEXT_PROMPTS: Record<string, QuickPrompt[]> = {
   fashion: [
-    { label: 'What to wear?', prompt: 'What outfit combination can I wear today based on my active wardrobe?' },
-    { label: 'Wardrobe audit', prompt: 'Review my wardrobe asset valuation and tell me which items are worn most.' },
-    { label: 'Laundry status', prompt: 'Which clothing items are marked as needing a wash right now?' },
+    { get label() { return i18n.t('ai:widget.context.fashion.outfit.label'); }, get prompt() { return i18n.t('ai:widget.context.fashion.outfit.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.fashion.audit.label'); }, get prompt() { return i18n.t('ai:widget.context.fashion.audit.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.fashion.laundry.label'); }, get prompt() { return i18n.t('ai:widget.context.fashion.laundry.prompt'); } },
   ],
   finance: [
-    { label: 'Spending breakdown', prompt: 'Review my recent transactions and tell me my total spending this month.' },
-    { label: 'Budget check', prompt: 'Check all my active budgets and let me know if any are nearing limits.' },
-    { label: 'Log ₹250 meal', prompt: 'Log an expense of ₹250 for lunch today under Food.' },
+    { get label() { return i18n.t('ai:widget.context.finance.spending.label'); }, get prompt() { return i18n.t('ai:widget.context.finance.spending.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.finance.budget.label'); }, get prompt() { return i18n.t('ai:widget.context.finance.budget.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.finance.logMeal.label'); }, get prompt() { return i18n.t('ai:widget.context.finance.logMeal.prompt'); } },
   ],
   fitness: [
-    { label: 'Today’s workout', prompt: 'Suggest a balanced 30-minute training routine for today.' },
-    { label: 'Activity streak', prompt: 'Check my recent workouts and summarize my active streak.' },
-    { label: 'Log workout', prompt: 'Log a 45-minute strength training workout for today.' },
+    { get label() { return i18n.t('ai:widget.context.fitness.today.label'); }, get prompt() { return i18n.t('ai:widget.context.fitness.today.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.fitness.streak.label'); }, get prompt() { return i18n.t('ai:widget.context.fitness.streak.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.fitness.log.label'); }, get prompt() { return i18n.t('ai:widget.context.fitness.log.prompt'); } },
   ],
   food: [
-    { label: 'Nutrition check', prompt: 'Review my meals logged today and estimate my calorie pacing.' },
-    { label: 'Quick meal idea', prompt: 'Suggest a high-protein quick meal with under 500 calories.' },
-    { label: 'Log food', prompt: 'Log breakfast: 2 boiled eggs and oatmeal.' },
+    { get label() { return i18n.t('ai:widget.context.food.nutrition.label'); }, get prompt() { return i18n.t('ai:widget.context.food.nutrition.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.food.idea.label'); }, get prompt() { return i18n.t('ai:widget.context.food.idea.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.food.log.label'); }, get prompt() { return i18n.t('ai:widget.context.food.log.prompt'); } },
   ],
   skincare: [
-    { label: 'Routine sequence', prompt: 'Review my morning and evening skincare steps.' },
-    { label: 'Product audit', prompt: 'Which skincare items do I currently own vs need to buy?' },
+    { get label() { return i18n.t('ai:widget.context.skincare.routine.label'); }, get prompt() { return i18n.t('ai:widget.context.skincare.routine.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.skincare.audit.label'); }, get prompt() { return i18n.t('ai:widget.context.skincare.audit.prompt'); } },
   ],
   saved: [
-    { label: 'Search saved', prompt: 'What links and articles have I saved recently?' },
-    { label: 'Favourites review', prompt: 'List all my favourited saved items.' },
+    { get label() { return i18n.t('ai:widget.context.saved.search.label'); }, get prompt() { return i18n.t('ai:widget.context.saved.search.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.saved.favourites.label'); }, get prompt() { return i18n.t('ai:widget.context.saved.favourites.prompt'); } },
   ],
   default: [
-    { label: 'Day summary', prompt: 'Summarize my activity and logs across Aura360 for today.' },
-    { label: 'Quick note', prompt: 'Create a note titled "Idea" with details to be filled later.' },
-    { label: 'Log expense', prompt: 'Record a ₹150 expense for coffee.' },
+    { get label() { return i18n.t('ai:widget.context.default.summary.label'); }, get prompt() { return i18n.t('ai:widget.context.default.summary.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.default.note.label'); }, get prompt() { return i18n.t('ai:widget.context.default.note.prompt'); } },
+    { get label() { return i18n.t('ai:widget.context.default.expense.label'); }, get prompt() { return i18n.t('ai:widget.context.default.expense.prompt'); } },
   ],
 };
 
@@ -130,37 +131,37 @@ export type ForYouItem = {
 export const FOR_YOU_ITEMS: ForYouItem[] = [
   {
     id: 'fy-1',
-    title: 'Style & Outfit Suggestion',
-    desc: 'Get curated outfit ideas matching your wardrobe items',
-    prompt: 'Check my wardrobe and suggest a stylish outfit combination for today.',
-    tag: 'Fashion',
+    get title() { return i18n.t('ai:widget.forYou.style.title'); },
+    get desc() { return i18n.t('ai:widget.forYou.style.desc'); },
+    get prompt() { return i18n.t('ai:widget.forYou.style.prompt'); },
+    get tag() { return i18n.t('ai:widget.forYou.style.tag'); },
     icon: 'shirt-outline',
     module: 'fashion',
   },
   {
     id: 'fy-2',
-    title: 'Weekly Expense Review',
-    desc: 'Analyze where your money is going this month',
-    prompt: 'Review my recent transactions and tell me where I am spending most.',
-    tag: 'Finance',
+    get title() { return i18n.t('ai:widget.forYou.expenses.title'); },
+    get desc() { return i18n.t('ai:widget.forYou.expenses.desc'); },
+    get prompt() { return i18n.t('ai:widget.forYou.expenses.prompt'); },
+    get tag() { return i18n.t('ai:widget.forYou.expenses.tag'); },
     icon: 'wallet-outline',
     module: 'finance',
   },
   {
     id: 'fy-3',
-    title: '30-Min Workout Plan',
-    desc: 'Quick, balanced training based on your routine',
-    prompt: 'Suggest a focused 30-minute workout routine for today.',
-    tag: 'Fitness',
+    get title() { return i18n.t('ai:widget.forYou.workout.title'); },
+    get desc() { return i18n.t('ai:widget.forYou.workout.desc'); },
+    get prompt() { return i18n.t('ai:widget.forYou.workout.prompt'); },
+    get tag() { return i18n.t('ai:widget.forYou.workout.tag'); },
     icon: 'barbell-outline',
     module: 'fitness',
   },
   {
     id: 'fy-4',
-    title: 'Daily Reflection Note',
-    desc: 'Draft key highlights and priorities for today',
-    prompt: 'Help me draft a concise daily recap note with today’s priorities.',
-    tag: 'Productivity',
+    get title() { return i18n.t('ai:widget.forYou.reflection.title'); },
+    get desc() { return i18n.t('ai:widget.forYou.reflection.desc'); },
+    get prompt() { return i18n.t('ai:widget.forYou.reflection.prompt'); },
+    get tag() { return i18n.t('ai:widget.forYou.reflection.tag'); },
     icon: 'document-text-outline',
     module: 'notes',
   },

@@ -6,6 +6,7 @@ import { Tag } from '@/components/ui/chip';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Text } from '@/components/ui/text';
 import type { MacroTargets, MealTotals } from '@/features/food/types';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { radius, spacing, useTheme } from '@/theme';
 
 const SIZE = 208;
@@ -17,12 +18,14 @@ type Ring = { key: string; label: string; color: string; current: number; target
 /** Four concentric rings (calories outermost) plus a tile per macro. Colours come from the theme, never literals. */
 export function MacroRings({ totals, targets }: { totals: MealTotals; targets: MacroTargets }) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('food');
+  const number = (value: number) => value.toLocaleString(getDeviceLocale());
 
   const rings: Ring[] = [
-    { key: 'calories', label: 'Calories', color: accent('food').solid, current: totals.calories, target: targets.calories, unit: 'kcal' },
-    { key: 'protein', label: 'Protein', color: colors.secondary, current: totals.protein, target: targets.protein, unit: 'g' },
-    { key: 'carbs', label: 'Carbs', color: colors.success, current: totals.carbs, target: targets.carbs, unit: 'g' },
-    { key: 'fats', label: 'Fats', color: colors.tertiary, current: totals.fats, target: targets.fats, unit: 'g' },
+    { key: 'calories', label: t('rings.calories'), color: accent('food').solid, current: totals.calories, target: targets.calories, unit: 'kcal' as const },
+    { key: 'protein', label: t('rings.protein'), color: colors.secondary, current: totals.protein, target: targets.protein, unit: 'g' },
+    { key: 'carbs', label: t('rings.carbs'), color: colors.success, current: totals.carbs, target: targets.carbs, unit: 'g' },
+    { key: 'fats', label: t('rings.fats'), color: colors.tertiary, current: totals.fats, target: targets.fats, unit: 'g' },
   ];
 
   const remaining = Math.round(targets.calories - totals.calories);
@@ -34,9 +37,10 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
       <View
         style={{ alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}
         accessible
-        accessibilityLabel={`${over ? `${Math.abs(remaining)} kilocalories over` : `${remaining} kilocalories remaining`}. ${rings
-          .map((r) => `${r.label} ${Math.round(r.current)} of ${r.target} ${r.unit === 'g' ? 'grams' : 'kilocalories'}`)
-          .join(', ')}`}>
+        accessibilityLabel={[
+          over ? t('rings.overSpoken', { count: Math.abs(remaining) }) : t('rings.remainingSpoken', { count: remaining }),
+          ...rings.map((r) => t(r.unit === 'g' ? 'rings.ofGramsSpoken' : 'rings.ofKcalSpoken', { label: r.label, current: Math.round(r.current), target: r.target })),
+        ].join('. ')}>
         <View style={{ transform: [{ rotate: '-90deg' }] }}>
           <Svg width={SIZE} height={SIZE}>
             {rings.map((ring, index) => {
@@ -66,16 +70,16 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
         {/* Centre text sits inside the innermost ring (about 100pt across). */}
         <View style={{ position: 'absolute', alignItems: 'center', maxWidth: 96 }}>
           <Text variant="headline" numeric color={over ? 'errorText' : 'text'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-            {Math.abs(remaining).toLocaleString()}
+            {number(Math.abs(remaining))}
           </Text>
           <Text variant="caption" color="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
-            {over ? 'kcal over' : 'kcal left'}
+            {over ? t('rings.kcalOver') : t('rings.kcalLeft')}
           </Text>
         </View>
       </View>
 
       <View style={{ alignSelf: 'center' }}>
-        <Tag label={`${calPercent}% of calorie goal`} accent="food" size="md" />
+        <Tag label={t('rings.percentOfGoal', { value: calPercent })} accent="food" size="md" />
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
@@ -85,7 +89,7 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
             <View
               key={ring.key}
               accessible
-              accessibilityLabel={`${ring.label}: ${Math.round(ring.current)} of ${ring.target} ${ring.unit === 'g' ? 'grams' : 'kilocalories'}, ${pct} percent`}
+              accessibilityLabel={t(ring.unit === 'g' ? 'rings.tileGramsSpoken' : 'rings.tileKcalSpoken', { label: ring.label, current: Math.round(ring.current), target: ring.target, pct })}
               style={{
                 flexGrow: 1,
                 flexBasis: 72,
@@ -101,13 +105,11 @@ export function MacroRings({ totals, targets }: { totals: MealTotals; targets: M
                 </Text>
               </View>
               <Text variant="label" weight="semiBold" numeric numberOfLines={1}>
-                {Math.round(ring.current)}
-                {ring.unit === 'g' ? 'g' : ''}
+                {ring.unit === 'g' ? t('units.grams', { value: Math.round(ring.current) }) : Math.round(ring.current)}
               </Text>
               <ProgressBar percent={pct} color={ring.color} height={4} />
               <Text variant="caption" numeric color="textSecondary" numberOfLines={1}>
-                of {ring.target}
-                {ring.unit === 'g' ? 'g' : ''}
+                {t('rings.ofTarget', { value: ring.unit === 'g' ? t('units.grams', { value: ring.target }) : ring.target })}
               </Text>
             </View>
           );

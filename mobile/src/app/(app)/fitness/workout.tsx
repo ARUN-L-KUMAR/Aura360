@@ -13,24 +13,15 @@ import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { useCreateFitnessEntry, useUpdateFitnessEntry } from '@/features/fitness/hooks';
 import type { Exercise, FitnessEntry, WorkoutIntensity } from '@/features/fitness/types';
+import { useErrorMessage } from '@/features/fitness/use-error-message';
+import { useTranslation } from '@/i18n';
 import { todayIso } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
 
-const TYPES = [
-  { value: 'strength', label: 'Strength' },
-  { value: 'cardio', label: 'Cardio' },
-  { value: 'hiit', label: 'HIIT' },
-  { value: 'mobility', label: 'Mobility' },
-];
 
-const INTENSITIES: { value: WorkoutIntensity; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'extreme', label: 'Max' },
-];
 
 const blankExercise = (): Exercise => ({ name: '', sets: 3, reps: 10, weight: 0 });
 
@@ -54,6 +45,20 @@ type Errors = Partial<Record<'duration' | 'calories', string>>;
 export default function WorkoutModalScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('fitness');
+  const errorMessage = useErrorMessage();
+  const typeOptions = [
+    { value: 'strength', label: t('workoutTypes.strength') },
+    { value: 'cardio', label: t('workoutTypes.cardio') },
+    { value: 'hiit', label: t('workoutTypes.hiit') },
+    { value: 'mobility', label: t('workoutTypes.mobility') },
+  ];
+  const intensityOptions: { value: WorkoutIntensity; label: string }[] = [
+    { value: 'low', label: t('intensity.low') },
+    { value: 'medium', label: t('intensity.medium') },
+    { value: 'high', label: t('intensity.high') },
+    { value: 'extreme', label: t('intensity.extremeShort') },
+  ];
   const params = useLocalSearchParams<{ entry?: string }>();
 
   const initialEntry = useMemo(() => parseEntry(params.entry), [params.entry]);
@@ -63,7 +68,7 @@ export default function WorkoutModalScreen() {
   // The server's `type` is workout | measurement | goal. What kind of workout it is (strength, cardio…)
   // is `workoutType`, and the name the user typed is kept in `metadata.name`.
   const [workoutName, setWorkoutName] = useState(typeof initialEntry?.metadata?.name === 'string' ? initialEntry.metadata.name : '');
-  const [type, setType] = useState(initialEntry?.workoutType && TYPES.some((t) => t.value === initialEntry.workoutType) ? initialEntry.workoutType : 'strength');
+  const [type, setType] = useState(initialEntry?.workoutType && ['strength', 'cardio', 'hiit', 'mobility'].includes(initialEntry.workoutType) ? initialEntry.workoutType : 'strength');
   const [duration, setDuration] = useState(initialEntry?.duration ? String(initialEntry.duration) : '45');
   const [calories, setCalories] = useState(initialEntry?.caloriesBurned ? String(initialEntry.caloriesBurned) : '');
   const [intensity, setIntensity] = useState<WorkoutIntensity>((initialEntry?.intensity as WorkoutIntensity) ?? 'medium');
@@ -93,8 +98,8 @@ export default function WorkoutModalScreen() {
     const durationNum = toWholeNumber(duration);
     const caloriesNum = toWholeNumber(calories);
     const found: Errors = {};
-    if (durationNum === null) found.duration = 'Enter whole minutes.';
-    if (caloriesNum === null) found.calories = 'Enter whole kcal.';
+    if (durationNum === null) found.duration = t('workout.errorMinutes');
+    if (caloriesNum === null) found.calories = t('workout.errorKcal');
     setErrors(found);
     if (Object.keys(found).length > 0 || !date) {
       haptics.warning();
@@ -138,22 +143,23 @@ export default function WorkoutModalScreen() {
           notes: notes.trim() || undefined,
         });
       }
-      notify.success(isEditing ? 'Workout updated' : 'Workout logged');
+      notify.success(isEditing ? t('workout.updated') : t('workout.logged'));
+      if (!isEditing) analytics.track('fitness_entry_logged');
       router.back();
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not save the workout.');
+      notify.error(errorMessage(e, t('workout.saveFailed')));
     }
   };
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: isEditing ? 'Edit workout' : 'Log workout' }} />
+      <Stack.Screen options={{ title: isEditing ? t('workout.editTitle') : t('workout.newTitle') }} />
 
       <Card style={{ gap: spacing.md }}>
-        <DateField label="Date" value={date} onChange={setDate} />
+        <DateField label={t('entry.date')} value={date} onChange={setDate} />
         <Input
-          label="Workout name"
-          placeholder="For example, chest and triceps, leg day, 5K run"
+          label={t('train.workoutName')}
+          placeholder={t('workout.namePlaceholder')}
           value={workoutName}
           onChangeText={setWorkoutName}
           autoCapitalize="sentences"
@@ -164,22 +170,22 @@ export default function WorkoutModalScreen() {
       <Card style={{ gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" color="textSecondary">
-            Type
+            {t('workout.type')}
           </Text>
-          <Segmented options={TYPES} value={type} onChange={setType} accessibilityLabel="Workout type" />
+          <Segmented options={typeOptions} value={type} onChange={setType} accessibilityLabel={t('workout.typeLabel')} />
         </View>
 
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" color="textSecondary">
-            Intensity
+            {t('entry.intensity')}
           </Text>
-          <Segmented options={INTENSITIES} value={intensity} onChange={setIntensity} accessibilityLabel="Intensity" />
+          <Segmented options={intensityOptions} value={intensity} onChange={setIntensity} accessibilityLabel={t('entry.intensity')} />
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           <Input
             containerStyle={{ flexGrow: 1, flexBasis: 120 }}
-            label="Duration (min)"
+            label={t('entry.duration')}
             keyboardType="number-pad"
             placeholder="45"
             value={duration}
@@ -191,7 +197,7 @@ export default function WorkoutModalScreen() {
           />
           <Input
             containerStyle={{ flexGrow: 1, flexBasis: 120 }}
-            label="Calories (kcal)"
+            label={t('entry.calories')}
             keyboardType="number-pad"
             placeholder="350"
             value={calories}
@@ -205,29 +211,29 @@ export default function WorkoutModalScreen() {
       </Card>
 
       <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title="Exercises" count={exercises.length} />
+        <SectionHeader title={t('entry.exercises')} count={exercises.length} />
 
         {exercises.map((ex, index) => (
           <View key={index} style={{ gap: spacing.sm }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
               <Input
                 containerStyle={{ flex: 1 }}
-                label={`Exercise ${index + 1}`}
-                placeholder="For example, barbell bench press"
+                label={t('workout.exerciseN', { n: index + 1 })}
+                placeholder={t('workout.exercisePlaceholder')}
                 value={ex.name}
                 onChangeText={(val) => updateExercise(index, { name: val })}
                 autoCapitalize="words"
                 returnKeyType="next"
               />
               {exercises.length > 1 ? (
-                <IconButton icon="trash-outline" destructive accessibilityLabel={`Remove exercise ${index + 1}`} onPress={() => removeExercise(index)} style={{ marginBottom: spacing.xs }} />
+                <IconButton icon="trash-outline" destructive accessibilityLabel={t('workout.removeExercise', { n: index + 1 })} onPress={() => removeExercise(index)} style={{ marginBottom: spacing.xs }} />
               ) : null}
             </View>
 
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Sets"
+                label={t('workout.sets')}
                 keyboardType="number-pad"
                 placeholder="3"
                 value={ex.sets ? String(ex.sets) : ''}
@@ -235,7 +241,7 @@ export default function WorkoutModalScreen() {
               />
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Reps"
+                label={t('stats.reps')}
                 keyboardType="number-pad"
                 placeholder="10"
                 value={ex.reps ? String(ex.reps) : ''}
@@ -243,7 +249,7 @@ export default function WorkoutModalScreen() {
               />
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Weight (kg)"
+                label={t('stats.weightKg')}
                 keyboardType="decimal-pad"
                 placeholder="60"
                 value={ex.weight ? String(ex.weight) : ''}
@@ -253,12 +259,12 @@ export default function WorkoutModalScreen() {
           </View>
         ))}
 
-        <Button title="Add exercise" variant="secondary" leftIcon="add" haptic={false} onPress={addExercise} />
+        <Button title={t('train.addExercise')} variant="secondary" leftIcon="add" haptic={false} onPress={addExercise} />
       </Card>
 
       <Input
-        label="Notes"
-        placeholder="How did the session feel? Any personal bests?"
+        label={t('workout.notes')}
+        placeholder={t('workout.notesPlaceholder')}
         value={notes}
         onChangeText={setNotes}
         multiline
@@ -266,7 +272,7 @@ export default function WorkoutModalScreen() {
         style={{ minHeight: 72 }}
       />
 
-      <Button title={isEditing ? 'Save changes' : 'Log workout'} leftIcon="checkmark" onPress={handleSave} loading={isPending} />
+      <Button title={isEditing ? t('actions.saveChanges') : t('workout.newTitle')} leftIcon="checkmark" onPress={handleSave} loading={isPending} />
     </Screen>
   );
 }

@@ -16,9 +16,12 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useRecentFitness, useSaveFitness } from '@/features/fitness/hooks';
 import { estimateOneRepMax, isWorkout, volumeOf } from '@/features/fitness/stats';
+import { useErrorMessage } from '@/features/fitness/use-error-message';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { formatDay } from '@/lib/format';
-import { useNotify } from '@/providers/notify';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { useNotify } from '@/providers/notify';
 import { spacing, useTheme } from '@/theme';
 
 const PERCENTAGES = [
@@ -50,7 +53,7 @@ const parse = (text: string) => Number.parseFloat(text.replace(',', '.'));
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md }}>
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, minHeight: spacing.xl }}>
       <Text variant="body" color="textSecondary" style={{ flexShrink: 1 }}>
         {label}
       </Text>
@@ -63,7 +66,9 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 
 export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpenTrain: () => void }) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('fitness');
   const notify = useNotify();
+  const errorMessage = useErrorMessage();
   const entries = useRecentFitness(365);
   const save = useSaveFitness();
 
@@ -96,20 +101,22 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
   const oneRm = estimateOneRepMax(liftValue, repsValue);
   const plateValue = parse(plateTarget);
   const plateResult = platesPerSide(plateValue, 20);
+  const kg = (value: number | string) => t('units.kg', { value });
 
   async function logWeight() {
     const value = parse(weightText);
     if (!Number.isFinite(value) || value <= 0) {
       haptics.warning();
-      return setWeightError('Enter a weight above 0.');
+      return setWeightError(t('stats.weightError'));
     }
     setWeightError(null);
     try {
       await save.mutateAsync({ input: { date: toIsoDay(new Date()), type: 'measurement', measurementType: 'weight', measurementValue: value, measurementUnit: 'kg' } });
       setWeightText('');
-      notify.success(`Logged ${value} kg`);
+      notify.success(t('stats.weightLogged', { value: kg(value) }));
+      analytics.track('fitness_entry_logged');
     } catch (e) {
-      notify.error(e instanceof Error ? e : 'Could not save your weight. Try again.');
+      notify.error(errorMessage(e, t('stats.weightFailed')));
     }
   }
 
@@ -126,30 +133,29 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
 
       {!loading && !failed ? (
         <Card style={{ gap: spacing.md }}>
-          <SectionHeader title="Volume per workout" subtitle={volumes.length > 0 ? 'Your last 10 workouts' : undefined} />
+          <SectionHeader title={t('stats.volumeTitle')} subtitle={volumes.length > 0 ? t('stats.volumeSubtitle') : undefined} />
           {volumes.length === 0 ? (
             <EmptyState
               accent="fitness"
               icon="stats-chart-outline"
-              title="No volume to chart yet"
-              description="Finish a workout with logged sets to see your volume trend."
-              actionTitle="Start a workout"
+              title={t('stats.volumeEmptyTitle')}
+              description={t('stats.volumeEmptyDescription')}
+              actionTitle={t('actions.startWorkout')}
               onAction={onOpenTrain}
               style={{ paddingVertical: spacing.lg }}
             />
           ) : (
             volumes.map((item) => {
-              const text = item.volume > 0 ? `${Math.round(item.volume).toLocaleString()} kg` : 'No weights logged';
+              const text = item.volume > 0 ? kg(Math.round(item.volume).toLocaleString(getDeviceLocale())) : t('stats.noWeights');
               return (
                 <View
                   key={item.id}
                   accessible
-                  accessibilityLabel={`${formatDay(item.date)}${item.minutes ? `, ${item.minutes} minutes` : ''}, ${text}`}
+                  accessibilityLabel={[formatDay(item.date), item.minutes ? t('stats.minutesSpoken', { count: item.minutes }) : null, text].filter(Boolean).join(', ')}
                   style={{ gap: spacing.xs }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
                     <Text variant="caption" color="textSecondary" numeric style={{ flexShrink: 1 }}>
-                      {formatDay(item.date)}
-                      {item.minutes ? ` · ${item.minutes} min` : ''}
+                      {item.minutes ? t('stats.dateAndMinutes', { date: formatDay(item.date), value: t('units.min', { value: item.minutes }) }) : formatDay(item.date)}
                     </Text>
                     <Text variant="caption" weight="semiBold" numeric>
                       {item.volume > 0 ? text : '—'}
@@ -165,30 +171,33 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
 
       {!loading && !failed ? (
         <Card style={{ gap: spacing.md }}>
-          <SectionHeader title="Body weight" />
+          <SectionHeader title={t('stats.bodyWeight')} />
           {latestWeight !== null ? (
             <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.sm }}>
               <Text variant="headline" numeric>
-                {latestWeight} kg
+                {kg(latestWeight)}
               </Text>
               {change !== null ? (
-                <View accessible accessibilityLabel={`${change > 0 ? 'Up' : change < 0 ? 'Down' : 'No change'} ${Math.abs(change).toFixed(1)} kilograms since last weigh-in`} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                <View
+                  accessible
+                  accessibilityLabel={t(change > 0 ? 'stats.changeUp' : change < 0 ? 'stats.changeDown' : 'stats.changeNone', { value: Math.abs(change).toFixed(1) })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   <Ionicons name={change > 0 ? 'arrow-up' : change < 0 ? 'arrow-down' : 'remove'} size={14} color={change > 0 ? colors.warningText : colors.successText} />
                   <Text variant="label" numeric color={change > 0 ? 'warningText' : 'successText'}>
                     {change > 0 ? '+' : ''}
-                    {change.toFixed(1)} kg
+                    {kg(change.toFixed(1))}
                   </Text>
                 </View>
               ) : null}
             </View>
           ) : (
             <Text variant="body" color="textSecondary">
-              No weigh-ins yet. Log your first one below.
+              {t('stats.noWeighIns')}
             </Text>
           )}
 
           <Input
-            label="Today's weight"
+            label={t('stats.todaysWeight')}
             value={weightText}
             onChangeText={(text) => {
               setWeightText(text);
@@ -200,20 +209,20 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
             placeholder="0.0"
             rightAdornment={
               <Text variant="label" color="textSecondary">
-                kg
+                {t('units.kgUnit')}
               </Text>
             }
             error={weightError}
           />
-          <Button title="Log weight" leftIcon="add" onPress={logWeight} loading={save.isPending} />
+          <Button title={t('stats.logWeight')} leftIcon="add" onPress={logWeight} loading={save.isPending} />
 
           {weights.length > 0 ? (
             <View style={{ gap: spacing.sm }}>
-              <Text variant="label" color="textSecondary">
-                Recent weigh-ins
+              <Text variant="label" color="textSecondary" accessibilityRole="header">
+                {t('stats.recentWeighIns')}
               </Text>
               {weights.slice(0, 5).map((entry) => (
-                <Row key={entry.id} label={formatDay(entry.date)} value={`${Number(entry.measurementValue)} kg`} />
+                <Row key={entry.id} label={formatDay(entry.date)} value={kg(Number(entry.measurementValue))} />
               ))}
             </View>
           ) : null}
@@ -221,54 +230,54 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
       ) : null}
 
       <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="One-rep max estimator" subtitle="Epley formula" />
+        <SectionHeader title={t('stats.oneRmTitle')} subtitle={t('stats.oneRmSubtitle')} />
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Input containerStyle={{ flex: 1 }} label="Weight (kg)" value={liftWeight} onChangeText={setLiftWeight} keyboardType="decimal-pad" returnKeyType="done" />
-          <Input containerStyle={{ flex: 1 }} label="Reps" value={liftReps} onChangeText={setLiftReps} keyboardType="number-pad" />
+          <Input containerStyle={{ flex: 1 }} label={t('stats.weightKg')} value={liftWeight} onChangeText={setLiftWeight} keyboardType="decimal-pad" returnKeyType="done" />
+          <Input containerStyle={{ flex: 1 }} label={t('stats.reps')} value={liftReps} onChangeText={setLiftReps} keyboardType="number-pad" />
         </View>
-        <View accessible accessibilityLabel={oneRm > 0 ? `Estimated one-rep max ${oneRm} kilograms` : 'Enter weight and reps for an estimate'} accessibilityLiveRegion="polite">
+        <View accessible accessibilityLabel={oneRm > 0 ? t('stats.oneRmSpoken', { value: oneRm }) : t('stats.oneRmPrompt')} accessibilityLiveRegion="polite">
           <Text variant="display" numeric style={{ color: accent('fitness').text }}>
-            {oneRm > 0 ? `${oneRm} kg` : '—'}
+            {oneRm > 0 ? kg(oneRm) : '—'}
           </Text>
           <Text variant="caption" color="textSecondary">
-            Estimated one-rep max
+            {t('stats.oneRmLabel')}
           </Text>
         </View>
         {oneRm > 0 ? (
           <View style={{ gap: spacing.sm }}>
             {PERCENTAGES.map((row) => (
-              <Row key={row.pct} label={`${row.pct}% · about ${row.reps} reps`} value={`${Math.round(oneRm * (row.pct / 100))} kg`} strong />
+              <Row key={row.pct} label={t('stats.percentRow', { pct: row.pct, reps: row.reps })} value={kg(Math.round(oneRm * (row.pct / 100)))} strong />
             ))}
           </View>
         ) : null}
       </Card>
 
       <Card style={{ gap: spacing.md }}>
-        <SectionHeader title="Plate calculator" subtitle="Based on a 20 kg bar" />
+        <SectionHeader title={t('stats.plateTitle')} subtitle={t('stats.plateSubtitle')} />
         <Input
-          label="Target weight (kg)"
+          label={t('stats.targetWeight')}
           value={plateTarget}
           onChangeText={setPlateTarget}
           keyboardType="decimal-pad"
           returnKeyType="done"
-          error={plateTarget.trim() && !(plateValue > 0) ? 'Enter a weight above 0.' : null}
+          error={plateTarget.trim() && !(plateValue > 0) ? t('stats.weightError') : null}
         />
         {plateValue > 0 && plateValue <= 20 ? (
           <Text variant="body" color="textSecondary">
-            Just the bar.
+            {t('stats.justTheBar')}
           </Text>
         ) : plateValue > 20 ? (
           <View style={{ gap: spacing.sm }}>
             <View
               accessible
-              accessibilityLabel={`Plates on each side: ${plateResult.plates.join(', ')} kilograms`}
+              accessibilityLabel={t('stats.platesSpoken', { plates: plateResult.plates.join(', ') })}
               style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {plateResult.plates.map((plate, index) => (
-                <Tag key={`${plate}-${index}`} label={`${plate} kg`} size="md" accent="fitness" />
+                <Tag key={`${plate}-${index}`} label={kg(plate)} size="md" accent="fitness" />
               ))}
             </View>
             <Text variant="caption" color="textSecondary">
-              On each side{plateResult.leftover > 0 ? ` · ${plateResult.leftover} kg short of the target with these plates` : ''}
+              {plateResult.leftover > 0 ? t('stats.eachSideShort', { value: kg(plateResult.leftover) }) : t('stats.eachSide')}
             </Text>
           </View>
         ) : null}

@@ -19,6 +19,7 @@ import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
 import { useMeals } from '@/features/food/hooks';
 import { useTargets, useWater } from '@/features/food/prefs';
 import { MEAL_TYPES, suggestMealType, sumMeals, type Meal } from '@/features/food/types';
+import { getDeviceLocale, i18n, useTranslation } from '@/i18n';
 import { spacing } from '@/theme';
 
 function shiftDay(isoDay: string, delta: number) {
@@ -28,14 +29,15 @@ function shiftDay(isoDay: string, delta: number) {
 
 function dayTitle(isoDay: string) {
   const today = toIsoDay(new Date());
-  if (isoDay === today) return 'Today';
-  if (isoDay === shiftDay(today, -1)) return 'Yesterday';
+  if (isoDay === today) return i18n.t('food:today.today');
+  if (isoDay === shiftDay(today, -1)) return i18n.t('food:today.yesterday');
   const [year, month, day] = isoDay.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  return new Date(year, month - 1, day).toLocaleDateString(getDeviceLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation('food');
   const today = toIsoDay(new Date());
   const [day, setDay] = useState(today);
 
@@ -47,6 +49,7 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
 
   const list = useMemo(() => meals.data ?? [], [meals.data]);
   const totals = useMemo(() => sumMeals(list), [list]);
+  const bySlot = useMemo(() => MEAL_TYPES.map((slot) => list.filter((meal) => meal.mealType === slot.value)), [list]);
   const failed = meals.isError && !meals.data;
   const loading = meals.isPending;
 
@@ -57,13 +60,13 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
       <PeriodStepper
         accent="food"
         label={dayTitle(day)}
-        previousLabel="Previous day"
-        nextLabel="Next day"
+        previousLabel={t('today.previousDay')}
+        nextLabel={t('today.nextDay')}
         onPrevious={() => setDay(shiftDay(day, -1))}
         onNext={() => setDay(shiftDay(day, 1))}
         nextDisabled={day >= today}
         onLabelPress={day !== today ? () => setDay(today) : undefined}
-        labelHint="Jumps back to today"
+        labelHint={t('today.jumpHint')}
       />
 
       {meals.isError ? <QueryError error={meals.error} hasData={!!meals.data} retrying={meals.isFetching} onRetry={() => meals.refetch()} /> : null}
@@ -74,9 +77,9 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
         <Animated.View {...nutritionMotion}>
           <Card gradient="food" style={{ gap: spacing.md }}>
             <SectionHeader
-              title="Daily nutrition"
-              actionLabel="Edit targets"
-              actionAccessibilityLabel="Edit daily nutrition targets"
+              title={t('today.dailyNutrition')}
+              actionLabel={t('today.editTargets')}
+              actionAccessibilityLabel={t('today.editTargetsLabel')}
               onActionPress={() => router.push('/food/targets' as never)}
             />
             <MacroRings totals={totals} targets={targets} />
@@ -92,22 +95,22 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
 
       {!loading && !failed ? (
         <View style={{ gap: spacing.md }}>
-          <SectionHeader title={day === today ? "Today's meals" : 'Meals'} count={list.length > 0 ? list.length : undefined} />
+          <SectionHeader title={day === today ? t('today.mealsToday') : t('today.meals')} count={list.length > 0 ? list.length : undefined} />
 
           {list.length === 0 ? (
             <EmptyState
               accent="food"
               icon="restaurant-outline"
-              title={day === today ? 'Nothing logged today' : 'Nothing logged this day'}
-              description="Add what you ate to see your calories and macros fill in."
-              actionTitle="Log food"
+              title={day === today ? t('today.emptyToday') : t('today.emptyDay')}
+              description={t('today.emptyDescription')}
+              actionTitle={t('actions.logFood')}
               onAction={() => openMeal(router, { mealType: suggestMealType(), date: day })}
-              secondaryActionTitle={day === today ? 'Describe a meal with AI' : undefined}
+              secondaryActionTitle={day === today ? t('today.describeWithAi') : undefined}
               onSecondaryAction={day === today ? onOpenAi : undefined}
             />
           ) : (
             MEAL_TYPES.map((slot, index) => (
-              <MealSlotCard key={slot.value} slot={slot} index={index} items={list.filter((meal) => meal.mealType === slot.value)} day={day} />
+              <MealSlotCard key={slot.value} slot={slot} index={index} items={bySlot[index]} day={day} />
             ))
           )}
         </View>
@@ -120,6 +123,7 @@ type SlotProps = { slot: (typeof MEAL_TYPES)[number]; items: Meal[]; day: string
 
 function MealSlotCard({ slot, items, day, index }: SlotProps) {
   const router = useRouter();
+  const { t } = useTranslation('food');
   const motion = useListMotion(index);
 
   const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
@@ -127,14 +131,14 @@ function MealSlotCard({ slot, items, day, index }: SlotProps) {
   const protein = sum('protein');
   const carbs = sum('carbs');
   const fats = sum('fats');
-  const macros = protein > 0 || carbs > 0 || fats > 0 ? ` · P ${protein}g · C ${carbs}g · F ${fats}g` : '';
+  const macros = protein > 0 || carbs > 0 || fats > 0 ? ` · ${t('macros.protein', { value: protein })} · ${t('macros.carbs', { value: carbs })} · ${t('macros.fats', { value: fats })}` : '';
 
   return (
     <Animated.View {...motion}>
       <Card padding="none" style={{ overflow: 'hidden' }}>
         <ListItem
           title={slot.label}
-          subtitle={items.length === 0 ? 'Nothing logged' : `${kcal} kcal${macros}`}
+          subtitle={items.length === 0 ? t('today.slotEmpty') : `${t('units.kcal', { value: kcal })}${macros}`}
           icon={slot.icon}
           accent="food"
           divider={items.length > 0}
@@ -144,7 +148,7 @@ function MealSlotCard({ slot, items, day, index }: SlotProps) {
               icon="add"
               variant="tonal"
               size="sm"
-              accessibilityLabel={`Add to ${slot.label}`}
+              accessibilityLabel={t('today.addTo', { slot: slot.label })}
               onPress={() => openMeal(router, { mealType: slot.value, date: day })}
             />
           }

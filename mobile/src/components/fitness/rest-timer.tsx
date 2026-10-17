@@ -11,6 +11,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useNow } from '@/features/fitness/session-store';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
@@ -28,6 +29,7 @@ const formatTime = (secs: number) => {
 /** Stand-alone rest interval timer (outside a live workout): presets, play / pause, reset and +15 s. */
 export function RestTimer() {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('fitness');
   const fitness = accent('fitness');
 
   const [timer, setTimer] = useState<TimerState>({ totalSeconds: 60, leftMs: 60_000, endsAt: null });
@@ -39,7 +41,7 @@ export function RestTimer() {
   const isRunning = endsAt !== null && secondsRemaining > 0;
   const isComplete = endsAt !== null && secondsRemaining === 0;
   const percent = totalSeconds > 0 ? ((totalSeconds - secondsRemaining) / totalSeconds) * 100 : 0;
-  const status = isComplete ? 'Rest complete' : isRunning ? 'Resting' : 'Ready';
+  const status = isComplete ? t('restTimer.complete') : isRunning ? t('restTimer.resting') : t('restTimer.ready');
 
   useEffect(() => {
     if (isComplete) haptics.success();
@@ -77,7 +79,7 @@ export function RestTimer() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <Ionicons name="timer-outline" size={20} color={fitness.text} />
           <Text variant="title" accessibilityRole="header">
-            Rest timer
+            {t('restTimer.title')}
           </Text>
         </View>
         {/* One short phrase that only changes when the state does, so a screen reader announces it sparingly. */}
@@ -90,14 +92,14 @@ export function RestTimer() {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.md }}>
-        <Text variant="display" numeric color={isComplete ? 'successText' : 'text'} accessibilityLabel={`${secondsRemaining} seconds remaining`}>
+        <Text variant="display" numeric color={isComplete ? 'successText' : 'text'} accessibilityLabel={t('restTimer.secondsRemaining', { count: secondsRemaining })}>
           {formatTime(secondsRemaining)}
         </Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel={isRunning ? 'Pause timer' : isComplete ? 'Restart timer' : 'Start timer'}
+            accessibilityLabel={isRunning ? t('restTimer.pause') : isComplete ? t('restTimer.restart') : t('restTimer.start')}
             onPress={toggleRun}
             haptic={false}
             ringRadius={radius.pill}
@@ -111,8 +113,8 @@ export function RestTimer() {
             }}>
             <Ionicons name={isRunning ? 'pause' : 'play'} size={22} color={fitness.onSolid} />
           </PressableScale>
-          <IconButton icon="refresh" variant="tonal" accessibilityLabel="Reset timer" onPress={reset} />
-          <Button title="+15s" variant="tertiary" size="sm" fullWidth={false} accessibilityLabel="Add 15 seconds" onPress={() => addTime(15)} />
+          <IconButton icon="refresh" variant="tonal" accessibilityLabel={t('restTimer.reset')} onPress={reset} />
+          <Button title={t('rest.plus15')} variant="tertiary" size="sm" fullWidth={false} accessibilityLabel={t('rest.plus15Label')} onPress={() => addTime(15)} />
         </View>
       </View>
 
@@ -120,7 +122,7 @@ export function RestTimer() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {PRESETS.map((p) => (
-          <Chip key={p} label={`${p}s`} accent="fitness" selected={totalSeconds === p} onPress={() => selectPreset(p)} accessibilityHint={`Sets the timer to ${p} seconds`} />
+          <Chip key={p} label={t('units.seconds', { value: p })} accent="fitness" selected={totalSeconds === p} onPress={() => selectPreset(p)} accessibilityHint={t('restTimer.presetHint', { count: p })} />
         ))}
       </View>
     </Card>

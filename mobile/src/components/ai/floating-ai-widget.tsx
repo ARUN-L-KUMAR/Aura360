@@ -1,9 +1,10 @@
 import { usePathname, useRouter, useSegments } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { aiActions } from '@/features/ai/threads';
 import { AI_MODELS } from '@/features/ai/types';
 import { useAiChat } from '@/features/ai/use-chat';
+import { analytics } from '@/lib/telemetry';
 
 import { CONTEXT_PROMPTS, MODULE_NAMES } from './widget-constants';
 import { WidgetFab } from './widget-fab';
@@ -36,10 +37,10 @@ export function FloatingAiWidget() {
     (segments as string[]).find((seg) => typeof seg === 'string' && seg in MODULE_NAMES) ||
     pathname?.split('/').filter(Boolean).pop() ||
     'index';
-  const pageTitle = MODULE_NAMES[currentModuleKey] || 'Dashboard';
+  const pageTitle = MODULE_NAMES[currentModuleKey] || MODULE_NAMES.index;
   const quickPrompts = CONTEXT_PROMPTS[currentModuleKey] || CONTEXT_PROMPTS.default;
 
-  const modelName = AI_MODELS.find((m) => m.id === store.model)?.name ?? 'Gemini 3.6 Flash';
+  const modelName = AI_MODELS.find((m) => m.id === store.model)?.name ?? AI_MODELS[0].name;
   // The list is inverted (newest at the bottom), so it is fed newest-first.
   const messages = useMemo(() => [...(thread?.messages ?? [])].reverse(), [thread?.messages]);
   // Actions waiting for the user's approval.
@@ -61,7 +62,22 @@ export function FloatingAiWidget() {
     aiActions.newThread();
   }, [thread]);
 
-  const sendMessage = useCallback((text: string) => void send(text), [send]);
+  const sendMessage = useCallback(
+    (text: string) => {
+      void send(text);
+      analytics.track('ai_message_sent', { surface: 'widget' });
+    },
+    [send],
+  );
+
+  // The chat hook's confirm / cancel callbacks change on every streamed token. The sheet gets these stable wrappers so
+  // the settled messages in its list do not render again while a reply grows.
+  const latest = useRef({ confirmAction, cancelAction });
+  useEffect(() => {
+    latest.current = { confirmAction, cancelAction };
+  });
+  const onConfirm = useCallback((messageId: string) => void latest.current.confirmAction(messageId), []);
+  const onCancel = useCallback((messageId: string) => latest.current.cancelAction(messageId), []);
 
   return (
     <>
@@ -79,8 +95,8 @@ export function FloatingAiWidget() {
         busy={busy}
         onSend={sendMessage}
         onStop={stop}
-        onConfirm={confirmAction}
-        onCancel={cancelAction}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
       />
     </>
   );

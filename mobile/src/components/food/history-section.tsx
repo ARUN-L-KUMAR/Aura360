@@ -15,6 +15,7 @@ import { SkeletonList } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMeals } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type Meal } from '@/features/food/types';
+import { useTranslation } from '@/i18n';
 import { formatDay, monthKey, monthLabel, shiftMonth } from '@/lib/format';
 import { layout, spacing } from '@/theme';
 
@@ -30,6 +31,7 @@ const Separator = () => <View style={{ height: layout.itemGap }} />;
 
 export function HistorySection({ header }: { header: ReactNode }) {
   const router = useRouter();
+  const { t } = useTranslation('food');
   const [month, setMonth] = useState(monthKey());
   const meals = useMeals(`${month}-01`, lastDayOf(month));
   const isCurrent = month === monthKey();
@@ -57,8 +59,8 @@ export function HistorySection({ header }: { header: ReactNode }) {
       <PeriodStepper
         accent="food"
         label={monthLabel(month)}
-        previousLabel="Previous month"
-        nextLabel="Next month"
+        previousLabel={t('history.previousMonth')}
+        nextLabel={t('history.nextMonth')}
         onPrevious={() => setMonth(shiftMonth(month, -1))}
         onNext={() => setMonth(shiftMonth(month, 1))}
         nextDisabled={isCurrent}
@@ -72,9 +74,9 @@ export function HistorySection({ header }: { header: ReactNode }) {
         <EmptyState
           accent="food"
           icon="nutrition-outline"
-          title={`No meals logged in ${monthLabel(month)}`}
-          description="Log meals from the Today tab or with the AI log."
-          actionTitle="Log food"
+          title={t('history.emptyTitle', { month: monthLabel(month) })}
+          description={t('history.emptyDescription')}
+          actionTitle={t('actions.logFood')}
           onAction={() => openMeal(router, { mealType: suggestMealType() })}
         />
       ) : null}
@@ -89,6 +91,8 @@ export function HistorySection({ header }: { header: ReactNode }) {
       ItemSeparatorComponent={Separator}
       ListHeaderComponent={listHeader}
       refreshControl={refreshControl}
+      initialNumToRender={6}
+      windowSize={7}
       contentContainerStyle={[padding, { paddingBottom: FAB_CLEARANCE }]}
     />
   );
@@ -96,6 +100,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
 
 const DayCard = memo(function DayCard({ day, items, index }: { day: string; items: Meal[]; index: number }) {
   // Days are never added or removed from here (meals are edited on their own screen), so only the entrance is used.
+  const { t } = useTranslation('food');
   const { entering } = useListMotion(index);
   const kcal = items.reduce((sum, meal) => sum + (meal.calories ?? 0), 0);
 
@@ -106,7 +111,7 @@ const DayCard = memo(function DayCard({ day, items, index }: { day: string; item
           <Text variant="title" accessibilityRole="header">
             {formatDay(day)}
           </Text>
-          <Tag accent="food" label={`${kcal} kcal · ${items.length} ${items.length === 1 ? 'item' : 'items'}`} />
+          <Tag accent="food" label={t('history.dayTotal', { kcal, count: items.length })} />
         </View>
         {MEAL_TYPES.map((slot) => {
           const slotItems = items.filter((meal) => meal.mealType === slot.value);

@@ -18,11 +18,17 @@ import { Text } from '@/components/ui/text';
 import { useReadiness, useRecentFitness } from '@/features/fitness/hooks';
 import { useLiveSession } from '@/features/fitness/session-store';
 import { isWorkout, weekCompletion } from '@/features/fitness/stats';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { formatDay } from '@/lib/format';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const DAY_SIZE = layout.minTouchTarget - spacing.sm; // 36
+
+/** One-letter weekday for a day like "2026-10-09", in the phone's language. */
+function narrowWeekday(isoDay: string) {
+  const [year, month, day] = isoDay.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(getDeviceLocale(), { weekday: 'narrow' });
+}
 
 function readinessTone(score: number) {
   if (score >= 85) return { color: 'success', text: 'successText', icon: 'checkmark-circle' } as const;
@@ -32,6 +38,7 @@ function readinessTone(score: number) {
 
 export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header: ReactNode; onOpenTrain: () => void; onLogWorkout: () => void }) {
   const { colors, accent } = useTheme();
+  const { t } = useTranslation('fitness');
   const entries = useRecentFitness();
   const readiness = useReadiness();
   const { session } = useLiveSession();
@@ -60,20 +67,20 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
       <Animated.View {...heroMotion}>
         <Card variant="tinted" accent="fitness" gradient="fitness" style={{ gap: spacing.md }}>
           <View style={{ gap: spacing.xs }}>
-            <Text variant="caption" weight="semiBold" style={{ color: fitness.text }}>
-              TODAY
+            <Text variant="caption" weight="semiBold" style={{ color: fitness.text, textTransform: 'uppercase' }}>
+              {t('overview.today')}
             </Text>
-            <Text variant="title">{session ? `${session.title} is in progress` : 'Ready to train?'}</Text>
+            <Text variant="title">{session ? t('overview.inProgress', { title: session.title }) : t('overview.readyToTrain')}</Text>
           </View>
-          <Button title={session ? 'Resume workout' : 'Start workout'} leftIcon={session ? 'play' : 'barbell-outline'} onPress={onOpenTrain} />
+          <Button title={session ? t('actions.resumeWorkout') : t('actions.startWorkout')} leftIcon={session ? 'play' : 'barbell-outline'} onPress={onOpenTrain} />
         </Card>
       </Animated.View>
 
       <Animated.View {...readinessMotion}>
         <Card style={{ gap: spacing.md }}>
-          <SectionHeader title="Recovery and readiness" />
+          <SectionHeader title={t('overview.readinessTitle')} />
           {readiness.isPending ? (
-            <SkeletonGroup label="Checking readiness" style={{ gap: spacing.sm }}>
+            <SkeletonGroup label={t('overview.readinessLoading')} style={{ gap: spacing.sm }}>
               <Skeleton shape="line" width="30%" height={spacing.xl} />
               <Skeleton shape="line" height={spacing.sm} />
               <Skeleton shape="line" width="70%" />
@@ -81,7 +88,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
           ) : null}
           {readiness.data ? (
             <View style={{ gap: spacing.md }}>
-              <View accessible accessibilityLabel={`Readiness ${readiness.data.score} out of 100, ${readiness.data.status}`} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
+              <View accessible accessibilityLabel={t('overview.readinessLabel', { score: readiness.data.score, status: readiness.data.status })} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
                 <Text variant="headline" numeric color={tone.text}>
                   {readiness.data.score}
                 </Text>
@@ -99,9 +106,9 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
           {readiness.isError && !readiness.data ? (
             <View style={{ gap: spacing.sm, alignItems: 'flex-start' }}>
               <Text variant="body" color="textSecondary">
-                Readiness is unavailable right now.
+                {t('overview.readinessUnavailable')}
               </Text>
-              <Button title="Try again" variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
+              <Button title={t('actions.tryAgain')} variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
             </View>
           ) : null}
         </Card>
@@ -119,13 +126,13 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
       {!loading && !failed ? (
         <>
           <Card style={{ gap: spacing.md }}>
-            <SectionHeader title="This week" subtitle={`${doneThisWeek} ${doneThisWeek === 1 ? 'workout' : 'workouts'}`} />
+            <SectionHeader title={t('overview.thisWeek')} subtitle={t('overview.workoutsCount', { count: doneThisWeek })} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              {week.map((day, index) => (
+              {week.map((day) => (
                 <View
                   key={day.iso}
                   accessible
-                  accessibilityLabel={`${formatDay(day.iso)}${day.isToday ? ', today' : ''}: ${day.done ? 'workout done' : day.isFuture ? 'upcoming' : 'no workout'}`}
+                  accessibilityLabel={t(day.isToday ? 'overview.dayToday' : 'overview.day', { date: formatDay(day.iso), status: day.done ? t('overview.dayDone') : day.isFuture ? t('overview.dayUpcoming') : t('overview.dayNone') })}
                   style={{ alignItems: 'center', gap: spacing.xs, opacity: day.isFuture ? 0.6 : 1 }}>
                   <View
                     style={{
@@ -141,7 +148,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
                     {day.done ? <Ionicons name="checkmark" size={20} color={fitness.onSolid} /> : null}
                   </View>
                   <Text variant="caption" weight={day.isToday ? 'bold' : 'medium'} color={day.isToday ? 'text' : 'textSecondary'}>
-                    {DAY_LABELS[index]}
+                    {narrowWeekday(day.iso)}
                   </Text>
                 </View>
               ))}
@@ -151,16 +158,16 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
           <FitnessSummary entries={workouts} />
 
           <View style={{ gap: spacing.md }}>
-            <SectionHeader title="Recent workouts" />
+            <SectionHeader title={t('overview.recent')} />
             {recentWorkouts.length === 0 ? (
               <EmptyState
                 accent="fitness"
                 icon="barbell-outline"
-                title="No workouts logged yet"
-                description="Start a live workout, or log one you already did."
-                actionTitle="Log a workout"
+                title={t('overview.emptyTitle')}
+                description={t('overview.emptyDescription')}
+                actionTitle={t('actions.logWorkout')}
                 onAction={onLogWorkout}
-                secondaryActionTitle="Start a live workout"
+                secondaryActionTitle={t('overview.startLive')}
                 onSecondaryAction={onOpenTrain}
               />
             ) : (

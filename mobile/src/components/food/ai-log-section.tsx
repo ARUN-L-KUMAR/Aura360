@@ -15,27 +15,22 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useParseMeal, useSaveMeals } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type MealType, type ParsedMeal, type ParsedMealItem } from '@/features/food/types';
-import { ApiError } from '@/lib/api';
+import { useErrorMessage } from '@/features/food/use-error-message';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { radius, spacing, useTheme } from '@/theme';
 
-const EXAMPLES = [
-  '2 scrambled eggs on toast with half an avocado and black coffee',
-  'Grilled chicken breast (200g) with rice and steamed broccoli',
-  'Whey protein shake with 1 banana and 20g peanut butter',
-];
+const EXAMPLE_KEYS = ['eggs', 'chicken', 'shake'] as const;
 
-const NUMERIC_FIELDS: { key: 'calories' | 'protein' | 'carbs' | 'fats'; label: string }[] = [
-  { key: 'calories', label: 'Calories (kcal)' },
-  { key: 'protein', label: 'Protein (g)' },
-  { key: 'carbs', label: 'Carbs (g)' },
-  { key: 'fats', label: 'Fats (g)' },
-];
+const NUMERIC_KEYS = ['calories', 'protein', 'carbs', 'fats'] as const;
 
 export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged: () => void }) {
   const { accent } = useTheme();
   const notify = useNotify();
+  const { t } = useTranslation('food');
+  const errorMessage = useErrorMessage();
   const [text, setText] = useState('');
   const [mealType, setMealType] = useState<MealType>(suggestMealType());
   const [parsed, setParsed] = useState<ParsedMeal | null>(null);
@@ -43,18 +38,17 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
 
   const parse = useParseMeal();
   const save = useSaveMeals();
-  const slotLabel = MEAL_TYPES.find((slot) => slot.value === mealType)?.label ?? '';
 
   async function analyse() {
     if (!text.trim()) {
       haptics.warning();
-      return setTextError('Describe what you ate first.');
+      return setTextError(t('aiLog.describeFirst'));
     }
     setTextError(null);
     try {
       setParsed(await parse.mutateAsync({ mealText: text.trim(), mealType }));
     } catch (e) {
-      notify.error(e instanceof ApiError || e instanceof Error ? e.message : 'Could not read that meal.');
+      notify.error(errorMessage(e, t('aiLog.parseFailed')));
     }
   }
 
@@ -89,10 +83,11 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
       );
       setText('');
       setParsed(null);
-      notify.success(`Logged ${count} ${count === 1 ? 'item' : 'items'} to ${slotLabel.toLowerCase()}`);
+      notify.success(t('aiLog.logged', { count, slot: t(`mealsLower.${mealType}`) }));
+      analytics.track('meal_logged', { source: 'ai' });
       onLogged();
     } catch (e) {
-      notify.error(e instanceof ApiError ? e.message : 'Could not save these meals. Try again.');
+      notify.error(errorMessage(e, t('aiLog.saveFailed')));
     }
   }
 
@@ -120,23 +115,23 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
           </View>
           <View style={{ flex: 1 }}>
             <Text variant="title" accessibilityRole="header">
-              Log with AI
+              {t('aiLog.title')}
             </Text>
             <Text variant="caption" color="textSecondary">
-              Describe a meal in your own words and we will estimate the nutrition.
+              {t('aiLog.subtitle')}
             </Text>
           </View>
         </View>
 
         <Input
-          label="What did you eat?"
+          label={t('aiLog.whatDidYouEat')}
           value={text}
           onChangeText={(value) => {
             setText(value);
             if (textError) setTextError(null);
             if (parsed) setParsed(null);
           }}
-          placeholder="For example, 2 scrambled eggs on toast with black coffee"
+          placeholder={t('aiLog.placeholder')}
           multiline
           autoCapitalize="sentences"
           error={textError}
@@ -145,7 +140,7 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
 
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" color="textSecondary">
-            Meal
+            {t('aiLog.meal')}
           </Text>
           <ChipGroup>
             {MEAL_TYPES.map((slot) => (
@@ -157,15 +152,16 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
         {!parsed ? (
           <View style={{ gap: spacing.xs }}>
             <Text variant="label" color="textSecondary">
-              Try an example
+              {t('aiLog.tryExample')}
             </Text>
-            {EXAMPLES.map((example) => (
-              <ListItem key={example} icon="sparkles-outline" accent="ai" title={example} titleLines={2} accessibilityHint="Fills in the description" onPress={() => setText(example)} chevron={false} />
-            ))}
+            {EXAMPLE_KEYS.map((key) => {
+              const example = t(`aiLog.examples.${key}`);
+              return <ListItem key={key} icon="sparkles-outline" accent="ai" title={example} titleLines={2} accessibilityHint={t('aiLog.exampleHint')} onPress={() => setText(example)} chevron={false} />;
+            })}
           </View>
         ) : null}
 
-        <Button title={parsed ? 'Analyse again' : 'Analyse with AI'} leftIcon="sparkles" variant={parsed ? 'secondary' : 'primary'} onPress={analyse} loading={parse.isPending} />
+        <Button title={parsed ? t('aiLog.analyseAgain') : t('aiLog.analyse')} leftIcon="sparkles" variant={parsed ? 'secondary' : 'primary'} onPress={analyse} loading={parse.isPending} />
       </Card>
 
       {parse.isPending ? <SkeletonCard lines={3} /> : null}
@@ -174,13 +170,13 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
         <>
           <Card variant="tinted" accent="food" style={{ gap: spacing.xs }}>
             <Text variant="label" color="textSecondary">
-              Estimated total
+              {t('aiLog.estimatedTotal')}
             </Text>
             <Text variant="display" numeric style={{ color: accent('food').text }}>
-              {Math.round(totals.calories)} kcal
+              {t('units.kcal', { value: Math.round(totals.calories) })}
             </Text>
             <Text variant="body" weight="semiBold" numeric>
-              P {Math.round(totals.protein)}g · C {Math.round(totals.carbs)}g · F {Math.round(totals.fats)}g
+              {[t('macros.protein', { value: Math.round(totals.protein) }), t('macros.carbs', { value: Math.round(totals.carbs) }), t('macros.fats', { value: Math.round(totals.fats) })].join(' · ')}
             </Text>
             {parsed.summary ? (
               <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
@@ -189,11 +185,11 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
             ) : null}
           </Card>
 
-          <SectionHeader title="Items" count={parsed.items.length} subtitle="Check the estimates and fix anything that looks off." />
+          <SectionHeader title={t('aiLog.items')} count={parsed.items.length} subtitle={t('aiLog.itemsSubtitle')} />
 
           {parsed.items.length === 0 ? (
             <Text variant="body" color="textSecondary">
-              Nothing left to log. Analyse again to start over.
+              {t('aiLog.nothingLeft')}
             </Text>
           ) : null}
 
@@ -202,27 +198,27 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Food"
+                  label={t('meal.food')}
                   value={item.foodName}
                   onChangeText={(value) => updateItem(index, { foodName: value })}
                   autoCapitalize="sentences"
                   returnKeyType="done"
                 />
-                <IconButton icon="close-circle-outline" accessibilityLabel={`Remove ${item.foodName}`} onPress={() => removeItem(index)} style={{ marginBottom: spacing.xs }} />
+                <IconButton icon="close-circle-outline" accessibilityLabel={t('aiLog.removeItem', { name: item.foodName })} onPress={() => removeItem(index)} style={{ marginBottom: spacing.xs }} />
               </View>
               <Text variant="caption" color="textSecondary">
                 {item.quantity} {item.unit}
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                {NUMERIC_FIELDS.map((field) => (
-                  <NumberField key={field.key} label={field.label} value={item[field.key] ?? 0} onChange={(value) => updateItem(index, { [field.key]: value })} />
+                {NUMERIC_KEYS.map((key) => (
+                  <NumberField key={key} label={t(`aiLog.fields.${key}`)} value={item[key] ?? 0} onChange={(value) => updateItem(index, { [key]: value })} />
                 ))}
               </View>
             </Card>
           ))}
 
           <Button
-            title={`Log ${parsed.items.length} ${parsed.items.length === 1 ? 'item' : 'items'} to ${slotLabel.toLowerCase()}`}
+            title={t('aiLog.logAll', { count: parsed.items.length, slot: t(`mealsLower.${mealType}`) })}
             leftIcon="checkmark"
             onPress={logAll}
             loading={save.isPending}

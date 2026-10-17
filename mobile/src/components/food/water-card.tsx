@@ -8,21 +8,28 @@ import { IconButton } from '@/components/ui/icon-button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
 import { radius, spacing, useTheme } from '@/theme';
 
 const QUICK_ADD = [
-  { ml: 250, sub: 'a glass' },
-  { ml: 500, sub: 'a bottle' },
-  { ml: 750, sub: 'a flask' },
-];
+  { ml: 250, size: 'glass' },
+  { ml: 500, size: 'bottle' },
+  { ml: 750, size: 'flask' },
+] as const;
+
+/** Undo step: one glass. */
+const UNDO_ML = 250;
 
 export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targetMl: number; onAdd: (ml: number) => void }) {
   const { accent } = useTheme();
+  const { t } = useTranslation('food');
   const water = accent('skincare');
   const percent = targetMl > 0 ? Math.min(100, Math.round((waterMl / targetMl) * 100)) : 0;
-  const currentL = (waterMl / 1000).toFixed(2).replace(/\.?0+$/, '') || '0';
-  const targetL = (targetMl / 1000).toFixed(1).replace(/\.0$/, '');
+  const litres = new Intl.NumberFormat(getDeviceLocale(), { maximumFractionDigits: 2 });
+  const currentL = litres.format(waterMl / 1000);
+  const targetL = litres.format(targetMl / 1000);
 
   // Celebrate the moment an add takes the day from below the goal to at or above it (never on load or when revisiting).
   const [celebrate, setCelebrate] = useState(false);
@@ -33,6 +40,7 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
       setCelebrate(true);
     }
     onAdd(ml);
+    if (ml > 0) analytics.track('water_added');
   };
 
   return (
@@ -47,29 +55,29 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
           </View>
           <View style={{ flexShrink: 1 }}>
             <Text variant="title" accessibilityRole="header">
-              Hydration
+              {t('water.title')}
             </Text>
             <Text variant="caption" color="textSecondary">
-              Daily target: {targetL} L
+              {t('water.dailyTarget', { value: targetL })}
             </Text>
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          {showCheck ? <SuccessCheck size={spacing.xl} accent="skincare" accessibilityLabel="Daily water goal reached" /> : null}
-          <Tag label={`${percent}% of goal`} tone="neutral" />
+          {showCheck ? <SuccessCheck size={spacing.xl} accent="skincare" accessibilityLabel={t('water.goalReached')} /> : null}
+          <Tag label={t('water.percentOfGoal', { value: percent })} tone="neutral" />
         </View>
       </View>
 
       <View
         accessible
-        accessibilityLabel={`${waterMl} millilitres of ${targetMl}, ${percent} percent of goal`}
+        accessibilityLabel={t('water.spoken', { ml: waterMl, target: targetMl, percent })}
         accessibilityLiveRegion="polite"
         style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.xs }}>
         <Text variant="display" numeric style={{ color: water.text }}>
           {currentL}
         </Text>
         <Text variant="body" numeric color="textSecondary">
-          {`of ${targetL} L (${waterMl} ml)`}
+          {t('water.progress', { target: targetL, ml: waterMl })}
         </Text>
       </View>
 
@@ -79,20 +87,20 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
         {QUICK_ADD.map((item) => (
           <Chip
             key={item.ml}
-            label={`${item.ml} ml`}
+            label={t('units.ml', { value: item.ml })}
             icon="add"
             selectable={false}
             onPress={() => add(item.ml)}
-            accessibilityHint={`Adds ${item.sub} of water`}
+            accessibilityHint={t(`water.quick.${item.size}`)}
           />
         ))}
         <IconButton
           icon="remove"
           variant="tonal"
-          accessibilityLabel="Undo 250 millilitres"
+          accessibilityLabel={t('water.undo', { value: UNDO_ML })}
           disabled={waterMl <= 0}
           haptic="select"
-          onPress={() => onAdd(-250)}
+          onPress={() => onAdd(-UNDO_ML)}
         />
       </View>
     </Card>

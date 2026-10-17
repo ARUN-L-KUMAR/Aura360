@@ -9,21 +9,23 @@ import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
 import { useTargets } from '@/features/food/prefs';
 import { DEFAULT_TARGETS, type MacroTargets } from '@/features/food/types';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
 import { spacing, useTheme } from '@/theme';
 
-const FIELDS: { key: keyof MacroTargets; label: string; unit: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'calories', label: 'Calories', unit: 'kcal', icon: 'flame-outline' },
-  { key: 'protein', label: 'Protein', unit: 'g', icon: 'barbell-outline' },
-  { key: 'carbs', label: 'Carbs', unit: 'g', icon: 'nutrition-outline' },
-  { key: 'fats', label: 'Fats', unit: 'g', icon: 'water-outline' },
-  { key: 'waterMl', label: 'Water', unit: 'ml', icon: 'water' },
+const FIELDS: { key: keyof MacroTargets; unit: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'calories', unit: 'kcal', icon: 'flame-outline' },
+  { key: 'protein', unit: 'g', icon: 'barbell-outline' },
+  { key: 'carbs', unit: 'g', icon: 'nutrition-outline' },
+  { key: 'fats', unit: 'g', icon: 'water-outline' },
+  { key: 'waterMl', unit: 'ml', icon: 'water' },
 ];
 
 export default function TargetsScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { t } = useTranslation('food');
   const { accent } = useTheme();
   const { targets, setTargets } = useTargets();
   const [draft, setDraft] = useState<Partial<Record<keyof MacroTargets, string>>>({});
@@ -37,7 +39,7 @@ export default function TargetsScreen() {
     const found: typeof errors = {};
     for (const field of FIELDS) {
       const value = Number.parseFloat(valueOf(field.key));
-      if (!Number.isFinite(value) || value <= 0) found[field.key] = `${field.label} must be greater than 0.`;
+      if (!Number.isFinite(value) || value <= 0) found[field.key] = t('targets.errorPositive', { name: t(`targets.fields.${field.key}`) });
       else next[field.key] = Math.round(value);
     }
     setErrors(found);
@@ -48,36 +50,36 @@ export default function TargetsScreen() {
     setSaving(true);
     await setTargets(next);
     setSaving(false);
-    notify.success('Daily targets saved');
+    notify.success(t('targets.saved'));
     router.back();
   }
 
   async function reset() {
     const ok = await notify.confirm({
-      title: 'Reset to defaults?',
-      message: 'Your targets will go back to the standard values.',
-      confirmLabel: 'Reset',
-      cancelLabel: 'Cancel',
+      title: t('targets.resetTitle'),
+      message: t('targets.resetMessage'),
+      confirmLabel: t('targets.reset'),
+      cancelLabel: t('actions.cancel'),
     });
     if (!ok) return;
     await setTargets(DEFAULT_TARGETS);
-    notify.success('Targets reset to defaults');
+    notify.success(t('targets.resetDone'));
     router.back();
   }
 
   return (
     <Screen topInset={false}>
-      <Stack.Screen options={{ title: 'Daily targets' }} />
+      <Stack.Screen options={{ title: t('targets.title') }} />
 
       <Card variant="tinted" accent="food" style={{ gap: spacing.xs }}>
-        <Text variant="caption" weight="semiBold" style={{ color: accent('food').text }}>
-          NUTRITION AND HYDRATION GOALS
+        <Text variant="caption" weight="semiBold" style={{ color: accent('food').text, textTransform: 'uppercase' }}>
+          {t('targets.eyebrow')}
         </Text>
         <Text variant="title" accessibilityRole="header">
-          Your daily targets
+          {t('targets.heading')}
         </Text>
         <Text variant="caption" color="textSecondary">
-          Calorie and macro targets set how full your rings get on the Today tab. They are saved on this phone.
+          {t('targets.description')}
         </Text>
       </Card>
 
@@ -85,7 +87,7 @@ export default function TargetsScreen() {
         {FIELDS.map((field, index) => (
           <Input
             key={field.key}
-            label={`${field.label} (${field.unit})`}
+            label={t('targets.fieldLabel', { name: t(`targets.fields.${field.key}`), unit: field.unit })}
             leftIcon={field.icon}
             value={valueOf(field.key)}
             onChangeText={(value) => {
@@ -99,8 +101,8 @@ export default function TargetsScreen() {
         ))}
       </Card>
 
-      <Button title="Save daily targets" leftIcon="checkmark" onPress={submit} loading={saving} />
-      <Button title="Reset to defaults" variant="ghost" onPress={reset} disabled={saving} />
+      <Button title={t('targets.save')} leftIcon="checkmark" onPress={submit} loading={saving} />
+      <Button title={t('targets.reset')} variant="ghost" onPress={reset} disabled={saving} />
     </Screen>
   );
 }

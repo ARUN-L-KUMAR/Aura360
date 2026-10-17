@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react';
 import { ApiError } from '@/lib/api';
 
 import { streamChat, type ChatRequest } from './stream';
+import { i18n } from '@/i18n';
 import { aiActions, newId, useAiStore } from './threads';
 import { toolLabel, type AiMessage, type PendingAction, type ToolTrace } from './types';
 
@@ -22,7 +23,7 @@ function errorText(error: unknown) {
     if (error.status === 429) return error.message || 'You have reached the AI usage limit for now. Try again later.';
     return error.message;
   }
-  return error instanceof Error ? error.message : 'Something went wrong while talking to Aura.';
+  return error instanceof Error ? error.message : i18n.t('ai:chat.genericError');
 }
 
 export function useAiChat() {
@@ -70,7 +71,7 @@ export function useAiChat() {
               case 'done': {
                 const action = event.pendingAction ?? pending;
                 finish({
-                  content: streamedText || event.reply || 'Done.',
+                  content: streamedText || event.reply || i18n.t('ai:chat.done'),
                   trace: event.trace.length > 0 ? event.trace : trace,
                   pendingAction: action,
                   actionStatus: action ? 'pending' : undefined,
@@ -84,7 +85,7 @@ export function useAiChat() {
           },
           control,
         );
-        if (control.cancelled) finish({ content: streamedText || 'Stopped.' });
+        if (control.cancelled) finish({ content: streamedText || i18n.t('ai:chat.stopped') });
         // Something may have been created or changed: refresh every list in the app.
         if (sawWrite) void queryClient.invalidateQueries();
       } catch (error) {
