@@ -3,13 +3,14 @@ import { useMemo, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 
 import { AmountField } from '@/components/finance/amount-field';
+import { CategoryPicker } from '@/components/finance/category-picker';
+import { CUSTOM_CATEGORY_ICON, PAYMENT_ICONS, categoryIcon } from '@/components/finance/category-icons';
 import { failureMessage } from '@/components/finance/failure-message';
 import { FormCard, parseAmount } from '@/components/finance/form-parts';
 import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from '@/components/finance/labels';
 import { NO_DESCRIPTION } from '@/components/finance/transaction-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
@@ -173,12 +174,15 @@ export default function TransactionScreen() {
       />
 
       <FormCard title={t('transaction.category')} icon="pricetag-outline" error={submitted ? categoryError : null}>
-        <ChipGroup>
-          {CATEGORY_OPTIONS[type].map((name) => (
-            <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
-          ))}
-          <Chip label={t('categories.custom')} icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
-        </ChipGroup>
+        <CategoryPicker
+          accessibilityLabel={t('transaction.category')}
+          value={category}
+          onChange={setCategory}
+          options={[
+            ...CATEGORY_OPTIONS[type].map((name) => ({ value: name, label: categoryLabel(name), icon: categoryIcon(name) })),
+            { value: CUSTOM, label: t('categories.custom'), icon: CUSTOM_CATEGORY_ICON },
+          ]}
+        />
         {category === CUSTOM ? (
           <Input
             label={t('transaction.customName')}
@@ -193,11 +197,12 @@ export default function TransactionScreen() {
       </FormCard>
 
       <FormCard title={t('transaction.paidWith')} icon="card-outline">
-        <ChipGroup>
-          {PAYMENT_METHODS.map((method) => (
-            <Chip key={method.value} label={paymentMethodLabel(method.value)} accent="finance" selected={paymentMethod === method.value} onPress={() => setPaymentMethod(method.value)} />
-          ))}
-        </ChipGroup>
+        <CategoryPicker
+          accessibilityLabel={t('transaction.paidWith')}
+          value={paymentMethod}
+          onChange={setPaymentMethod}
+          options={PAYMENT_METHODS.map((method) => ({ value: method.value, label: paymentMethodLabel(method.value), icon: PAYMENT_ICONS[method.value] }))}
+        />
       </FormCard>
 
       <FormCard>

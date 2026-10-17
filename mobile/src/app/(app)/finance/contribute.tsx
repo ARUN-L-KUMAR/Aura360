@@ -3,15 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { AmountField } from '@/components/finance/amount-field';
+import { goalAccent } from '@/components/finance/goal-accent';
 import { failureMessage } from '@/components/finance/failure-message';
 import { parseAmount } from '@/components/finance/form-parts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/error-state';
-import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { useContributeToGoal } from '@/features/finance/hooks';
 import type { Goal } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
@@ -22,6 +23,9 @@ import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
 
 const PRESETS = [500, 1000, 2000, 5000, 10000];
+const RING = spacing.xxxl * 2;
+const RING_THICKNESS = spacing.sm + 2;
+const CHECK = spacing.xxl + spacing.sm;
 
 export default function ContributeScreen() {
   const router = useRouter();
@@ -91,21 +95,31 @@ export default function ContributeScreen() {
     <Screen topInset={false}>
       <Stack.Screen options={{ title: t('contribute.title') }} />
 
-      <Card tintColor={goal.color} style={{ gap: spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-          <View style={{ flex: 1, gap: spacing.xs }}>
-            <Text variant="caption" weight="semiBold" color="textSecondary" accessibilityLiveRegion="polite">
-              {reached ? t('contribute.reachedLabel') : t('contribute.contributing')}
+      <Card tintColor={goal.color} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+        {/* The ring follows the amount being typed, so the deposit's effect is visible before saving. */}
+        <ProgressRing
+          value={newPercent}
+          size={RING}
+          thickness={RING_THICKNESS}
+          accent={goalAccent(goal.color)}
+          label={goal.title}
+          valueText={t('contribute.progressLabel', { percent: newPercent, target: formatMoney(goal.targetAmount) })}>
+          {reached ? (
+            <SuccessCheck size={CHECK} accessibilityLabel={null} />
+          ) : (
+            <Text variant="title" numeric>
+              {newPercent}%
             </Text>
-            <Text variant="title" accessibilityRole="header">
-              {goal.title}
-            </Text>
-          </View>
-          {reached ? <SuccessCheck size={40} accessibilityLabel={t('contribute.reachedLabel')} /> : null}
-        </View>
-        <ProgressBar percent={newPercent} color={goal.color} label={t('contribute.progressLabel', { percent: newPercent, target: formatMoney(goal.targetAmount) })} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-          <Text variant="caption" numeric color="textSecondary" style={{ flex: 1 }}>
+          )}
+        </ProgressRing>
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Text variant="caption" weight="semiBold" color="textSecondary" accessibilityLiveRegion="polite">
+            {reached ? t('contribute.reachedLabel') : t('contribute.contributing')}
+          </Text>
+          <Text variant="title" accessibilityRole="header" numberOfLines={2}>
+            {goal.title}
+          </Text>
+          <Text variant="caption" numeric color="textSecondary">
             {t('contribute.savedSoFar', { amount: formatMoney(goal.currentAmount) })}
           </Text>
           <Text variant="caption" weight="semiBold" numeric>

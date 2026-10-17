@@ -9,14 +9,8 @@ import type { Transaction, TransactionType } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
 import { formatDay, formatMoney } from '@/lib/format';
 import { layout, radius, spacing, useTheme, type ThemeColors } from '@/theme';
+import { categoryIcon } from './category-icons';
 import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from './labels';
-
-const TYPE_ICON = {
-  income: 'arrow-down-circle',
-  expense: 'arrow-up-circle',
-  investment: 'trending-up',
-  transfer: 'swap-horizontal',
-} as const;
 
 function typeTone(type: TransactionType, c: ThemeColors) {
   switch (type) {
@@ -31,6 +25,19 @@ function typeTone(type: TransactionType, c: ThemeColors) {
   }
 }
 
+function amountColor(type: TransactionType): keyof ThemeColors {
+  switch (type) {
+    case 'income':
+      return 'successText';
+    case 'expense':
+      return 'errorText';
+    case 'investment':
+      return 'warningText';
+    default:
+      return 'text';
+  }
+}
+
 /** The server fills an empty description with this English placeholder. */
 export const NO_DESCRIPTION = 'No description';
 
@@ -38,15 +45,27 @@ export function openTransaction(router: ReturnType<typeof useRouter>, tx?: Trans
   router.push({ pathname: '/finance/transaction', params: tx ? { tx: JSON.stringify(tx) } : {} });
 }
 
-/** One transaction as a list row: type icon, description, category / date / method, signed amount. */
-export const TransactionRow = memo(function TransactionRow({ tx, divider }: { tx: Transaction; divider?: boolean }) {
+type Props = {
+  tx: Transaction;
+  divider?: boolean;
+  /** Leave the date out of the second line, because a day heading above the row already says it. */
+  hideDate?: boolean;
+};
+
+/**
+ * One transaction as a list row: the category icon on a tile tinted by the type, description, category / date / method,
+ * and the amount with a sign (+ income, - expense) and a colour, so direction never relies on colour alone.
+ */
+export const TransactionRow = memo(function TransactionRow({ tx, divider, hideDate }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useTranslation('finance');
 
   const tone = typeTone(tx.type, colors);
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : '';
-  const meta = [categoryLabel(tx.category), formatDay(tx.date), tx.paymentMethod ? paymentMethodLabel(tx.paymentMethod) : null].filter(Boolean).join(' · ');
+  const meta = [categoryLabel(tx.category), hideDate ? null : formatDay(tx.date), tx.paymentMethod ? paymentMethodLabel(tx.paymentMethod) : null]
+    .filter(Boolean)
+    .join(' · ');
   const amount = formatMoney(tx.amount);
   const description = tx.description === NO_DESCRIPTION ? t('row.noDescription') : tx.description;
 
@@ -64,13 +83,13 @@ export const TransactionRow = memo(function TransactionRow({ tx, divider }: { tx
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <Ionicons name={TYPE_ICON[tx.type] ?? 'cash-outline'} size={22} color={tone.fg} />
+          <Ionicons name={categoryIcon(tx.category)} size={22} color={tone.fg} />
         </View>
       }
       title={description}
       subtitle={meta}
       meta={
-        <Text variant="label" weight="bold" numeric numberOfLines={1} color={tx.type === 'income' ? 'successText' : 'text'}>
+        <Text variant="label" weight="bold" numeric numberOfLines={1} color={amountColor(tx.type)}>
           {sign}
           {amount}
         </Text>

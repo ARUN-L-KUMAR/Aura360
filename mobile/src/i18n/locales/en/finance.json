@@ -130,7 +130,27 @@
     "seeAllTransactions": "See all transactions",
     "recentError": "Couldn't load transactions",
     "recentEmptyTitle": "No transactions yet",
-    "recentEmptyBody": "Record an expense or some income and it will show up here."
+    "recentEmptyBody": "Record an expense or some income and it will show up here.",
+    "totalA11y": "Money on hand: {{amount}}",
+    "balanceChip": "{{method}} · {{amount}}",
+    "incomeA11y": "Income this month: {{amount}}",
+    "spentA11y": "Spent this month: {{amount}}",
+    "surplusA11y": "Net savings this month: {{amount}} surplus",
+    "deficitA11y": "Net savings this month: {{amount}} deficit",
+    "spendError": "Couldn't load your spending",
+    "noSpending": "No spending recorded this month yet. Add an expense and it will show up here.",
+    "otherCategories": "Other categories",
+    "spendingChart": "Spending by category",
+    "spendingA11y": "Spending this month: {{total}}",
+    "sliceA11y": "{{name}} {{percent}}, {{amount}}",
+    "lessThanLast": "{{percent}}% less than last month",
+    "moreThanLast": "{{percent}}% more than last month",
+    "dailyTitle": "Daily spending",
+    "trendNote": "Highest {{peak}} on {{day}} · average {{average}} a day",
+    "trendA11y": "Daily spending: highest {{peak}} on {{day}}, average {{average}} a day",
+    "partial_one": "Based on your latest {{count}} expense.",
+    "partial_other": "Based on your latest {{count}} expenses.",
+    "budgetRowHint": "Opens your budgets"
   },
   "history": {
     "search": "Search description or category",
@@ -145,7 +165,11 @@
     "emptyBody": "Transactions you record will appear here.",
     "allTime": "All time",
     "thisMonth": "This month",
-    "lastMonth": "Last month"
+    "lastMonth": "Last month",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "dayLabel": "{{weekday}} · {{date}}",
+    "dayA11y": "{{day}}, net {{amount}}"
   },
   "row": {
     "noDescription": "No description",
@@ -172,7 +196,17 @@
     "emptyTitle": "No category budgets",
     "emptyBody": "Set monthly limits for things like food, fuel or shopping to keep spending in check.",
     "create": "Create a budget",
-    "new": "New budget"
+    "new": "New budget",
+    "ringLabel": "{{category}} budget used",
+    "ringValue": "{{spent}} of {{limit}}, {{percent}} percent",
+    "summaryValue": "{{spent}} spent, {{percent}} percent",
+    "usage": "{{spent}} of {{limit}}",
+    "left": "{{amount}} left",
+    "overBy": "{{amount}} over",
+    "leftWithPercent": "{{left}} · {{percent}}% used",
+    "daysLeftMonth_one": "{{count}} day left this month",
+    "daysLeftMonth_other": "{{count}} days left this month",
+    "paceHint": "{{days}} · about {{amount}} a day"
   },
   "goals": {
     "reached": "Goal reached",
@@ -196,7 +230,10 @@
     "emptyTitle": "No savings goals yet",
     "emptyBody": "Set a target for an emergency fund, a trip or something you are saving up for.",
     "create": "Create a goal",
-    "new": "New goal"
+    "new": "New goal",
+    "ringValue": "{{percent}} percent, {{progress}}",
+    "summaryValue": "{{percent}} percent, {{saved}} saved of {{target}}",
+    "toGo": "{{amount}} to go"
   },
   "balances": {
     "title": "Money on hand",
@@ -207,7 +244,10 @@
     "cash": "Cash in hand",
     "account": "Bank and UPI balance",
     "update": "Update balances",
-    "error": "Couldn't load your balances"
+    "error": "Couldn't load your balances",
+    "splitChart": "Cash compared with bank and UPI",
+    "splitCash": "Cash {{amount}}",
+    "splitAccount": "Bank and UPI {{amount}}"
   },
   "budget": {
     "titleEdit": "Edit budget",
@@ -229,7 +269,11 @@
     "thresholdHelp": "Aura will notify you when spending reaches this share of your limit.",
     "saveChanges": "Save budget changes",
     "save": "Save budget",
-    "delete": "Delete budget"
+    "delete": "Delete budget",
+    "alertRingLabel": "Alert threshold",
+    "alertRingValue": "{{percent}} percent of the limit",
+    "alertPreview": "You'll be alerted at {{amount}}, {{percent}}% of your {{limit}} limit.",
+    "alertPreviewEmpty": "Enter a limit to see when you'll be alerted."
   },
   "contribute": {
     "title": "Add money",

@@ -3,6 +3,7 @@ import { memo, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { groupByDay } from '@/components/finance/insights';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
@@ -18,19 +19,56 @@ import { Text } from '@/components/ui/text';
 import { useTransactions, type TransactionFilters } from '@/features/finance/hooks';
 import type { Transaction } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
-import { formatMoney, monthKey, shiftMonth } from '@/lib/format';
+import { formatDay, formatMoney, monthKey, shiftMonth, todayIso, weekdayShort } from '@/lib/format';
 import { spacing, useTheme } from '@/theme';
 
 type MonthFilter = 'all' | 'this' | 'last';
 
-const keyExtractor = (tx: Transaction) => tx.id;
+type ListRow = { kind: 'day'; key: string; date: string; net: number; showTotal: boolean } | { kind: 'tx'; key: string; tx: Transaction; index: number };
+
+const keyExtractor = (row: ListRow) => row.key;
+
+/** "Today", "Yesterday", else "Mon · 9 Oct". */
+function useDayLabel(date: string) {
+  const { t } = useTranslation('finance');
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date === todayIso()) return t('history.today');
+  if (date === todayIso(yesterday)) return t('history.yesterday');
+  return t('history.dayLabel', { weekday: weekdayShort(date), date: formatDay(date) });
+}
+
+/** Heading above one day's transactions with that day's net (money in minus money out), signed and coloured. */
+const DayHeader = memo(function DayHeader({ date, net, showTotal }: { date: string; net: number; showTotal: boolean }) {
+  const { t } = useTranslation('finance');
+  const label = useDayLabel(date);
+  const sign = net > 0 ? '+' : net < 0 ? '-' : '';
+  const amount = formatMoney(Math.abs(net));
+  return (
+    <View
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={showTotal ? t('history.dayA11y', { day: label, amount: net < 0 ? `-${amount}` : amount }) : label}
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingTop: spacing.md }}>
+      <Text variant="label" weight="semiBold" color="textSecondary" style={{ flexShrink: 1 }}>
+        {label}
+      </Text>
+      {showTotal ? (
+        <Text variant="label" weight="semiBold" numeric color={net > 0 ? 'successText' : net < 0 ? 'errorText' : 'textSecondary'}>
+          {sign}
+          {amount}
+        </Text>
+      ) : null}
+    </View>
+  );
+});
 
 const HistoryItem = memo(function HistoryItem({ tx, index }: { tx: Transaction; index: number }) {
   const motion = useListMotion(index);
   return (
     <Animated.View {...motion}>
       <Card padding="none" rounded="md" style={{ overflow: 'hidden' }}>
-        <TransactionRow tx={tx} />
+        <TransactionRow tx={tx} hideDate />
       </Card>
     </Animated.View>
   );
@@ -51,6 +89,18 @@ export function HistorySection({ header }: { header: ReactNode }) {
   const refreshControl = useRefreshControl({ onRefresh: () => query.refetch(), refreshing: query.isRefetching && !query.isFetchingNextPage });
 
   const items = useMemo(() => query.data?.pages.flatMap((page) => page.data) ?? [], [query.data]);
+  const rows = useMemo<ListRow[]>(() => {
+    const out: ListRow[] = [];
+    let index = 0;
+    const groups = groupByDay(items);
+    groups.forEach((group, g) => {
+      // The last day on screen may continue on the next page, so its total is held back until the rest has loaded.
+      const complete = !(g === groups.length - 1 && query.hasNextPage);
+      out.push({ kind: 'day', key: `day-${group.date}`, date: group.date, net: group.net, showTotal: complete });
+      for (const tx of group.items) out.push({ kind: 'tx', key: tx.id, tx, index: index++ });
+    });
+    return out;
+  }, [items, query.hasNextPage]);
   const total = query.data?.pages[0]?.pagination.total ?? 0;
   const totalAmount = query.data?.pages[0]?.totalAmount ?? 0;
   const filtered = type !== 'all' || monthFilter !== 'all' || search.trim().length > 0;
@@ -112,10 +162,10 @@ export function HistorySection({ header }: { header: ReactNode }) {
   ) : null;
 
   return (
-    <FlatList<Transaction>
-      data={items}
+    <FlatList<ListRow>
+      data={rows}
       keyExtractor={keyExtractor}
-      renderItem={({ item, index }) => <HistoryItem tx={item} index={index} />}
+      renderItem={({ item }) => (item.kind === 'day' ? <DayHeader date={item.date} net={item.net} showTotal={item.showTotal} /> : <HistoryItem tx={item.tx} index={item.index} />)}
       ListHeaderComponent={listHeader}
       ListEmptyComponent={
         loading ? (
