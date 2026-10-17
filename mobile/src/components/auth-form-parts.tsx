@@ -6,6 +6,7 @@ import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { Divider } from '@/components/ui/divider';
 import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
 const LOGO = require('../../assets/images/splash-logo.png');
@@ -47,12 +48,13 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle: strin
  * (Apple, Microsoft, ...) is a matter of rendering it next to <GoogleSignInButton />.
  */
 export function SocialSignIn({ onError }: { onError?: (error: string) => void }) {
+  const { t } = useTranslation('auth');
   return (
     <View style={styles.social}>
       <View style={styles.dividerRow}>
         <Divider style={styles.dividerLine} />
         <Text variant="caption" color="textMuted">
-          or continue with
+          {t('social.divider')}
         </Text>
         <Divider style={styles.dividerLine} />
       </View>

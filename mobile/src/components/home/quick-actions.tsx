@@ -1,37 +1,43 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { memo } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { Section } from '@/components/home/section';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import type { IconName, ModuleKey } from '@/features/modules';
+import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme } from '@/theme';
 
-type QuickAction = { key: string; label: string; hint: string; icon: IconName; accent: ModuleKey; href: string };
+type QuickAction = { key: 'note' | 'transaction' | 'meal' | 'workout'; icon: IconName; accent: ModuleKey; href: string };
 
 const ACTIONS: QuickAction[] = [
-  { key: 'note', label: 'New note', hint: 'Opens the note editor', icon: 'create-outline', accent: 'notes', href: '/notes/edit' },
-  { key: 'transaction', label: 'Transaction', hint: 'Opens the add transaction form', icon: 'add-circle-outline', accent: 'finance', href: '/finance/transaction' },
-  { key: 'meal', label: 'Log meal', hint: 'Opens the meal form', icon: 'restaurant-outline', accent: 'food', href: '/food/meal' },
-  { key: 'workout', label: 'Workout', hint: 'Opens the workout form', icon: 'barbell-outline', accent: 'fitness', href: '/fitness/workout' },
+  { key: 'note', icon: 'create-outline', accent: 'notes', href: '/notes/edit' },
+  { key: 'transaction', icon: 'add-circle-outline', accent: 'finance', href: '/finance/transaction' },
+  { key: 'meal', icon: 'restaurant-outline', accent: 'food', href: '/food/meal' },
+  { key: 'workout', icon: 'barbell-outline', accent: 'fitness', href: '/fitness/workout' },
 ];
 
-const QuickActionTile = memo(function QuickActionTile({ action, onPress }: { action: QuickAction; onPress: (href: string) => void }) {
+/** Past this system font scale the four tiles no longer fit in one row, so they wrap into two columns. */
+const WRAP_FONT_SCALE = 1.2;
+
+const QuickActionTile = memo(function QuickActionTile({ action, wrap, onPress }: { action: QuickAction; wrap: boolean; onPress: (href: string) => void }) {
+  const { t } = useTranslation('home');
   const { accent } = useTheme();
   const a = accent(action.accent);
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={action.label}
-      accessibilityHint={action.hint}
+      accessibilityLabel={t(`quickActions.${action.key}.label`)}
+      accessibilityHint={t(`quickActions.${action.key}.hint`)}
       haptic="tap"
       ringRadius={radius.lg}
       onPress={() => onPress(action.href)}
       style={{
-        flex: 1,
+        flexGrow: 1,
+        flexBasis: wrap ? '45%' : 0,
         minHeight: layout.minTouchTarget * 2,
         alignItems: 'center',
         justifyContent: 'center',
@@ -44,8 +50,8 @@ const QuickActionTile = memo(function QuickActionTile({ action, onPress }: { act
         backgroundColor: a.soft,
       }}>
       <Ionicons name={action.icon} size={26} color={a.text} />
-      <Text variant="caption" weight="medium" numberOfLines={2} style={{ textAlign: 'center' }}>
-        {action.label}
+      <Text variant="caption" weight="medium" style={{ textAlign: 'center' }}>
+        {t(`quickActions.${action.key}.label`)}
       </Text>
     </PressableScale>
   );
@@ -53,14 +59,17 @@ const QuickActionTile = memo(function QuickActionTile({ action, onPress }: { act
 
 /** One-tap entry points to the forms people use most. */
 export function QuickActions({ index }: { index: number }) {
+  const { t } = useTranslation('home');
+  const { fontScale } = useWindowDimensions();
   const router = useRouter();
   const open = (href: string) => router.push(href as Href);
+  const wrap = fontScale > WRAP_FONT_SCALE;
   return (
     <Section index={index}>
-      <SectionHeader title="Quick actions" />
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <SectionHeader title={t('quickActions.title')} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {ACTIONS.map((action) => (
-          <QuickActionTile key={action.key} action={action} onPress={open} />
+          <QuickActionTile key={action.key} action={action} wrap={wrap} onPress={open} />
         ))}
       </View>
     </Section>

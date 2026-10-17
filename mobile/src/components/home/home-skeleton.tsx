@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { Grid, gridCell } from '@/components/home/grid';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
+import { useTranslation } from '@/i18n';
 import { layout, spacing } from '@/theme';
 
 const FOUR = [0, 1, 2, 3];
@@ -13,8 +14,9 @@ function SectionTitle({ width = '40%' }: { width?: `${number}%` }) {
 
 /** Placeholder with the same blocks as the loaded dashboard: stats, quick actions, chart, month, modules, list. */
 export function HomeSkeleton() {
+  const { t } = useTranslation('home');
   return (
-    <SkeletonGroup label="Loading dashboard" style={{ gap: layout.sectionGap }}>
+    <SkeletonGroup label={t('loading')} style={{ gap: layout.sectionGap }}>
       <View style={{ gap: spacing.md }}>
         <SectionTitle width="30%" />
         <Grid>

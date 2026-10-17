@@ -34,9 +34,12 @@ export type OfflineSnapshot = {
   failed: number;
   items: OfflineItem[];
   replaying: boolean;
-  /** Short message to flash ("Saved offline"); the banner shows it for a few seconds. */
-  notice: { text: string; at: number } | null;
+  /** Short event to flash ("saved offline", "synced 2"); the banner words it in the user's language for a few seconds. */
+  notice: OfflineNotice | null;
 };
+
+/** What just happened, as data: wording and tone belong to the UI so the queue stays language-free. */
+export type OfflineNotice = { kind: 'saved' | 'synced' | 'failed' | 'signIn'; count?: number; label?: string; at: number };
 
 export type ReplayResult = { sent: number; failed: number; authRequired: boolean };
 
@@ -161,8 +164,8 @@ export function setOnline(value: boolean) {
   return publish();
 }
 
-export function flashNotice(text: string) {
-  notice = { text, at: Date.now() };
+export function flashNotice(next: Omit<OfflineNotice, 'at'>) {
+  notice = { ...next, at: Date.now() };
   return publish();
 }
 
@@ -206,7 +209,7 @@ export function enqueue(path: string, body: unknown): Promise<unknown | null> {
       label: labelFor(path, serialisable),
     };
     await write(QUEUE_KEY, [...queue, entry]);
-    notice = { text: `Saved offline: ${entry.label}`, at: Date.now() };
+    notice = { kind: 'saved', label: entry.label, at: Date.now() };
     await publish();
     return queuedReply(path, serialisable);
   });

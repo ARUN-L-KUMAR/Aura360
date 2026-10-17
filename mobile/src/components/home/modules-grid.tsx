@@ -10,6 +10,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import type { Dashboard } from '@/features/dashboard/use-dashboard';
 import { modules, type ModuleKey } from '@/features/modules';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -18,16 +20,17 @@ export const MODULE_GRID: ModuleKey[] = ['notes', 'finance', 'fitness', 'food', 
 const TILE = spacing.xxl + spacing.sm; // 40
 
 const ModuleCard = memo(function ModuleCard({ moduleKey, count, onOpen }: { moduleKey: ModuleKey; count: number; onOpen: (href: string) => void }) {
+  const { t } = useTranslation('home');
   const { accent, colors } = useTheme();
   const info = modules[moduleKey];
   const a = accent(moduleKey);
-  const countLabel = count === 1 ? '1 entry' : `${count} entries`;
+  const entries = t('modules.entries', { count });
 
   return (
     <Card
       accent={moduleKey}
-      accessibilityLabel={`${info.label}, ${countLabel}. ${info.description}`}
-      accessibilityHint={`Opens ${info.label}`}
+      accessibilityLabel={t('modules.cardLabel', { label: info.label, entries, description: info.description })}
+      accessibilityHint={t('modules.cardHint', { label: info.label })}
       onPress={() => {
         haptics.tap();
         onOpen(info.href);
@@ -53,7 +56,7 @@ const ModuleCard = memo(function ModuleCard({ moduleKey, count, onOpen }: { modu
             </Text>
           </View>
         ) : (
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          <Ionicons name={directional('chevron-forward', 'chevron-back')} size={18} color={colors.textMuted} />
         )}
       </View>
       <View style={{ gap: 2 }}>
@@ -70,13 +73,14 @@ const ModuleCard = memo(function ModuleCard({ moduleKey, count, onOpen }: { modu
 
 /** Every module with its entry count; modules with entries get a count pill. */
 export function ModulesGrid({ counts, index }: { counts: Dashboard['counts']; index: number }) {
+  const { t } = useTranslation('home');
   const router = useRouter();
   const open = (href: string) => router.push(href as Href);
   const active = MODULE_GRID.filter((key) => (counts[key as keyof Dashboard['counts']] ?? 0) > 0).length;
 
   return (
     <Section index={index}>
-      <SectionHeader title="Your modules" subtitle={`${active} of ${MODULE_GRID.length} active`} />
+      <SectionHeader title={t('modules.title')} subtitle={t('modules.active', { active, total: MODULE_GRID.length })} />
       <Grid>
         {MODULE_GRID.map((key) => (
           <ModuleCard key={key} moduleKey={key} count={counts[key as keyof Dashboard['counts']] ?? 0} onOpen={open} />

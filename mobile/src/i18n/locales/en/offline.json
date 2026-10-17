@@ -1,1 +1,61 @@
-{}
+{
+  "failed": {
+    "title_one": "{{count}} entry couldn't be saved",
+    "title_other": "{{count}} entries couldn't be saved",
+    "detail_one": "The server rejected it. Retry or review.",
+    "detail_other": "The server rejected them. Retry or review."
+  },
+  "syncing": {
+    "title": "Syncing {{count}}...",
+    "detail": "Sending entries saved on this phone"
+  },
+  "offline": {
+    "title": "Offline",
+    "detail": "Changes are saved on this phone",
+    "detailQueued_one": "Changes are saved on this phone. {{count}} entry queued.",
+    "detailQueued_other": "Changes are saved on this phone. {{count}} entries queued."
+  },
+  "queued": {
+    "title_one": "{{count}} entry waiting to sync",
+    "title_other": "{{count}} entries waiting to sync",
+    "detail": "Saved on this phone"
+  },
+  "actions": {
+    "retry": "Retry",
+    "syncNow": "Sync now",
+    "retryRejected": "Retry rejected entries",
+    "bannerHint": "Opens sync details"
+  },
+  "errors": {
+    "syncFailed": "Couldn't sync your entries. Try again."
+  },
+  "sheet": {
+    "title": "Sync status",
+    "online": "Online",
+    "offline": "Offline",
+    "waiting": "{{count}} waiting",
+    "rejected": "{{count}} rejected",
+    "syncing": "Syncing {{count}}...",
+    "explainer": "Saved on this phone. Waiting entries are sent automatically; rejected ones were refused by the server.",
+    "emptyTitle": "All synced",
+    "emptyDescription": "Nothing is waiting on this phone."
+  },
+  "entry": {
+    "discardTitle": "Discard this entry?",
+    "discardBody": "{{label}} will be deleted from this phone and never sent.",
+    "keep": "Keep",
+    "discard": "Discard",
+    "discardLabel": "Discard {{label}}",
+    "rejected": "Rejected",
+    "waiting": "Waiting to sync",
+    "subtitle": "{{status}} · {{when}}"
+  },
+  "notice": {
+    "saved": "Saved offline: {{label}}",
+    "synced_one": "Synced {{count}} offline entry",
+    "synced_other": "Synced {{count}} offline entries",
+    "failed_one": "{{count}} entry couldn't be saved",
+    "failed_other": "{{count}} entries couldn't be saved",
+    "signIn": "Sign in again to finish syncing"
+  }
+}

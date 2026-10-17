@@ -3,7 +3,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/i18n';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,6 +21,7 @@ interface Props {
 }
 
 export function GoogleSignInButton({ onError }: Props) {
+  const { t } = useTranslation('auth');
   const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -38,20 +41,16 @@ export function GoogleSignInButton({ onError }: Props) {
         const idToken = res.params?.id_token || res.authentication?.idToken;
         if (idToken) {
           await signInWithGoogle(idToken);
+          // Google can create the account on first use, so this is reported as a sign-in either way.
+          analytics.track('sign_in', { method: 'google' });
         } else {
-          onError?.('No ID token received from Google.');
+          onError?.(t('social.googleNoToken'));
         }
       } else if (res.type === 'error') {
-        onError?.(res.error?.message || 'Google sign-in was cancelled or encountered an error.');
+        onError?.(t('social.googleFailed'));
       }
     } catch (e) {
-      onError?.(
-        e instanceof ApiError
-          ? e.message
-          : e instanceof Error
-            ? e.message
-            : 'Could not launch Google authentication window.'
-      );
+      onError?.(userErrorMessage(e, t('social.googleFailed'), { unauthorized: t('social.googleFailed') }));
     } finally {
       setLoading(false);
     }
@@ -59,13 +58,13 @@ export function GoogleSignInButton({ onError }: Props) {
 
   return (
     <Button
-      title="Continue with Google"
+      title={t('social.google')}
       variant="tertiary"
       leftIcon="logo-google"
       loading={loading}
       disabled={!request}
       onPress={handlePress}
-      accessibilityHint="Opens Google to sign in"
+      accessibilityHint={t('social.googleHint')}
     />
   );
 }

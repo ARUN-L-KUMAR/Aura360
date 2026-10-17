@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { weekdayShort } from '@/lib/format';
 import { duration, easing, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
@@ -38,10 +39,10 @@ function Bar({ height, fill, index, reduceMotion }: BarProps) {
           width: '100%',
           maxWidth: BAR_MAX_WIDTH,
           transformOrigin: 'bottom',
-          borderTopLeftRadius: radius.sm,
-          borderTopRightRadius: radius.sm,
-          borderBottomLeftRadius: spacing.xs / 2,
-          borderBottomRightRadius: spacing.xs / 2,
+          borderTopStartRadius: radius.sm,
+          borderTopEndRadius: radius.sm,
+          borderBottomStartRadius: spacing.xs / 2,
+          borderBottomEndRadius: spacing.xs / 2,
           backgroundColor: fill,
         },
         style,
@@ -56,16 +57,17 @@ function Bar({ height, fill, index, reduceMotion }: BarProps) {
  * screen readers with every value in the label.
  */
 export const ActivityChart = memo(function ActivityChart({ data, accent: accentKey = 'ai' }: { data: Point[]; accent?: ModuleKey }) {
+  const { t } = useTranslation('home');
   const { colors, accent, reduceMotion } = useTheme();
   const a = accent(accentKey);
   const max = Math.max(1, ...data.map((d) => d.activities));
-  const summary = data.map((d) => `${weekdayShort(d.date)} ${d.activities}`).join(', ');
+  const summary = data.map((d) => t('activity.point', { day: weekdayShort(d.date), value: d.activities })).join(t('activity.separator'));
 
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Activity over the last ${data.length} days: ${summary}`}
+      accessibilityLabel={t('activity.chartLabel', { count: data.length, summary })}
       style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.xs }}>
       {data.map((point, index) => {
         const isToday = index === data.length - 1;

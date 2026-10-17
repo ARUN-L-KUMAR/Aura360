@@ -71,3 +71,10 @@ test("one account's queued entries are never visible to another", async () => {
   await setCurrentUser('user-1');
   assert.equal(getSnapshot().pending, 1);
 });
+
+test('queueing an entry flashes a structured notice, not English text', async () => {
+  await enqueue('/api/notes', { title: 'hello' });
+  const notice = getSnapshot().notice;
+  assert.equal(notice?.kind, 'saved');
+  assert.ok(notice?.label);
+});

@@ -8,6 +8,7 @@ import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { useBlockMotion } from '@/components/ui/motion';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
 import { layout, radius, spacing, useTheme } from '@/theme';
@@ -16,6 +17,7 @@ const ICON_TILE = spacing.xxxl * 2; // 96
 const CONTENT_MAX_WIDTH = 360;
 
 export function BiometricLockScreen() {
+  const { t } = useTranslation('auth');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const motion = useBlockMotion();
@@ -65,19 +67,19 @@ export function BiometricLockScreen() {
 
         <View style={styles.titles}>
           <Text variant="headline" accessibilityRole="header" style={styles.center}>
-            Aura360 is locked
+            {t('lock.title')}
           </Text>
           <Text variant="body" color="textSecondary" style={styles.center}>
-            Use {biometricLabel} to unlock your workspace.
+            {t('lock.subtitle', { method: biometricLabel })}
           </Text>
         </View>
 
         {failed ? (
-          <Banner severity="warning" message={`We could not confirm it is you. Try ${biometricLabel} again.`} style={styles.fullWidth} />
+          <Banner severity="warning" message={t('lock.failed', { method: biometricLabel })} style={styles.fullWidth} />
         ) : null}
 
         <Button
-          title={failed ? 'Try again' : `Unlock with ${biometricLabel}`}
+          title={failed ? t('lock.retry') : t('lock.unlock', { method: biometricLabel })}
           size="lg"
           leftIcon={iconName}
           loading={checking}
@@ -86,18 +88,14 @@ export function BiometricLockScreen() {
         />
       </Animated.View>
 
-      <Button title="Sign out of Aura360" variant="ghost" onPress={() => void signOut()} />
+      <Button title={t('lock.signOut')} variant="ghost" onPress={() => void signOut()} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFill,
     zIndex: 9999,
     justifyContent: 'space-between',
     alignItems: 'center',

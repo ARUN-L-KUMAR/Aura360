@@ -11,26 +11,31 @@ import { PasswordField } from '@/components/ui/password-field';
 import { Screen } from '@/components/ui/screen';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
-import { api, ApiError } from '@/lib/api';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
+import { api } from '@/lib/api';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { layout, spacing } from '@/theme';
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 function emailProblem(email: string) {
-  if (!email.trim()) return 'Enter your email address.';
-  if (!EMAIL_PATTERN.test(email.trim())) return 'Enter a valid email address, like name@example.com.';
+  if (!email.trim()) return 'validation.emailRequired';
+  if (!EMAIL_PATTERN.test(email.trim())) return 'validation.emailInvalid';
   return null;
 }
 
 function passwordProblem(password: string) {
-  if (!password) return 'Choose a password.';
-  if (password.length < MIN_PASSWORD_LENGTH) return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+  if (!password) return 'validation.passwordChoose';
+  if (password.length < MIN_PASSWORD_LENGTH) return 'validation.passwordShort';
   return null;
 }
 
 export default function SignUpScreen() {
+  const { t } = useTranslation('auth');
   const router = useRouter();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -44,8 +49,8 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const emailError = touched.email ? emailProblem(email) : null;
-  const passwordError = touched.password ? passwordProblem(password) : null;
+  const emailKey = touched.email ? emailProblem(email) : null;
+  const passwordKey = touched.password ? passwordProblem(password) : null;
 
   async function submit() {
     if (loading) return;
@@ -65,10 +70,11 @@ export default function SignUpScreen() {
         body: { name: name.trim() || undefined, email: email.trim(), password },
       });
       haptics.success();
+      analytics.track('sign_up', { method: 'password' });
       setDone(true);
     } catch (e) {
       haptics.error();
-      setError(e instanceof ApiError ? e.message : 'Registration failed. Please try again.');
+      setError(userErrorMessage(e, t('signUp.failed')));
     } finally {
       setLoading(false);
     }
@@ -79,10 +85,10 @@ export default function SignUpScreen() {
       <Screen contentContainerStyle={authContentStyle}>
         <View style={styles.column}>
           <EmptyState
-            illustration={<SuccessCheck size={72} accessibilityLabel="Account created" />}
-            title="Check your email"
-            description={`We sent a verification link to ${email.trim()}. Verify your address, then sign in.`}
-            actionTitle="Back to sign in"
+            illustration={<SuccessCheck size={72} accessibilityLabel={t('signUp.done.created')} />}
+            title={t('signUp.done.title')}
+            description={t('signUp.done.description', { email: email.trim() })}
+            actionTitle={t('signUp.done.action')}
             onAction={() => router.navigate('/login')}
           />
         </View>
@@ -93,13 +99,13 @@ export default function SignUpScreen() {
   return (
     <Screen showsVerticalScrollIndicator={false} contentContainerStyle={authContentStyle}>
       <View style={styles.column}>
-        <AuthHeader title="Create your account" subtitle="Finance, fitness, food and life in one place." />
+        <AuthHeader title={t('signUp.title')} subtitle={t('signUp.subtitle')} />
 
         <View style={styles.form}>
           <Input
-            label="Name (optional)"
+            label={t('fields.name')}
             leftIcon="person-outline"
-            placeholder="Your name"
+            placeholder={t('fields.namePlaceholder')}
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -112,16 +118,16 @@ export default function SignUpScreen() {
 
           <Input
             ref={emailRef}
-            label="Email"
+            label={t('fields.email')}
             leftIcon="mail-outline"
-            placeholder="name@example.com"
+            placeholder={t('fields.emailPlaceholder')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
               if (error) setError(null);
             }}
-            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            error={emailError}
+            onBlur={() => setTouched((s) => ({ ...s, email: true }))}
+            error={emailKey ? t(emailKey) : null}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
@@ -135,33 +141,34 @@ export default function SignUpScreen() {
           <PasswordField
             ref={passwordRef}
             newPassword
+            label={t('fields.password')}
             leftIcon="lock-closed-outline"
-            placeholder="At least 8 characters"
-            helper={`Use at least ${MIN_PASSWORD_LENGTH} characters.`}
+            placeholder={t('fields.newPasswordPlaceholder', { count: MIN_PASSWORD_LENGTH })}
+            helper={t('validation.passwordShort', { count: MIN_PASSWORD_LENGTH })}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
               if (error) setError(null);
             }}
-            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-            error={passwordError}
+            onBlur={() => setTouched((s) => ({ ...s, password: true }))}
+            error={passwordKey ? t(passwordKey, { count: MIN_PASSWORD_LENGTH }) : null}
             returnKeyType="go"
             onSubmitEditing={submit}
           />
 
-          {error ? <Banner severity="error" title="Could not create your account" message={error} /> : null}
+          {error ? <Banner severity="error" title={t('signUp.errorTitle')} message={error} /> : null}
 
-          <Button title="Create account" size="lg" rightIcon="arrow-forward" loading={loading} onPress={submit} />
+          <Button title={t('signUp.submit')} size="lg" rightIcon={directional('arrow-forward', 'arrow-back')} loading={loading} onPress={submit} />
         </View>
 
         <SocialSignIn onError={setError} />
 
         <View style={styles.prompt}>
           <Text variant="body" color="textSecondary">
-            Already have an account?
+            {t('signUp.haveAccount')}
           </Text>
           <Link href="/login" asChild>
-            <Button title="Sign in" variant="ghost" size="sm" fullWidth={false} />
+            <Button title={t('signUp.signIn')} variant="ghost" size="sm" fullWidth={false} accessibilityRole="link" />
           </Link>
         </View>
       </View>

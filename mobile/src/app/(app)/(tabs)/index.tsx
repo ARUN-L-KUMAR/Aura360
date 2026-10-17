@@ -9,16 +9,18 @@ import { QuickActions } from '@/components/home/quick-actions';
 import { RecentTransactions } from '@/components/home/recent-transactions';
 import { Shortcuts } from '@/components/home/shortcuts';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
+import { ErrorState, errorKindFromError } from '@/components/ui/error-state';
 import { Screen } from '@/components/ui/screen';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
 import { useUnreadCount } from '@/features/notifications/hooks';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { greeting } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/providers/auth';
 import { useTheme } from '@/theme';
 
 export default function HomeScreen() {
+  const { t } = useTranslation('home');
   const { user } = useAuth();
   const { scheme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -26,45 +28,51 @@ export default function HomeScreen() {
   const { data: unread = 0 } = useUnreadCount();
 
   const firstName = (data?.profile.name ?? user?.name ?? '').split(' ')[0];
-  const title = firstName ? `${greeting()}, ${firstName}` : greeting();
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const title = firstName ? t('greetingWithName', { greeting: greeting(), name: firstName }) : greeting();
+  const today = new Date().toLocaleDateString(getDeviceLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
   const retry = () => {
     void refetch();
   };
+  const errorKind = errorKindFromError(error);
 
   return (
     <Screen
       title={title}
       subtitle={today}
       header={{
+        // Four actions would squeeze a centred small title off a narrow iOS bar, so it stays on the leading edge.
+        centerTitle: false,
         actions: [
+          { icon: 'search-outline', label: t('appBar.search'), onPress: () => router.push('/search' as never) },
           {
             icon: unread > 0 ? 'notifications' : 'notifications-outline',
-            label: 'Notifications',
+            label: t('appBar.notifications'),
             badge: unread,
             onPress: () => router.push('/notifications' as Href),
           },
           {
             icon: scheme === 'dark' ? 'sunny-outline' : 'moon-outline',
-            label: `Switch to ${scheme === 'dark' ? 'light' : 'dark'} mode`,
+            label: scheme === 'dark' ? t('appBar.switchToLight') : t('appBar.switchToDark'),
             onPress: () => {
               haptics.select();
               toggleTheme();
             },
           },
-          { icon: 'settings-outline', label: 'Open settings', onPress: () => router.push('/settings') },
+          { icon: 'settings-outline', label: t('appBar.settings'), onPress: () => router.push('/settings') },
         ],
       }}
       onRefresh={() => refetch()}
       refreshing={isRefetching}>
       {/* A failed refresh keeps the cached dashboard on screen and adds a retry row above it. */}
-      {isError && data ? <ErrorState size="inline" error={error} onRetry={retry} retrying={isRefetching} /> : null}
+      {isError && data ? <ErrorState size="inline" kind={errorKind} onRetry={retry} retrying={isRefetching} /> : null}
 
-      {!data && isError ? <ErrorState error={error} title="Couldn't load your dashboard" onRetry={retry} retrying={isRefetching} /> : null}
+      {!data && isError ? (
+        <ErrorState kind={errorKind} title={errorKind === 'generic' ? t('error.title') : undefined} onRetry={retry} retrying={isRefetching} />
+      ) : null}
 
       {!data && isPending && !isError ? (
         fetchStatus === 'paused' ? (
-          <EmptyState variant="offline" description="Connect to the internet to load your dashboard." actionTitle="Try again" onAction={retry} />
+          <EmptyState variant="offline" description={t('offline.description')} actionTitle={t('offline.retry')} onAction={retry} />
         ) : (
           <HomeSkeleton />
         )

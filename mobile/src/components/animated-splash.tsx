@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { palettes, spacing, useReducedMotion } from '@/theme';
 
 /**
@@ -51,6 +52,7 @@ type Props = {
 };
 
 export function AnimatedSplash({ ready, onFinish }: Props) {
+  const { t } = useTranslation('auth');
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const palette = palettes[scheme];
 
@@ -151,8 +153,10 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
     <Animated.View
       onLayout={onLayout}
       pointerEvents={leaving ? 'none' : 'auto'}
-      accessibilityLabel="Aura360 is loading"
+      accessible
+      accessibilityLabel={slow && !ready ? t('splash.loadingSlow') : t('splash.loading')}
       accessibilityRole="progressbar"
+      accessibilityLiveRegion="polite"
       style={[StyleSheet.absoluteFill, styles.root, { backgroundColor: palette.background }, overlayStyle]}>
       {/* soft glow behind the logo */}
       <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]}>
@@ -168,19 +172,19 @@ export function AnimatedSplash({ ready, onFinish }: Props) {
       <View pointerEvents="none" style={styles.textBlock}>
         <Animated.View style={nameStyle}>
           <Text variant="display" color={palette.text} style={styles.name}>
-            Aura360
+            {t('splash.name')}
           </Text>
         </Animated.View>
         <Animated.View style={taglineStyle}>
           <Text variant="label" color={palette.textMuted} style={styles.tagline}>
-            Your whole life, in sync
+            {t('splash.tagline')}
           </Text>
         </Animated.View>
       </View>
 
       <Animated.View pointerEvents="none" style={[styles.slow, slowStyle]}>
         <Text variant="caption" color={palette.textMuted}>
-          Getting your workspace ready…
+          {t('splash.slow')}
         </Text>
       </Animated.View>
     </Animated.View>

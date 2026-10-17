@@ -10,8 +10,11 @@ import { Input } from '@/components/ui/input';
 import { PasswordField } from '@/components/ui/password-field';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
-import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
 import { haptics } from '@/lib/haptics';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
 import { useNotify } from '@/providers/notify';
 import { layout, spacing } from '@/theme';
@@ -19,17 +22,18 @@ import { layout, spacing } from '@/theme';
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 function emailProblem(email: string) {
-  if (!email.trim()) return 'Enter your email address.';
-  if (!EMAIL_PATTERN.test(email.trim())) return 'Enter a valid email address, like name@example.com.';
+  if (!email.trim()) return 'validation.emailRequired';
+  if (!EMAIL_PATTERN.test(email.trim())) return 'validation.emailInvalid';
   return null;
 }
 
 function passwordProblem(password: string) {
-  return password ? null : 'Enter your password.';
+  return password ? null : 'validation.passwordRequired';
 }
 
 export default function LoginScreen() {
-  const { signIn, serverUrl, setServerUrl } = useAuth();
+  const { t } = useTranslation('auth');
+  const { signIn, serverUrl, setServerUrl, sessionExpired, dismissSessionExpired } = useAuth();
   const notify = useNotify();
 
   const passwordRef = useRef<TextInput>(null);
@@ -44,12 +48,13 @@ export default function LoginScreen() {
 
   const [showServerSheet, setShowServerSheet] = useState(false);
   const [serverDraft, setServerDraft] = useState(serverUrl);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [savingServer, setSavingServer] = useState(false);
 
-  const emailError = touched.email ? emailProblem(email) : null;
-  const passwordError = touched.password ? passwordProblem(password) : null;
+  const emailKey = touched.email ? emailProblem(email) : null;
+  const passwordKey = touched.password ? passwordProblem(password) : null;
 
-  const hostDisplay = serverUrl ? serverUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : 'Local host';
+  const hostDisplay = serverUrl ? serverUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : t('server.localHost');
 
   async function submit() {
     if (loading) return;
@@ -64,9 +69,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email, password);
+      analytics.track('sign_in', { method: 'password' });
     } catch (e) {
       haptics.error();
-      setError(e instanceof ApiError ? e.message : 'Invalid credentials. Check your email and password and try again.');
+      // A 401 here means the details were wrong (not an expired session).
+      setError(userErrorMessage(e, t('signIn.failed'), { unauthorized: t('signIn.invalid') }));
     } finally {
       setLoading(false);
     }
@@ -74,31 +81,37 @@ export default function LoginScreen() {
 
   function openServerSheet() {
     setServerDraft(serverUrl);
+    setServerError(null);
     setShowServerSheet(true);
   }
 
   async function saveServer() {
+    if (savingServer) return;
     setSavingServer(true);
+    setServerError(null);
     try {
       await setServerUrl(serverDraft);
       setShowServerSheet(false);
-      notify.success('Server address saved.');
+      notify.success(t('server.saved'));
     } catch (e) {
-      notify.error(e);
+      haptics.error();
+      setServerError(userErrorMessage(e, t('server.saveFailed')));
     } finally {
       setSavingServer(false);
     }
   }
 
   async function resetServer() {
+    if (savingServer) return;
     setSavingServer(true);
+    setServerError(null);
     try {
       await setServerUrl(null);
       setServerDraft('');
       setShowServerSheet(false);
-      notify.success('Server address reset to the default.');
+      notify.success(t('server.resetDone'));
     } catch (e) {
-      notify.error(e);
+      notify.error(userErrorMessage(e, t('server.saveFailed')));
     } finally {
       setSavingServer(false);
     }
@@ -107,21 +120,23 @@ export default function LoginScreen() {
   return (
     <Screen showsVerticalScrollIndicator={false} contentContainerStyle={authContentStyle}>
       <View style={styles.column}>
-        <AuthHeader title="Welcome back" subtitle="Sign in to your Aura360 workspace." />
+        {sessionExpired ? <Banner severity="warning" message={t('sessionExpired.message')} onDismiss={dismissSessionExpired} /> : null}
+
+        <AuthHeader title={t('signIn.title')} subtitle={t('signIn.subtitle')} />
 
         <View style={styles.form}>
           <Input
             ref={emailRef}
-            label="Email"
+            label={t('fields.email')}
             leftIcon="mail-outline"
-            placeholder="name@example.com"
+            placeholder={t('fields.emailPlaceholder')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
               if (error) setError(null);
             }}
-            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            error={emailError}
+            onBlur={() => setTouched((s) => ({ ...s, email: true }))}
+            error={emailKey ? t(emailKey) : null}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
@@ -134,43 +149,44 @@ export default function LoginScreen() {
 
           <PasswordField
             ref={passwordRef}
+            label={t('fields.password')}
             leftIcon="lock-closed-outline"
-            placeholder="Enter your password"
+            placeholder={t('fields.passwordPlaceholder')}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
               if (error) setError(null);
             }}
-            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-            error={passwordError}
+            onBlur={() => setTouched((s) => ({ ...s, password: true }))}
+            error={passwordKey ? t(passwordKey) : null}
             returnKeyType="go"
             onSubmitEditing={submit}
           />
 
-          {error ? <Banner severity="error" title="Could not sign in" message={error} /> : null}
+          {error ? <Banner severity="error" title={t('signIn.errorTitle')} message={error} /> : null}
 
-          <Button title="Sign in" size="lg" rightIcon="arrow-forward" loading={loading} onPress={submit} />
+          <Button title={t('signIn.submit')} size="lg" rightIcon={directional('arrow-forward', 'arrow-back')} loading={loading} onPress={submit} />
         </View>
 
         <SocialSignIn onError={setError} />
 
         <View style={styles.prompt}>
           <Text variant="body" color="textSecondary">
-            New to Aura360?
+            {t('signIn.newHere')}
           </Text>
           <Link href="/sign-up" asChild>
-            <Button title="Create an account" variant="ghost" size="sm" fullWidth={false} />
+            <Button title={t('signIn.createAccount')} variant="ghost" size="sm" fullWidth={false} accessibilityRole="link" />
           </Link>
         </View>
 
         <View style={styles.footer}>
           <Button
-            title={`Server: ${hostDisplay}`}
+            title={t('server.button', { host: hostDisplay })}
             variant="tertiary"
             size="sm"
             fullWidth={false}
             rightIcon="options-outline"
-            accessibilityHint="Change the server address"
+            accessibilityHint={t('server.buttonHint')}
             onPress={openServerSheet}
           />
         </View>
@@ -179,24 +195,28 @@ export default function LoginScreen() {
       <BottomSheet
         visible={showServerSheet}
         onClose={() => setShowServerSheet(false)}
-        title="Server connection"
+        title={t('server.sheetTitle')}
         footer={
           <View style={styles.sheetActions}>
-            <Button title="Save server address" loading={savingServer} onPress={saveServer} />
-            <Button title="Reset to default" variant="tertiary" disabled={savingServer} onPress={resetServer} />
+            <Button title={t('server.save')} loading={savingServer} onPress={saveServer} />
+            <Button title={t('server.reset')} variant="tertiary" disabled={savingServer} onPress={resetServer} />
           </View>
         }>
         <View style={styles.sheetBody}>
           <Text variant="body" color="textSecondary">
-            Choose the server this app connects to. Leave it as the default unless your team gave you an address.
+            {t('server.intro')}
           </Text>
           <Input
-            label="Server URL"
+            label={t('server.urlLabel')}
             leftIcon="server-outline"
-            placeholder="https://app.example.com"
-            helper="Include https://, for example https://app.example.com"
+            placeholder={t('server.urlPlaceholder')}
+            helper={t('server.urlHelper')}
             value={serverDraft ?? ''}
-            onChangeText={setServerDraft}
+            onChangeText={(text) => {
+              setServerDraft(text);
+              if (serverError) setServerError(null);
+            }}
+            error={serverError}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"

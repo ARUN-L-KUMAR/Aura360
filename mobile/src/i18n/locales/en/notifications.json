@@ -1,1 +1,179 @@
-{}
+{
+  "title": "Notifications",
+  "settingsLabel": "Notification settings",
+  "markAllRead": "Mark all read",
+  "markedAllRead": "All notifications marked as read",
+  "offline": "Connect to the internet to load your notifications.",
+  "offlineRetry": "Try again",
+  "day": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "types": {
+    "info": "Info",
+    "success": "Success",
+    "warning": "Warning",
+    "error": "Alert"
+  },
+  "row": {
+    "unread": "Unread",
+    "label": "{{type}}. {{title}}. {{message}}. {{when}}",
+    "labelUnread": "Unread. {{type}}. {{title}}. {{message}}. {{when}}",
+    "hint": "Marks as read"
+  },
+  "errors": {
+    "markRead": "Couldn't mark that notification as read.",
+    "markAllRead": "Couldn't mark your notifications as read."
+  },
+  "empty": {
+    "title": "You're all caught up",
+    "description": "Budget alerts, renewal reminders and your daily reminders show up here.",
+    "action": "Set up reminders"
+  },
+  "local": {
+    "channels": {
+      "habits": "Habit and daily reminders",
+      "finance": "Budget and finance alerts"
+    },
+    "morningSkincare": {
+      "title": "☀️ Morning skincare",
+      "body": "Rise and shine! Complete your AM routine on Aura360."
+    },
+    "eveningSkincare": {
+      "title": "🌙 Evening skincare and wind-down",
+      "body": "Time to unwind. Check off your PM routine."
+    },
+    "dailyReview": {
+      "title": "✨ Daily Aura review",
+      "body": "Log your workouts and meals, and track your daily spending."
+    },
+    "hydration": {
+      "title": "💧 Hydration check",
+      "body": "Drink a glass of water and keep your macro rings glowing!"
+    },
+    "test": {
+      "title": "⚡ Aura360 test alert",
+      "body": "Notifications are working on this device."
+    },
+    "budget": {
+      "title": "⚠️ Budget limit alert",
+      "body": "You've reached {{percent}}% of your {{category}} monthly budget."
+    }
+  },
+  "prefs": {
+    "loadOffline": "Connect to the internet to load your alert settings.",
+    "loadRetry": "Try again",
+    "permission": {
+      "bannerTitle": "Notifications are off for this phone",
+      "bannerMessage": "Allow notifications so alerts and reminders can reach you, even when the app is closed.",
+      "enable": "Enable notifications",
+      "enabling": "Enabling...",
+      "granted": "Notifications are on for this phone",
+      "stillOff": "Notifications are still off. You can allow them in your phone's settings.",
+      "allowed": "Allowed",
+      "off": "Turned off",
+      "notAsked": "Not asked yet",
+      "unavailable": "Unavailable",
+      "rowTitle": "Phone permission",
+      "rowSubtitle": "Set in your phone's settings"
+    },
+    "where": {
+      "title": "Where you get alerts",
+      "footer": "In-app alerts are always on. Phone push and email follow the quiet hours below.",
+      "inAppTitle": "In the app",
+      "inAppSubtitle": "See them under Notifications",
+      "inAppMeta": "Always on",
+      "pushTitle": "Phone push",
+      "pushConnected_one": "{{count}} phone connected",
+      "pushConnected_other": "{{count}} phones connected",
+      "pushNone": "No phone connected yet",
+      "emailTitle": "Email",
+      "emailSubtitle": "To your account email"
+    },
+    "connect": {
+      "connect": "Connect this phone",
+      "reconnect": "Reconnect this phone",
+      "done": "This phone is connected"
+    },
+    "problems": {
+      "unsupportedInExpoGo": "Push doesn't work in Expo Go. Use a development build.",
+      "notADevice": "Push needs a real phone, not an emulator.",
+      "noProjectId": "This build has no Expo project ID yet. Run \"eas init\" in the mobile folder, then rebuild.",
+      "permissionDenied": "Notifications are turned off for Aura360. Allow them in your phone's settings.",
+      "failed": "Couldn't connect this phone. Check your connection and try again."
+    },
+    "time": {
+      "title": "Time and quiet hours",
+      "footer": "Reminder times follow the time zone. During quiet hours there is no push or email, and alerts wait in Notifications.",
+      "zoneTitle": "Time zone",
+      "useDevice": "Use this phone's ({{zone}})",
+      "quietTitle": "Quiet hours",
+      "quietOn": "On",
+      "quietOff": "Off",
+      "from": "From",
+      "to": "To"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "budgetTitle": "Budget alerts",
+      "budgetSubtitle": "At the alert level, or over budget",
+      "subscriptionsTitle": "Subscription renewals",
+      "subscriptionsSubtitle": "Before a subscription is charged"
+    },
+    "reminders": {
+      "title": "Reminders",
+      "footer": "Reminders are sent by the server, so they arrive even when the app is closed.",
+      "at": "At",
+      "workoutTitle": "Workout",
+      "workoutSubtitle": "A nudge on the days you choose",
+      "workoutDays": "On these days",
+      "workoutSkip": "Skip if I already logged one",
+      "mealsTitle": "Meals",
+      "mealsSubtitle": "Clear a time to skip that meal",
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "mealsSkip": "Skip a meal I already logged",
+      "skincareTitle": "Skincare routine",
+      "skincareSubtitle": "Lists the products in that routine",
+      "morning": "Morning",
+      "evening": "Evening",
+      "skincareNote": "When this is on, the phone's own skincare reminders (in Settings) pause so you don't get two.",
+      "fashionTitle": "Unworn clothes",
+      "fashionSubtitle": "A weekly nudge about pieces you haven't worn",
+      "unwornLabel": "Unworn for (days)",
+      "unwornHelper": "Between {{min}} and {{max}} days",
+      "nudgeOn": "Nudge me on"
+    },
+    "test": {
+      "title": "Test",
+      "footer": "The test uses what is saved, and goes to every channel that is on.",
+      "action": "Send a test notification",
+      "idle": "Check that alerts reach you",
+      "sending": "Sending...",
+      "resultTitle": "Test sent",
+      "inApp": "In-app: sent",
+      "emailSent": "Email: sent",
+      "emailFailed": "Email: failed ({{error}})",
+      "pushSent_one": "Phone push: sent to {{count}} phone",
+      "pushSent_other": "Phone push: sent to {{count}} phones",
+      "pushFailed": "Phone push: failed ({{error}})",
+      "pushOff": "Phone push: off (turn it on and save first)",
+      "unknownError": "unknown error",
+      "failed": "Couldn't send the test notification."
+    },
+    "save": {
+      "save": "Save changes",
+      "saved": "All changes saved",
+      "toast": "Settings saved",
+      "failed": "Couldn't save your alert settings."
+    }
+  }
+}

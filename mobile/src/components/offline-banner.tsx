@@ -18,10 +18,12 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
+import { runManualSync } from '@/lib/manual-sync';
 import { discard, retryFailed, type OfflineItem } from '@/lib/offline/queue';
 import { useOfflineSnapshot } from '@/lib/offline/use-offline';
-import { syncNow } from '@/providers/offline';
+import { useNotify } from '@/providers/notify';
 import { duration, layout, radius, spacing, useTheme, type ThemeColors } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -29,8 +31,6 @@ type Tone = 'danger' | 'warning' | 'info' | 'success';
 type BannerState = 'failed' | 'syncing' | 'notice' | 'offline' | 'queued';
 
 const NOTICE_MS = 3500;
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const ICONS: Record<BannerState, IconName> = {
   failed: 'alert-circle',
@@ -95,6 +95,8 @@ function StatusIcon({ name, color, spinning, done }: { name: IconName; color: st
  * a short confirmation once everything is sent. Tap it to open the review sheet with every queued and rejected entry.
  */
 export function OfflineBanner() {
+  const { t } = useTranslation('offline');
+  const notify = useNotify();
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
   const snap = useOfflineSnapshot();
@@ -122,22 +124,30 @@ export function OfflineBanner() {
   let detail: string | undefined;
   let tone: Tone = 'info';
   if (state === 'failed') {
-    title = `${plural(snap.failed, "entry couldn't", "entries couldn't")} be saved`;
-    detail = 'The server rejected them. Retry or review.';
+    title = t('failed.title', { count: snap.failed });
+    detail = t('failed.detail', { count: snap.failed });
     tone = 'danger';
   } else if (state === 'syncing') {
-    title = `Syncing ${snap.pending}...`;
-    detail = 'Sending entries saved on this phone';
+    title = t('syncing.title', { count: snap.pending });
+    detail = t('syncing.detail');
   } else if (state === 'notice' && notice) {
-    title = notice.text;
-    tone = /sign in|couldn't/i.test(notice.text) ? 'warning' : 'success';
+    const count = notice.count ?? 0;
+    title =
+      notice.kind === 'saved'
+        ? t('notice.saved', { label: notice.label ?? '' })
+        : notice.kind === 'synced'
+          ? t('notice.synced', { count })
+          : notice.kind === 'failed'
+            ? t('notice.failed', { count })
+            : t('notice.signIn');
+    tone = notice.kind === 'failed' || notice.kind === 'signIn' ? 'warning' : 'success';
   } else if (state === 'offline') {
-    title = 'Offline';
-    detail = snap.pending > 0 ? `Changes are saved on this phone. ${plural(snap.pending, 'entry', 'entries')} queued.` : 'Changes are saved on this phone';
+    title = t('offline.title');
+    detail = snap.pending > 0 ? t('offline.detailQueued', { count: snap.pending }) : t('offline.detail');
     tone = 'warning';
   } else if (state === 'queued') {
-    title = `${plural(snap.pending, 'entry', 'entries')} waiting to sync`;
-    detail = 'Saved on this phone';
+    title = t('queued.title', { count: snap.pending });
+    detail = t('queued.detail');
   }
 
   const color = toneColor(colors, tone);
@@ -150,7 +160,13 @@ export function OfflineBanner() {
   const progress = peak > 0 ? ((peak - snap.pending) / peak) * 100 : 0;
   const retry = () => {
     haptics.tap();
-    void retryFailed().then(() => syncNow());
+    void retryFailed()
+      .then(() => runManualSync())
+      .catch(() => notify.error(t('errors.syncFailed')));
+  };
+  const syncAll = () => {
+    haptics.tap();
+    runManualSync().catch(() => notify.error(t('errors.syncFailed')));
   };
 
   return (
@@ -163,8 +179,8 @@ export function OfflineBanner() {
           pointerEvents="box-none"
           style={{
             position: 'absolute',
-            left: layout.screenPadding,
-            right: layout.screenPadding,
+            start: layout.screenPadding,
+            end: layout.screenPadding,
             top: insets.top + APP_BAR_HEIGHT + spacing.xs,
             zIndex: 50,
           }}>
@@ -176,12 +192,12 @@ export function OfflineBanner() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: spacing.sm,
-                paddingRight: spacing.sm,
+                paddingEnd: spacing.sm,
               }}>
               <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={[title, detail].filter(Boolean).join('. ')}
-                accessibilityHint="Opens sync details"
+                accessibilityHint={t('actions.bannerHint')}
                 onPress={() => setOpen(true)}
                 scaleTo={1}
                 ringRadius={radius.lg}
@@ -211,18 +227,9 @@ export function OfflineBanner() {
                 </View>
               </PressableScale>
               {state === 'failed' ? (
-                <Button title="Retry" variant="tertiary" size="sm" fullWidth={false} leftIcon="refresh-outline" onPress={retry} />
+                <Button title={t('actions.retry')} variant="tertiary" size="sm" fullWidth={false} leftIcon="refresh-outline" onPress={retry} />
               ) : state === 'queued' ? (
-                <Button
-                  title="Sync now"
-                  variant="tertiary"
-                  size="sm"
-                  fullWidth={false}
-                  onPress={() => {
-                    haptics.tap();
-                    void syncNow();
-                  }}
-                />
+                <Button title={t('actions.syncNow')} variant="tertiary" size="sm" fullWidth={false} onPress={syncAll} />
               ) : null}
             </View>
           </GlassSurface>
@@ -236,6 +243,8 @@ export function OfflineBanner() {
 
 /** Review sheet: sync status summary, every queued and rejected entry with Discard, and the Sync now / Retry buttons. */
 function SyncSheet({ open, onClose, progress }: { open: boolean; onClose: () => void; progress: number }) {
+  const { t } = useTranslation('offline');
+  const notify = useNotify();
   const { colors } = useTheme();
   const snap = useOfflineSnapshot();
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -249,30 +258,32 @@ function SyncSheet({ open, onClose, progress }: { open: boolean; onClose: () => 
         setConfirmId(null);
         onClose();
       }}
-      title="Sync status"
+      title={t('sheet.title')}
       scrollable
       footer={
         snap.items.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             {snap.online && snap.pending > 0 ? (
               <Button
-                title="Sync now"
+                title={t('actions.syncNow')}
                 leftIcon="sync-outline"
                 loading={snap.replaying}
                 onPress={() => {
                   haptics.tap();
-                  void syncNow();
+                  runManualSync().catch(() => notify.error(t('errors.syncFailed')));
                 }}
               />
             ) : null}
             {snap.failed > 0 ? (
               <Button
-                title="Retry rejected entries"
+                title={t('actions.retryRejected')}
                 variant="secondary"
                 leftIcon="refresh-outline"
                 onPress={() => {
                   haptics.tap();
-                  void retryFailed().then(() => syncNow());
+                  void retryFailed()
+                    .then(() => runManualSync())
+                    .catch(() => notify.error(t('errors.syncFailed')));
                 }}
               />
             ) : null}
@@ -282,18 +293,18 @@ function SyncSheet({ open, onClose, progress }: { open: boolean; onClose: () => 
       <View style={{ paddingHorizontal: layout.screenPadding, gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            <Badge label={snap.online ? 'Online' : 'Offline'} severity={snap.online ? 'success' : 'warning'} icon={snap.online ? 'cloud-done-outline' : 'cloud-offline-outline'} />
-            <Badge label={`${snap.pending} waiting`} severity={snap.pending > 0 ? 'info' : 'neutral'} icon="time-outline" />
-            <Badge label={`${snap.failed} rejected`} severity={snap.failed > 0 ? 'error' : 'neutral'} icon={snap.failed > 0 ? 'alert-circle' : 'checkmark-circle-outline'} />
+            <Badge label={snap.online ? t('sheet.online') : t('sheet.offline')} severity={snap.online ? 'success' : 'warning'} icon={snap.online ? 'cloud-done-outline' : 'cloud-offline-outline'} />
+            <Badge label={t('sheet.waiting', { count: snap.pending })} severity={snap.pending > 0 ? 'info' : 'neutral'} icon="time-outline" />
+            <Badge label={t('sheet.rejected', { count: snap.failed })} severity={snap.failed > 0 ? 'error' : 'neutral'} icon={snap.failed > 0 ? 'alert-circle' : 'checkmark-circle-outline'} />
           </View>
-          {syncing ? <ProgressBar percent={progress} label={`Syncing ${snap.pending}...`} /> : null}
+          {syncing ? <ProgressBar percent={progress} label={t('sheet.syncing', { count: snap.pending })} /> : null}
           <Text variant="caption" color="textSecondary">
-            Saved on this phone. Waiting entries are sent automatically; rejected ones were refused by the server.
+            {t('sheet.explainer')}
           </Text>
         </View>
 
         {snap.items.length === 0 ? (
-          <EmptyState illustration={<SuccessCheck size={72} accessibilityLabel={null} />} title="All synced" description="Nothing is waiting on this phone." />
+          <EmptyState illustration={<SuccessCheck size={72} accessibilityLabel={null} />} title={t('sheet.emptyTitle')} description={t('sheet.emptyDescription')} />
         ) : (
           <Card padding="none" style={{ overflow: 'hidden' }}>
             {snap.items.map((item, index) => (
@@ -338,6 +349,7 @@ type EntryRowProps = {
  * iOS, so the row swaps to a Keep / Discard question instead of using `useNotify().confirm`.
  */
 function EntryRow({ item, index, divider, confirming, onAskDiscard, onKeep, onDiscard, tile, glyph }: EntryRowProps) {
+  const { t } = useTranslation('offline');
   const { colors } = useTheme();
   // Enter, leave (discard or a successful send) and close-the-gap reflow; instant under reduce-motion
   const motion = useListMotion(index);
@@ -356,22 +368,22 @@ function EntryRow({ item, index, divider, confirming, onAskDiscard, onKeep, onDi
         }}>
         <View style={{ gap: spacing.xs }}>
           <Text variant="label" weight="semiBold" color="onErrorContainer">
-            Discard this entry?
+            {t('entry.discardTitle')}
           </Text>
           <Text variant="caption" color="onErrorContainer">
-            {item.label} will be deleted from this phone and never sent.
+            {t('entry.discardBody', { label: item.label })}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <Button title="Keep" variant="tertiary" size="sm" fullWidth={false} onPress={onKeep} />
-          <Button title="Discard" variant="destructive" size="sm" fullWidth={false} leftIcon="trash-outline" onPress={onDiscard} />
+          <Button title={t('entry.keep')} variant="tertiary" size="sm" fullWidth={false} onPress={onKeep} />
+          <Button title={t('entry.discard')} variant="destructive" size="sm" fullWidth={false} leftIcon="trash-outline" onPress={onDiscard} />
         </View>
       </Animated.View>
     );
   }
 
   const rejected = item.kind === 'failed';
-  const when = new Date(item.createdAt).toLocaleString('en-IN', {
+  const when = new Date(item.createdAt).toLocaleString(getDeviceLocale(), {
     day: 'numeric',
     month: 'short',
     hour: 'numeric',
@@ -397,8 +409,8 @@ function EntryRow({ item, index, divider, confirming, onAskDiscard, onKeep, onDi
           </View>
         }
         title={item.label}
-        subtitle={`${rejected ? (item.error ?? 'Rejected') : 'Waiting to sync'} · ${when}`}
-        trailing={<IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={`Discard ${item.label}`} onPress={onAskDiscard} />}
+        subtitle={t('entry.subtitle', { status: rejected ? (item.error ?? t('entry.rejected')) : t('entry.waiting'), when })}
+        trailing={<IconButton icon="trash-outline" variant="ghost" destructive accessibilityLabel={t('entry.discardLabel', { label: item.label })} onPress={onAskDiscard} />}
       />
     </Animated.View>
   );

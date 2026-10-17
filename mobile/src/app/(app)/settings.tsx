@@ -10,25 +10,21 @@ import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
+import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
-import { DEFAULT_NOTIF_PREFERENCES, notificationService, type NotificationPreferences } from '@/lib/notifications';
+import { runManualSync } from '@/lib/manual-sync';
+import { DEFAULT_NOTIF_PREFERENCES, HABIT_TIMES, formatClock, notificationService, type NotificationPreferences } from '@/lib/notifications';
 import { useOfflineSnapshot } from '@/lib/offline/use-offline';
+import { analytics } from '@/lib/telemetry';
+import { userErrorMessage } from '@/lib/user-error';
 import { useAuth } from '@/providers/auth';
 import { useBiometrics } from '@/providers/biometrics';
 import { useNotify } from '@/providers/notify';
-import { syncNow } from '@/providers/offline';
 import { layout, radius, spacing, useTheme, type ThemeMode } from '@/theme';
-
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Small preview of the brand colours in the current theme. Decorative: the text below it says what it shows. */
 function PalettePreview() {
+  const { t } = useTranslation('settings');
   const { colors, scheme, mode } = useTheme();
   const swatches = [colors.primary, colors.secondary, colors.tertiary, colors.success, colors.warning, colors.error];
   return (
@@ -39,13 +35,14 @@ function PalettePreview() {
         ))}
       </View>
       <Text variant="caption" color="textSecondary">
-        {mode === 'system' ? `Following your phone: ${scheme} theme` : `Using the ${scheme} theme`}
+        {t(`appearance.preview.${mode === 'system' ? 'system' : 'fixed'}.${scheme}`)}
       </Text>
     </View>
   );
 }
 
 export default function SettingsScreen() {
+  const { t } = useTranslation('settings');
   const router = useRouter();
   const notify = useNotify();
   const { user, signOut, serverUrl } = useAuth();
@@ -54,18 +51,42 @@ export default function SettingsScreen() {
   const sync = useOfflineSnapshot();
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFERENCES);
+  // Whether usage data and crash reports may be sent. Off until the user opts in; the stored choice is read first.
+  const [shareUsage, setShareUsage] = useState(analytics.isEnabled());
 
   useEffect(() => {
     void notificationService.getPreferences().then(setNotifPrefs);
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void analytics.ready().then(() => {
+      if (alive) setShareUsage(analytics.isEnabled());
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const themeOptions: { value: ThemeMode; label: string }[] = [
+    { value: 'system', label: t('appearance.system') },
+    { value: 'light', label: t('appearance.light') },
+    { value: 'dark', label: t('appearance.dark') },
+  ];
+
+  function changeTheme(next: ThemeMode) {
+    setMode(next);
+    analytics.track('theme_changed', { mode: next });
+  }
 
   async function updateNotif(patch: Partial<NotificationPreferences>) {
     const next = { ...notifPrefs, ...patch };
     setNotifPrefs(next);
     try {
       await notificationService.savePreferences(next);
+      if (patch.enabled !== undefined) analytics.track('notifications_toggled', { enabled: patch.enabled });
     } catch (e) {
-      notify.error(e);
+      notify.error(userErrorMessage(e, t('notifications.saveFailed')));
     }
   }
 
@@ -73,76 +94,96 @@ export default function SettingsScreen() {
     try {
       const ok = await notificationService.sendTestNotification();
       if (ok) {
-        notify.success('Test notification sent. Check your notification tray.');
+        notify.success(t('notifications.testSent'));
       } else {
         await notify.alert({
-          title: 'Notifications in Expo Go',
-          message: 'Android notifications in Expo SDK 53+ require a development build (npx expo run:android) to display native system notifications.',
+          title: t('notifications.expoGoTitle'),
+          message: t('notifications.expoGoMessage'),
           severity: 'info',
         });
       }
     } catch (e) {
-      notify.error(e);
+      notify.error(userErrorMessage(e, t('notifications.testFailed')));
+    }
+  }
+
+  async function changeBiometrics(enable: boolean) {
+    const ok = await toggleBiometrics(enable);
+    if (ok) analytics.track('biometrics_toggled', { enabled: enable });
+    else if (enable) notify.warning(t('security.notConfirmed', { method: biometricLabel }));
+  }
+
+  async function changeShareUsage(enabled: boolean) {
+    const previous = shareUsage;
+    setShareUsage(enabled);
+    try {
+      // Opting out is recorded while the previous consent still applies; opting in once it is stored.
+      if (!enabled) analytics.track('telemetry_consent_changed', { enabled });
+      await analytics.setEnabled(enabled);
+      if (enabled) analytics.track('telemetry_consent_changed', { enabled });
+    } catch (e) {
+      setShareUsage(previous);
+      notify.error(userErrorMessage(e, t('privacy.saveFailed')));
     }
   }
 
   async function confirmSignOut() {
     const ok = await notify.confirm({
-      title: 'Sign out?',
-      message: 'You will need to sign in again to access your Aura360 workspace.',
-      confirmLabel: 'Sign out',
+      title: t('signOut.confirmTitle'),
+      message: t('signOut.confirmMessage'),
+      confirmLabel: t('signOut.button'),
       destructive: true,
     });
-    if (ok) void signOut();
+    if (!ok) return;
+    try {
+      await signOut();
+      analytics.track('sign_out');
+    } catch (e) {
+      notify.error(userErrorMessage(e, t('signOut.failed')));
+    }
   }
 
-  const displayName = user?.name ?? 'Aura user';
+  const displayName = user?.name ?? t('account.fallbackName');
   const biometricIcon: keyof typeof Ionicons.glyphMap =
     biometricType === 'face' ? 'scan-outline' : biometricType === 'fingerprint' ? 'finger-print-outline' : 'shield-checkmark-outline';
 
   const syncSubtitle =
     sync.failed > 0
-      ? `${plural(sync.failed, "entry couldn't", "entries couldn't")} be saved`
+      ? t('data.failed', { count: sync.failed })
       : sync.pending > 0
-        ? `${plural(sync.pending, 'entry', 'entries')} waiting to sync`
+        ? t('data.pending', { count: sync.pending })
         : sync.online
-          ? 'Everything is saved to your account'
-          : 'Changes are saved on this phone until you are back online';
+          ? t('data.allSaved')
+          : t('data.savedOnPhone');
   const canSync = sync.online && sync.pending > 0;
 
   return (
     <Screen topInset={false}>
-      <Section title="Account">
-        <ListItem avatar={{ name: user?.name ?? user?.email, size: 'lg' }} title={displayName} subtitle={user?.email ?? 'user@aura360.internal'} />
+      <Section title={t('account.title')}>
+        <ListItem avatar={{ name: user?.name ?? user?.email, size: 'lg' }} title={displayName} subtitle={user?.email} />
       </Section>
 
-      <Section title="Appearance" footer="System follows your phone's light or dark setting.">
+      <Section title={t('appearance.title')} footer={t('appearance.footer')}>
         <View style={{ padding: layout.cardPadding, gap: spacing.lg }}>
-          <Segmented options={THEME_OPTIONS} value={mode} onChange={setMode} accessibilityLabel="Theme" />
+          <Segmented options={themeOptions} value={mode} onChange={changeTheme} accessibilityLabel={t('appearance.themeLabel')} />
           <PalettePreview />
         </View>
       </Section>
 
-      <Section
-        title="Notifications"
-        footer={
-          notifPrefs.enabled
-            ? 'Habit reminders are scheduled on this phone. Alerts and reminders from the server arrive even when the app is closed.'
-            : 'Turn on habit reminders to get scheduled water, skincare and daily review alerts.'
-        }>
+      <Section title={t('notifications.title')} footer={notifPrefs.enabled ? t('notifications.footerOn') : t('notifications.footerOff')}>
         <ListItem
           icon="notifications"
           accent="finance"
-          title="Alerts and reminders"
-          subtitle="Budget alerts, renewals, workout, meals and more"
+          title={t('notifications.alertsTitle')}
+          subtitle={t('notifications.alertsSubtitle')}
           onPress={() => router.push('/notifications/settings' as never)}
           divider
         />
         <SwitchRow
           icon="alarm-outline"
           accent="fitness"
-          title="Daily habit reminders"
-          subtitle="Reminders on this phone"
+          title={t('notifications.habitsTitle')}
+          subtitle={t('notifications.habitsSubtitle')}
           value={notifPrefs.enabled}
           onValueChange={(val) => void updateNotif({ enabled: val })}
           divider={notifPrefs.enabled}
@@ -152,8 +193,12 @@ export default function SettingsScreen() {
             <SwitchRow
               icon="water-outline"
               accent="food"
-              title="Hydration check"
-              subtitle="11:00 AM, 2:30 PM and 5:30 PM"
+              title={t('notifications.hydrationTitle')}
+              subtitle={t('notifications.hydrationSubtitle', {
+                first: formatClock(HABIT_TIMES.water[0]),
+                second: formatClock(HABIT_TIMES.water[1]),
+                third: formatClock(HABIT_TIMES.water[2]),
+              })}
               value={notifPrefs.waterReminders}
               onValueChange={(val) => void updateNotif({ waterReminders: val })}
               divider
@@ -161,8 +206,8 @@ export default function SettingsScreen() {
             <SwitchRow
               icon="sunny-outline"
               accent="skincare"
-              title="Morning skincare"
-              subtitle="Daily routine alert at 8:00 AM"
+              title={t('notifications.morningTitle')}
+              subtitle={t('notifications.morningSubtitle', { time: formatClock(HABIT_TIMES.morningSkincare) })}
               value={notifPrefs.morningSkincare}
               onValueChange={(val) => void updateNotif({ morningSkincare: val })}
               divider
@@ -170,8 +215,8 @@ export default function SettingsScreen() {
             <SwitchRow
               icon="moon-outline"
               accent="skincare"
-              title="Evening skincare"
-              subtitle="Night routine at 10:00 PM"
+              title={t('notifications.eveningTitle')}
+              subtitle={t('notifications.eveningSubtitle', { time: formatClock(HABIT_TIMES.eveningSkincare) })}
               value={notifPrefs.eveningSkincare}
               onValueChange={(val) => void updateNotif({ eveningSkincare: val })}
               divider
@@ -179,8 +224,8 @@ export default function SettingsScreen() {
             <SwitchRow
               icon="sparkles-outline"
               accent="ai"
-              title="Evening review"
-              subtitle="Workout and finance tallies at 8:00 PM"
+              title={t('notifications.reviewTitle')}
+              subtitle={t('notifications.reviewSubtitle', { time: formatClock(HABIT_TIMES.dailyReview) })}
               value={notifPrefs.dailyReview}
               onValueChange={(val) => void updateNotif({ dailyReview: val })}
               divider
@@ -188,16 +233,16 @@ export default function SettingsScreen() {
             <SwitchRow
               icon="card-outline"
               accent="finance"
-              title="Budget threshold alerts"
-              subtitle="When spending crosses a limit"
+              title={t('notifications.budgetTitle')}
+              subtitle={t('notifications.budgetSubtitle')}
               value={notifPrefs.budgetAlerts}
               onValueChange={(val) => void updateNotif({ budgetAlerts: val })}
               divider
             />
             <ListItem
               icon="paper-plane-outline"
-              title="Send a test notification"
-              subtitle="See how reminders look on this phone"
+              title={t('notifications.testTitle')}
+              subtitle={t('notifications.testSubtitle')}
               onPress={() => void sendTest()}
               chevron={false}
             />
@@ -205,22 +250,34 @@ export default function SettingsScreen() {
         ) : null}
       </Section>
 
-      <Section title="Security and privacy" footer={isAvailable ? undefined : 'Biometric hardware is not enrolled or available on this device.'}>
+      <Section title={t('security.title')} footer={isAvailable ? undefined : t('security.footerUnavailable')}>
         <SwitchRow
           icon={biometricIcon}
           accent="ai"
-          title={`Require ${biometricLabel}`}
-          subtitle={isAvailable ? 'Lock Aura360 when you open it or switch back to it' : 'Not available on this device'}
+          title={t('security.requireTitle', { method: biometricLabel })}
+          subtitle={isAvailable ? t('security.requireSubtitle') : t('security.unavailable')}
           value={isEnabled}
           disabled={!isAvailable}
-          onValueChange={(val) => void toggleBiometrics(val)}
+          onValueChange={(val) => void changeBiometrics(val)}
         />
       </Section>
 
-      <Section title="Data and sync">
+      <Section title={t('privacy.title')}>
+        <SwitchRow
+          icon="analytics-outline"
+          accent="ai"
+          title={t('privacy.shareTitle')}
+          subtitle={t('privacy.shareSubtitle')}
+          titleLines={2}
+          value={shareUsage}
+          onValueChange={(val) => void changeShareUsage(val)}
+        />
+      </Section>
+
+      <Section title={t('data.title')}>
         <ListItem
           icon={sync.online ? 'cloud-done-outline' : 'cloud-offline-outline'}
-          title={sync.online ? 'Online' : 'Offline'}
+          title={sync.online ? t('data.online') : t('data.offline')}
           subtitle={syncSubtitle}
           divider
         />
@@ -228,26 +285,26 @@ export default function SettingsScreen() {
           <Reveal>
             <ListItem
               icon="sync-outline"
-              title="Sync now"
-              subtitle={sync.replaying ? 'Syncing...' : 'Send the entries saved on this phone'}
+              title={t('data.syncNow')}
+              subtitle={sync.replaying ? t('data.syncing') : t('data.syncSubtitle')}
               disabled={sync.replaying}
               onPress={() => {
                 haptics.tap();
-                void syncNow();
+                runManualSync().catch(() => notify.error(t('data.syncFailed')));
               }}
               chevron={false}
               divider
             />
           </Reveal>
         ) : null}
-        <ListItem icon="server-outline" title="Server" subtitle={serverUrl || 'Default local host'} />
+        <ListItem icon="server-outline" title={t('data.server')} subtitle={serverUrl || t('data.defaultServer')} />
       </Section>
 
-      <Section title="About">
-        <ListItem icon="information-circle-outline" title="App version" meta={Constants.expoConfig?.version ?? '1.0.0'} />
+      <Section title={t('about.title')}>
+        <ListItem icon="information-circle-outline" title={t('about.version')} meta={Constants.expoConfig?.version ?? '1.0.0'} />
       </Section>
 
-      <Button title="Sign out" variant="destructive" leftIcon="log-out-outline" onPress={() => void confirmSignOut()} />
+      <Button title={t('signOut.button')} variant="destructive" leftIcon="log-out-outline" onPress={() => void confirmSignOut()} />
     </Screen>
   );
 }
