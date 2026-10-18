@@ -21,3 +21,24 @@ export function routineFor(products: SkincareProduct[], time: 'morning' | 'eveni
     .filter((p) => p.routineTime === time || p.routineTime === 'both')
     .sort((a, b) => (a.routineOrder ?? 99) - (b.routineOrder ?? 99));
 }
+
+export type SkincareStats = {
+  total: number;
+  needToBuy: number;
+  finished: number;
+  ratedCount: number;
+  /** Mean of the ratings that exist (unrated products are left out), or null when nothing is rated. */
+  averageRating: number | null;
+};
+
+/** Headline numbers for the shelf, derived only from the products. */
+export function skincareStats(products: SkincareProduct[]): SkincareStats {
+  const ratings = products.map((p) => p.rating).filter((r): r is number => typeof r === 'number' && r > 0);
+  return {
+    total: products.length,
+    needToBuy: products.filter((p) => p.status === 'need_to_buy').length,
+    finished: products.filter((p) => p.status === 'finished').length,
+    ratedCount: ratings.length,
+    averageRating: ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null,
+  };
+}

@@ -1,18 +1,70 @@
 {
+  "header": {
+    "eyebrow": "Routine and products"
+  },
   "sections": {
     "morning": "Morning ({{n}})",
     "evening": "Evening ({{n}})",
     "shelf": "Shelf ({{n}})"
   },
   "hero": {
-    "morningTitle": "Morning routine",
-    "eveningTitle": "Evening routine",
-    "doneCount": "{{done}} of {{total}} done",
-    "morningProgress": "Morning routine progress",
-    "eveningProgress": "Evening routine progress",
+    "chipRoutine": "Today's routine",
+    "chipShelf": "Your shelf",
+    "morningTitle": "Your morning",
+    "eveningTitle": "Your evening",
+    "routineAccent": "routine",
+    "shelfTitle": "Everything on",
+    "shelfAccent": "your shelf",
+    "progress": "{{done}} of {{total}} steps done.",
+    "complete": "Routine complete. Nice work.",
+    "noSteps": "No steps in this routine yet. Set products to it on the Aura360 web app.",
+    "shelfSummary_one": "{{count}} product on your shelf.",
+    "shelfSummary_other": "{{count}} products on your shelf.",
+    "shelfEmpty": "Nothing on your shelf yet.",
+    "switchMorning": "Morning",
+    "switchEvening": "Evening",
+    "viewShelf": "Shelf",
+    "switchMorningHint": "Shows the morning routine",
+    "switchEveningHint": "Shows the evening routine",
+    "viewShelfHint": "Shows every product on your shelf",
+    "chipSteps": "Steps",
+    "chipDone": "Done",
+    "chipToGo": "To go",
+    "spokenSteps": "{{count}} steps in this routine",
+    "spokenDone": "{{count}} steps done",
+    "spokenToGo": "{{count}} steps to go",
+    "loading": "Loading your routine"
+  },
+  "routine": {
+    "morningOverline": "Morning routine",
+    "eveningOverline": "Evening routine",
+    "title": "Step by step",
+    "subtitle": "Tap a step to tick it off. It stays ticked for this session.",
+    "progressLabel": "Routine progress",
+    "progressValue": "{{done}} of {{total}} steps",
+    "percent": "{{value}}%",
     "complete": "Routine complete. Nice work.",
     "remaining_one": "{{count}} step to go",
-    "remaining_other": "{{count}} steps to go"
+    "remaining_other": "{{count}} steps to go",
+    "stepsDone": "{{done}} of {{total}} steps done"
+  },
+  "shelf": {
+    "overline": "Your shelf",
+    "title": "All products",
+    "subtitle": "Brand, category, rating and what needs attention.",
+    "listLabel": "Products on your shelf"
+  },
+  "stats": {
+    "overline": "Overview",
+    "title": "Your shelf in numbers",
+    "subtitle": "Counted from the products you have added.",
+    "products": "Products",
+    "averageRating": "Average rating",
+    "ratedCaption_one": "From {{count}} rated product",
+    "ratedCaption_other": "From {{count}} rated products",
+    "noRatings": "No ratings yet",
+    "needToBuy": "Need to buy",
+    "finished": "Finished"
   },
   "errors": {
     "load": "Couldn't load your products"

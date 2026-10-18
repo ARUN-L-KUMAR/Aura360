@@ -266,4 +266,5 @@ export const SKINCARE_PRODUCTS: SkincareProduct[] = [
   { id: 'skin-6', productName: 'Retinol 0.3%', brand: 'Neutrogena', category: 'Treatment', bodyPart: 'face', routineTime: 'evening', routineOrder: 2, status: 'owned', rating: 4, notes: 'Three nights a week' },
   { id: 'skin-7', productName: 'Salicylic acid exfoliant', brand: 'Paula\'s Choice', category: 'Exfoliant', bodyPart: 'face', routineTime: 'weekly', routineOrder: null, status: 'need_to_buy', rating: null, notes: null },
   { id: 'skin-8', productName: 'Anti-dandruff shampoo', brand: 'Head & Shoulders', category: 'Hair care', bodyPart: 'hair', routineTime: 'optional', routineOrder: null, status: 'owned', rating: 3, notes: null },
+  { id: 'skin-9', productName: 'Rose water toner', brand: 'Plum', category: 'Toner', bodyPart: 'face', routineTime: 'optional', routineOrder: null, status: 'finished', rating: 4, notes: null },
 ];
