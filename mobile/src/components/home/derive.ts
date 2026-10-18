@@ -84,3 +84,8 @@ export function initialOf(label: string): string {
 export function firstNameOf(name: string | null | undefined): string {
   return (name ?? '').trim().split(/\s+/)[0] ?? '';
 }
+
+/** How many days of the series had any activity. */
+export function activeDays(series: readonly number[]): number {
+  return series.filter((value) => count(value) > 0).length;
+}

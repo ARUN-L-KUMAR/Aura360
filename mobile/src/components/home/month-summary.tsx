@@ -5,9 +5,8 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { Decor } from '@/components/home/decor';
 import { netOf } from '@/components/home/derive';
-import { Section } from '@/components/home/section';
+import { Section, SectionHead } from '@/components/home/section';
 import { Card } from '@/components/ui/card';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { AnimatedNumber } from '@/components/viz/animated-number';
 import { DonutChart } from '@/components/viz/donut-chart';
@@ -32,10 +31,10 @@ function LegendRow({ figure }: { figure: Figure }) {
       {/* The icon repeats the segment colour and tells the three apart without it. */}
       <Ionicons name={figure.icon} size={spacing.lg + 2} color={figure.fill} />
       <View style={{ flex: 1 }}>
-        <Text variant="caption" color="textSecondary" numberOfLines={1}>
+        <Text variant="overline" color="textSecondary" numberOfLines={1}>
           {figure.label}
         </Text>
-        <Text variant="label" weight="semiBold" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Text variant="label" weight="bold" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
           {compact(figure.value)}
         </Text>
       </View>
@@ -73,14 +72,15 @@ export const MonthSummary = memo(function MonthSummary({ month, index }: { month
 
   return (
     <Section index={index}>
-      <SectionHeader
+      <SectionHead
         title={t('month.title')}
+        description={t('month.description')}
         actionLabel={t('month.seeAll')}
         actionAccessibilityLabel={t('month.seeAllLabel')}
         onActionPress={() => router.push('/finance')}
       />
       <Card
-        gradient="finance"
+        rounded="xl"
         accessibilityLabel={spoken}
         accessibilityHint={t('month.cardHint')}
         onPress={() => {
@@ -90,7 +90,7 @@ export const MonthSummary = memo(function MonthSummary({ month, index }: { month
         style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: spacing.lg }}>
         <Decor>
           <DonutChart segments={segments} size={fontScale > LARGE_TEXT ? DONUT_SIZE_LARGE_TEXT : DONUT_SIZE} accent="finance" label={t('month.chartLabel')}>
-            <Text variant="caption" color="textSecondary" numberOfLines={1}>
+            <Text variant="overline" color="textSecondary" numberOfLines={1}>
               {t('month.net')}
             </Text>
             <AnimatedNumber value={net} format={compact} variant="label" weight="bold" color={net < 0 ? 'errorText' : 'successText'} />

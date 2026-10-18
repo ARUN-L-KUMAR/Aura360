@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  activeDays,
   activitySeries,
   dayDelta,
   firstNameOf,
@@ -86,4 +87,11 @@ test('initialOf and firstNameOf handle blanks', () => {
   assert.equal(firstNameOf('Asha Rao'), 'Asha');
   assert.equal(firstNameOf(null), '');
   assert.equal(firstNameOf('   '), '');
+});
+
+test('activeDays counts the days with any activity and ignores bad numbers', () => {
+  assert.equal(activeDays([]), 0);
+  assert.equal(activeDays([0, 0, 0]), 0);
+  assert.equal(activeDays([3, 0, 1, 0, 7, 0, 2]), 4);
+  assert.equal(activeDays([Number.NaN, -2, 1]), 1);
 });

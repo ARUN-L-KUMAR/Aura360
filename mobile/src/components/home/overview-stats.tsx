@@ -3,75 +3,104 @@ import { useRouter, type Href } from 'expo-router';
 import { memo, useMemo } from 'react';
 import { View } from 'react-native';
 
-import { activitySeries, dayDelta, sharePercent, todayIndexOf, totalEntries } from '@/components/home/derive';
-import { Decor } from '@/components/home/decor';
+import { activitySeries, dayDelta, sharePercent, todayIndexOf, totalEntries, type DayDelta } from '@/components/home/derive';
+import { Grid, gridCell } from '@/components/home/grid';
+import { IconTile } from '@/components/home/icon-tile';
 import { Section } from '@/components/home/section';
 import { Card } from '@/components/ui/card';
-import { SectionHeader } from '@/components/ui/section-header';
+import { withAlpha } from '@/components/ui/logic';
 import { Text } from '@/components/ui/text';
 import { AnimatedNumber } from '@/components/viz/animated-number';
-import { ProgressRing } from '@/components/viz/progress-ring';
-import { StatTile, type StatTileDelta } from '@/components/viz/stat-tile';
 import type { Dashboard } from '@/features/dashboard/use-dashboard';
-import { modules, type IconName } from '@/features/modules';
+import { modules, type IconName, type ModuleKey } from '@/features/modules';
 import { getDeviceLocale, useTranslation } from '@/i18n';
 import { todayIso } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
-import { layout, spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
-type GlanceModule = { key: 'finance' | 'fitness' | 'food'; icon: IconName };
+/** The web's `bg-emerald-950/30`-style pill: a faint wash, the text carries the colour. */
+const PILL_WASH = 0.14;
 
-const GLANCE: GlanceModule[] = [
+type StatKey = 'finance' | 'fitness' | 'food';
+
+const GLANCE: { key: StatKey; icon: IconName }[] = [
   { key: 'finance', icon: 'wallet-outline' },
   { key: 'fitness', icon: 'barbell-outline' },
   { key: 'food', icon: 'restaurant-outline' },
 ];
 
-const RING_SIZE = spacing.xxxl + spacing.lg; // 64
-/** Three tiles per row on a normal phone; they wrap (and grow) when text is large or the screen is narrow. */
-const TILE_MIN_WIDTH = layout.minTouchTarget * 2;
+/** What the pill in the card's corner says: a real change (total card) or the card's share of all entries. */
+type Pill = { icon?: IconName; text: string; tone: 'up' | 'down' | 'neutral' };
 
-type TileProps = { moduleKey: GlanceModule['key']; icon: IconName; value: number; percent: number; onOpen: (href: string) => void };
-
-/** One module headline: a ring for its share of all entries around the module icon, the count and the label. */
-const GlanceTile = memo(function GlanceTile({ moduleKey, icon, value, percent, onOpen }: TileProps) {
-  const { t } = useTranslation('home');
-  const { accent } = useTheme();
-  const a = accent(moduleKey);
-  const info = modules[moduleKey];
-  const label = t(`overview.${moduleKey}.label`);
-
+function TrendPill({ pill }: { pill: Pill }) {
+  const { colors } = useTheme();
+  const tone =
+    pill.tone === 'up'
+      ? { bg: withAlpha(colors.success, PILL_WASH), fg: colors.successText }
+      : pill.tone === 'down'
+        ? { bg: withAlpha(colors.error, PILL_WASH), fg: colors.errorText }
+        : { bg: colors.cardMuted, fg: colors.textSecondary };
   return (
-    <Card
-      accent={moduleKey}
-      padding="sm"
-      accessibilityLabel={t('overview.tileLabel', { label, value: value.toLocaleString(getDeviceLocale()), percent })}
-      accessibilityHint={t('overview.tileHint', { module: info.label })}
-      onPress={() => {
-        haptics.tap();
-        onOpen(info.href);
-      }}
-      style={{ flexGrow: 1, flexBasis: 0, minWidth: TILE_MIN_WIDTH, alignItems: 'center', gap: spacing.sm }}>
-      <Decor>
-        <ProgressRing value={percent} max={100} size={RING_SIZE} accent={moduleKey}>
-          <Ionicons name={icon} size={22} color={a.text} />
-        </ProgressRing>
-      </Decor>
-      <AnimatedNumber value={value} variant="title" />
-      <Text variant="caption" weight="medium" numberOfLines={2} style={{ textAlign: 'center' }}>
-        {label}
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs / 2,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xs / 2,
+        borderRadius: radius.pill,
+        backgroundColor: tone.bg,
+      }}>
+      {pill.icon ? <Ionicons name={pill.icon} size={12} color={tone.fg} /> : null}
+      <Text variant="overline" numeric style={{ color: tone.fg, letterSpacing: 0.4 }}>
+        {pill.text}
       </Text>
-      <Text variant="caption" color="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
-        {t('overview.share', { percent })}
-      </Text>
+    </View>
+  );
+}
+
+type StatCardProps = {
+  accent: ModuleKey;
+  icon: IconName;
+  label: string;
+  value: number;
+  pill?: Pill;
+  spoken: string;
+  hint?: string;
+  onPress?: () => void;
+};
+
+/** The web stat card: tinted icon tile and a pill on top, a tiny uppercase label, then the big number. */
+const StatCard = memo(function StatCard({ accent, icon, label, value, pill, spoken, hint, onPress }: StatCardProps) {
+  return (
+    <Card accessible accessibilityLabel={spoken} accessibilityHint={hint} onPress={onPress} padding="md" rounded="xl" style={[gridCell, { gap: spacing.lg }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm }}>
+        <IconTile icon={icon} accent={accent} />
+        {pill ? <TrendPill pill={pill} /> : null}
+      </View>
+      <View style={{ gap: spacing.xs }}>
+        <Text variant="overline" color="textSecondary" numberOfLines={2}>
+          {label}
+        </Text>
+        <AnimatedNumber value={value} variant="display" />
+      </View>
     </Card>
   );
 });
 
+/** Today against yesterday as a pill. A flat day has nothing worth a badge. */
+function deltaPill(change: DayDelta | null): Pill | undefined {
+  if (!change || change.direction === 'flat') return undefined;
+  const text = change.amount.toLocaleString(getDeviceLocale());
+  return change.direction === 'up' ? { icon: 'trending-up', text: `+${text}`, tone: 'up' } : { icon: 'trending-down', text: `-${text}`, tone: 'down' };
+}
+
 /**
- * Today at a glance: the month's activity total with its last-7-days line and a day-on-day change, then finance,
- * fitness and food, each as a ring (its share of all your entries) around the module icon with the count. Module tiles
- * open their module. Everything is computed from the dashboard payload.
+ * Four web-style stat cards from the dashboard payload: the month's activities (with today against yesterday as its
+ * trend) and finance, fitness and food entries (with their share of everything you have logged). No figure is invented:
+ * a card without a derivable change shows no trend.
  */
 export const OverviewStats = memo(function OverviewStats({ data, index }: { data: Dashboard; index: number }) {
   const { t } = useTranslation('home');
@@ -80,39 +109,53 @@ export const OverviewStats = memo(function OverviewStats({ data, index }: { data
   const total = useMemo(() => {
     const series = activitySeries(data.chart);
     const todayIndex = todayIndexOf(data.chart, todayIso());
-    const change = dayDelta(series, todayIndex);
-    const delta: StatTileDelta | undefined = change
-      ? { direction: change.direction, text: t('overview.total.delta', { value: change.amount.toLocaleString(getDeviceLocale()) }) }
-      : undefined;
-    return { series, delta, today: todayIndex >= 0 ? series[todayIndex] : 0 };
-  }, [data.chart, t]);
+    return { change: dayDelta(series, todayIndex), today: todayIndex >= 0 ? series[todayIndex] : 0 };
+  }, [data.chart]);
 
   const entries = totalEntries(data.counts);
-  const open = (href: string) => router.push(href as Href);
+  const format = (n: number) => n.toLocaleString(getDeviceLocale());
+  const totalLabel = t('overview.total.label');
+  const trendWord = total.change && total.change.direction !== 'flat' ? t(`overview.total.${total.change.direction}`, { value: format(total.change.amount) }) : null;
 
   return (
     <Section index={index}>
-      <SectionHeader title={t('overview.title')} />
-      <StatTile
-        label={t('overview.total.label')}
-        value={data.totalActivities}
-        icon="pulse-outline"
-        delta={total.delta}
-        sparkline={total.series}
-        chartLabel={t('overview.total.today', { count: total.today })}
-      />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-        {GLANCE.map((item) => (
-          <GlanceTile
-            key={item.key}
-            moduleKey={item.key}
-            icon={item.icon}
-            value={data.counts[item.key]}
-            percent={sharePercent(data.counts[item.key], entries)}
-            onOpen={open}
-          />
-        ))}
-      </View>
+      <Grid>
+        <StatCard
+          accent="ai"
+          icon="pulse-outline"
+          label={totalLabel}
+          value={data.totalActivities}
+          pill={deltaPill(total.change)}
+          spoken={t(trendWord ? 'overview.total.spoken' : 'overview.total.spokenFlat', {
+            label: totalLabel,
+            value: format(data.totalActivities),
+            trend: trendWord,
+            today: t('overview.total.today', { count: total.today }),
+          })}
+        />
+        {GLANCE.map((item) => {
+          const info = modules[item.key];
+          const label = t(`overview.${item.key}.label`);
+          const value = data.counts[item.key];
+          const percent = sharePercent(value, entries);
+          return (
+            <StatCard
+              key={item.key}
+              accent={item.key}
+              icon={item.icon}
+              label={label}
+              value={value}
+              pill={entries > 0 ? { text: `${percent}%`, tone: 'neutral' } : undefined}
+              spoken={t('overview.tileLabel', { label, value: format(value), percent })}
+              hint={t('overview.tileHint', { module: info.label })}
+              onPress={() => {
+                haptics.tap();
+                router.push(info.href as Href);
+              }}
+            />
+          );
+        })}
+      </Grid>
     </Section>
   );
 });

@@ -1,9 +1,8 @@
 import { useRouter, type Href } from 'expo-router';
 
-import { Section } from '@/components/home/section';
+import { Section, SectionHead } from '@/components/home/section';
 import { Card } from '@/components/ui/card';
 import { ListItem } from '@/components/ui/list-item';
-import { SectionHeader } from '@/components/ui/section-header';
 import type { IconName, ModuleKey } from '@/features/modules';
 import { useTranslation } from '@/i18n';
 
@@ -20,8 +19,8 @@ export function Shortcuts({ index }: { index: number }) {
   const router = useRouter();
   return (
     <Section index={index}>
-      <SectionHeader title={t('shortcuts.title')} />
-      <Card padding="none" style={{ overflow: 'hidden' }}>
+      <SectionHead title={t('shortcuts.title')} description={t('shortcuts.description')} />
+      <Card padding="none" rounded="xl" style={{ overflow: 'hidden' }}>
         {SHORTCUTS.map((shortcut, i) => (
           <ListItem
             key={shortcut.key}

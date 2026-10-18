@@ -1,17 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { memo } from 'react';
 import { View } from 'react-native';
 
-import { Section } from '@/components/home/section';
-import { Gradient } from '@/components/ui/gradient';
-import { withAlpha } from '@/components/ui/logic';
-import { PressableScale } from '@/components/ui/pressable-scale';
-import { SectionHeader } from '@/components/ui/section-header';
+import { Grid, gridCell } from '@/components/home/grid';
+import { IconTile } from '@/components/home/icon-tile';
+import { Section, SectionHead } from '@/components/home/section';
+import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import type { IconName, ModuleKey } from '@/features/modules';
 import { useTranslation } from '@/i18n';
-import { layout, radius, spacing, useTheme } from '@/theme';
+import { haptics } from '@/lib/haptics';
+import { layout, spacing } from '@/theme';
 
 type QuickAction = { key: 'note' | 'transaction' | 'meal' | 'workout'; icon: IconName; accent: ModuleKey; href: string };
 
@@ -22,73 +21,46 @@ const ACTIONS: QuickAction[] = [
   { key: 'workout', icon: 'barbell-outline', accent: 'fitness', href: '/fitness/workout' },
 ];
 
-const CHIP = layout.minTouchTarget;
-const ICON = spacing.xl + spacing.xs; // 28
-const WATERMARK = spacing.xxxl + spacing.xl; // 72
-/** Slightly deeper squish than a row: these are big, bold targets. */
-const PRESS_SCALE = 0.95;
-const CHIP_ALPHA = 0.2;
-const WATERMARK_ALPHA = 0.16;
-
-const QuickActionTile = memo(function QuickActionTile({ action, onPress }: { action: QuickAction; onPress: (href: string) => void }) {
+const QuickActionCard = memo(function QuickActionCard({ action, onPress }: { action: QuickAction; onPress: (href: string) => void }) {
   const { t } = useTranslation('home');
-  const { accent } = useTheme();
-  const a = accent(action.accent);
   const label = t(`quickActions.${action.key}.label`);
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={label}
+    <Card
+      accessibilityLabel={t('quickActions.cardLabel', { label, caption: t(`quickActions.${action.key}.caption`) })}
       accessibilityHint={t(`quickActions.${action.key}.hint`)}
-      haptic="tap"
-      scaleTo={PRESS_SCALE}
-      ringRadius={radius.lg}
-      onPress={() => onPress(action.href)}
-      style={{
-        flexGrow: 1,
-        flexBasis: '45%',
-        minHeight: layout.minTouchTarget * 2,
-        overflow: 'hidden',
-        gap: spacing.sm,
-        padding: spacing.md,
-        borderRadius: radius.lg,
-      }}>
-      {/* Solid accent that deepens along the diagonal; the foreground uses the accent's own on-colour. */}
-      <Gradient from={a.solid} to={a.text} direction="diagonal" />
-      <View pointerEvents="none" style={{ position: 'absolute', end: -spacing.sm, bottom: -spacing.sm, opacity: WATERMARK_ALPHA }}>
-        <Ionicons name={action.icon} size={WATERMARK} color={a.onSolid} />
+      onPress={() => {
+        haptics.tap();
+        onPress(action.href);
+      }}
+      padding="md"
+      rounded="xl"
+      style={[gridCell, { gap: spacing.md, minHeight: layout.minTouchTarget * 2 }]}>
+      <IconTile icon={action.icon} accent={action.accent} />
+      <View style={{ gap: spacing.xs / 2 }}>
+        <Text variant="label" weight="bold" numberOfLines={2}>
+          {label}
+        </Text>
+        <Text variant="caption" color="textSecondary" numberOfLines={2}>
+          {t(`quickActions.${action.key}.caption`)}
+        </Text>
       </View>
-      <View
-        style={{
-          width: CHIP,
-          height: CHIP,
-          borderRadius: radius.pill,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: withAlpha(a.onSolid, CHIP_ALPHA),
-        }}>
-        <Ionicons name={action.icon} size={ICON} color={a.onSolid} />
-      </View>
-      <Text variant="label" weight="semiBold" numberOfLines={2} style={{ color: a.onSolid }}>
-        {label}
-      </Text>
-    </PressableScale>
+    </Card>
   );
 });
 
-/** One-tap entry points to the forms people use most: bold accent tiles with a large icon and a press squish. */
+/** One-tap entry points to the forms people use most: web-style ring cards with a tinted icon tile and a bold label. */
 export const QuickActions = memo(function QuickActions({ index }: { index: number }) {
   const { t } = useTranslation('home');
   const router = useRouter();
   const open = (href: string) => router.push(href as Href);
   return (
     <Section index={index}>
-      <SectionHeader title={t('quickActions.title')} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+      <SectionHead title={t('quickActions.title')} description={t('quickActions.description')} />
+      <Grid>
         {ACTIONS.map((action) => (
-          <QuickActionTile key={action.key} action={action} onPress={open} />
+          <QuickActionCard key={action.key} action={action} onPress={open} />
         ))}
-      </View>
+      </Grid>
     </Section>
   );
 });

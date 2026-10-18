@@ -3,11 +3,10 @@ import { useRouter } from 'expo-router';
 import { memo } from 'react';
 import { View } from 'react-native';
 
-import { Section } from '@/components/home/section';
+import { Section, SectionHead } from '@/components/home/section';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListItem } from '@/components/ui/list-item';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import type { DashboardTransaction } from '@/features/dashboard/use-dashboard';
 import type { IconName } from '@/features/modules';
@@ -49,7 +48,7 @@ const TransactionRow = memo(function TransactionRow({ tx, divider, onOpen }: { t
           style={{
             width: TILE,
             height: TILE,
-            borderRadius: radius.md,
+            borderRadius: radius.lg,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors[look.bg],
@@ -78,13 +77,14 @@ export const RecentTransactions = memo(function RecentTransactions({ transaction
   const openFinance = () => router.push('/finance');
   return (
     <Section index={index}>
-      <SectionHeader
+      <SectionHead
         title={t('recent.title')}
+        description={t('recent.description')}
         actionLabel={t('recent.seeAll')}
         actionAccessibilityLabel={t('recent.seeAllLabel')}
         onActionPress={() => router.push('/finance')}
       />
-      <Card padding="none" style={{ overflow: 'hidden' }}>
+      <Card padding="none" rounded="xl" style={{ overflow: 'hidden' }}>
         {transactions.length === 0 ? (
           <EmptyState
             icon="pulse-outline"

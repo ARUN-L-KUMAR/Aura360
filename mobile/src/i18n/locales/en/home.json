@@ -1,13 +1,4 @@
 {
-  "appBar": {
-    "search": "Search",
-    "notifications": "Notifications",
-    "switchToLight": "Switch to light mode",
-    "switchToDark": "Switch to dark mode",
-    "settings": "Open settings",
-    "title": "Home"
-  },
-  "greetingWithName": "{{greeting}}, {{name}}",
   "loading": "Loading dashboard",
   "error": {
     "title": "Couldn't load your dashboard"
@@ -20,27 +11,35 @@
     "title": "Quick actions",
     "note": {
       "label": "New note",
-      "hint": "Opens the note editor"
+      "hint": "Opens the note editor",
+      "caption": "Capture a thought or idea"
     },
     "transaction": {
       "label": "Transaction",
-      "hint": "Opens the add transaction form"
+      "hint": "Opens the add transaction form",
+      "caption": "Log income or spending"
     },
     "meal": {
       "label": "Log meal",
-      "hint": "Opens the meal form"
+      "hint": "Opens the meal form",
+      "caption": "Track what you eat"
     },
     "workout": {
       "label": "Workout",
-      "hint": "Opens the workout form"
-    }
+      "hint": "Opens the workout form",
+      "caption": "Record a training session"
+    },
+    "description": "Jump straight into the things you log most",
+    "cardLabel": "{{label}}. {{caption}}"
   },
   "overview": {
-    "title": "Today at a glance",
     "total": {
-      "label": "Activities this month",
-      "delta": "{{value}} vs yesterday",
-      "today": "{{count}} today"
+      "label": "Total activities",
+      "today": "{{count}} today",
+      "up": "Up {{value}} on yesterday",
+      "down": "Down {{value}} on yesterday",
+      "spoken": "{{label}}: {{value}}, {{trend}}, {{today}}",
+      "spokenFlat": "{{label}}: {{value}}, {{today}}"
     },
     "finance": {
       "label": "Finance logs"
@@ -51,7 +50,6 @@
     "food": {
       "label": "Meals tracked"
     },
-    "share": "{{percent}}% of entries",
     "tileLabel": "{{label}}: {{value}}, {{percent}} percent of all your entries",
     "tileHint": "Opens {{module}}"
   },
@@ -66,7 +64,8 @@
     "net": "Net",
     "chartLabel": "Income, spending and investments this month",
     "cardLabel": "{{title}}. {{income}}, {{expense}}, {{investment}}. {{net}}",
-    "cardHint": "Opens finance"
+    "cardHint": "Opens finance",
+    "description": "Income, spending and investments so far"
   },
   "activity": {
     "title": "Activity overview",
@@ -108,7 +107,8 @@
     },
     "investment": "Invested",
     "transfer": "Transfer",
-    "rowHint": "Opens finance"
+    "rowHint": "Opens finance",
+    "description": "Your latest income and spending"
   },
   "shortcuts": {
     "title": "Shortcuts",
@@ -123,7 +123,8 @@
     "ask": {
       "label": "Ask Aura",
       "subtitle": "Questions about your data"
-    }
+    },
+    "description": "Quick ways into your goals and insights"
   },
   "module": {
     "notFound": {
@@ -132,9 +133,14 @@
     }
   },
   "hero": {
+    "title": "Welcome back,",
+    "fallbackName": "there",
+    "subtitle_one": "You've completed {{count}} activity this month. Keep up the great momentum!",
+    "subtitle_other": "You've completed {{count}} activities this month. Keep up the great momentum!",
+    "subtitleIdle": "Your notes, money, health and habits in one place.",
     "today": "Today",
     "streak": "Day streak",
-    "month": "This month",
+    "week": "Active this week",
     "statLabel": "{{label}}: {{value}}"
   }
 }
