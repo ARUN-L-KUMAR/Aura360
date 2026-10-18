@@ -109,7 +109,12 @@ function pickScreens(names) {
   const picked = new Map();
   for (const wanted of names) {
     if (wanted.startsWith('/')) {
-      const name = wanted.replace(/[?#].*$/, '').replace(/^\/|\/$/g, '').replace(/\//g, '-') || 'home';
+      // Name = path plus query, so /finance?section=ledger and /finance?section=budgets get separate screenshots.
+      const name =
+        wanted
+          .replace(/^\/|\/$/g, '')
+          .replace(/[^a-zA-Z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'home';
       picked.set(name, { name, route: wanted });
       continue;
     }

@@ -1,4 +1,4 @@
-import type { Balance, Budget, BudgetSummary, Goal, PaymentMethod, Transaction, TransactionType } from '@/features/finance/types';
+import type { Balance, Budget, BudgetSummary, Goal, PaymentMethod, Subscription, SubscriptionsResponse, Transaction, TransactionType } from '@/features/finance/types';
 import { OVERALL_BUDGET } from '@/features/finance/types';
 import { primary, success, tertiary, warning } from '@/theme/colors';
 
@@ -202,6 +202,41 @@ export function buildGoals() {
       totalSaved,
       totalRemaining: Math.max(0, totalTarget - totalSaved),
       overallProgress: Math.round((totalSaved / totalTarget) * 100),
+    },
+  };
+}
+
+/** A handful of recurring payments, some due within a week, for the Subscriptions section. */
+export function buildSubscriptions(): SubscriptionsResponse {
+  const sub = (id: string, name: string, amount: number, billingCycle: Subscription['billingCycle'], category: string, dueIn: number, paymentMethod: PaymentMethod): Subscription => ({
+    id,
+    name,
+    amount,
+    billingCycle,
+    category,
+    status: 'active',
+    nextBillingDate: isoOf(daysAgo(-dueIn)),
+    paymentMethod,
+    autoRenew: true,
+    notes: null,
+    daysRemaining: dueIn,
+  });
+  const data: Subscription[] = [
+    sub('sub-1', 'Netflix', 649, 'monthly', 'Entertainment', 3, 'card'),
+    sub('sub-2', 'Spotify', 119, 'monthly', 'Entertainment', 11, 'upi'),
+    sub('sub-3', 'iCloud 200 GB', 75, 'monthly', 'Utilities', 5, 'upi'),
+    sub('sub-4', 'Cult.fit membership', 3600, 'quarterly', 'Health', 27, 'bank_transfer'),
+    sub('sub-5', 'Notion Plus', 4800, 'yearly', 'Productivity', 84, 'card'),
+  ];
+  const monthly = (s: Subscription) => (s.billingCycle === 'weekly' ? s.amount * 4 : s.billingCycle === 'quarterly' ? s.amount / 3 : s.billingCycle === 'semi_annually' ? s.amount / 6 : s.billingCycle === 'yearly' ? s.amount / 12 : s.amount);
+  return {
+    success: true,
+    data,
+    summary: {
+      totalMonthlyBurnRate: Math.round(data.reduce((sum, s) => sum + monthly(s), 0)),
+      activeCount: data.length,
+      dueIn7DaysCount: data.filter((s) => (s.daysRemaining ?? 99) <= 7).length,
+      upcomingRenewals: data.filter((s) => (s.daysRemaining ?? 99) <= 30),
     },
   };
 }

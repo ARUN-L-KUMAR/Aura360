@@ -1,4 +1,5 @@
 import { buildSeed, type PreviewSeed } from './seed';
+import { buildSubscriptions } from './seed-finance';
 
 /**
  * Answers the app's `/api/...` calls with the sample data, in place of the server. It sits on `fetch`, so the real
@@ -49,6 +50,8 @@ function route(seed: PreviewSeed, path: string, params: URLSearchParams): Respon
       const { data, summary } = seed.budgetsFor(params.get('month') ?? seed.currentMonth);
       return json({ success: true, data, summary });
     }
+    case '/api/finance/subscriptions':
+      return json(buildSubscriptions());
     case '/api/finance/goals':
       return json({ success: true, ...seed.goals });
     case '/api/fitness':
