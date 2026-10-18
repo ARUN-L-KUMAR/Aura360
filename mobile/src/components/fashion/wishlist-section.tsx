@@ -4,12 +4,11 @@ import Animated from 'react-native-reanimated';
 
 import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
-import { SectionHeader } from '@/components/ui/section-header';
+import { IconTile } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import { useUpdateItemStatus } from '@/features/fashion/hooks';
 import type { FashionItem } from '@/features/fashion/types';
@@ -18,6 +17,7 @@ import { formatMoney } from '@/lib/format';
 import { useNotify } from '@/providers/notify';
 import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { Heading, RingCard } from './section-kit';
 import {
   GRID_COLUMNS,
   HeaderStack,
@@ -143,22 +143,25 @@ export function WishlistSection({ items, state, header, onSelectItem, onAddNew }
           {header}
           <StaleNotice state={state} />
           {!gate && wishlistItems.length > 0 ? (
-            <Card variant="tinted" accent="fashion" style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-                <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
-                  {t('wishlist.budgetTitle')}
-                </Text>
+            <RingCard accessible accessibilityLabel={`${t('wishlist.budgetA11y', { amount: formatMoney(totalBudget) })}, ${t('wishlist.itemCount', { count: wishlistItems.length })}`} style={{ gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm }}>
+                <IconTile icon="wallet-outline" accent="fashion" />
                 <Tag label={t('wishlist.itemCount', { count: wishlistItems.length })} accent="fashion" />
               </View>
-              <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={t('wishlist.budgetA11y', { amount: formatMoney(totalBudget) })}>
-                {formatMoney(totalBudget)}
-              </Text>
-              <Text variant="caption" color="textSecondary">
-                {t('wishlist.budgetHint')}
-              </Text>
-            </Card>
+              <View style={{ gap: spacing.xs }}>
+                <Text variant="overline" color="textMuted">
+                  {t('wishlist.budgetTitle')}
+                </Text>
+                <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1}>
+                  {formatMoney(totalBudget)}
+                </Text>
+                <Text variant="caption" color="textMuted">
+                  {t('wishlist.budgetHint')}
+                </Text>
+              </View>
+            </RingCard>
           ) : null}
-          {!gate && wishlistItems.length > 0 ? <SectionHeader title={t('wishlist.saved')} count={wishlistItems.length} /> : null}
+          {!gate && wishlistItems.length > 0 ? <Heading overline={t('wishlist.overline')} title={t('wishlist.saved')} count={wishlistItems.length} /> : null}
         </HeaderStack>
       }
       ListEmptyComponent={empty}

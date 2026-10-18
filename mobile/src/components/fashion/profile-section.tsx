@@ -4,12 +4,10 @@ import { View, type TextInput } from 'react-native';
 import { failureMessage } from '@/components/finance/failure-message';
 import { RefreshError } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { ChipGroup, Chip } from '@/components/ui/chip';
 import { ErrorState, errorKindFromError } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -19,6 +17,7 @@ import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
 import { layout, spacing } from '@/theme';
 import { fitLabel, styleLabel } from './labels';
+import { Heading, RingCard } from './section-kit';
 import { parseAmount, useListPadding } from './shared';
 
 interface ProfileSectionProps {
@@ -159,8 +158,8 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
 
   return (
     <>
-      <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title={t('profile.sizesTitle')} subtitle={t('profile.sizesHint')} />
+      <RingCard padding="sm">
+        <Heading overline={t('profile.sizesOverline')} title={t('profile.sizesTitle')} subtitle={t('profile.sizesHint')} />
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Input
             ref={sizeTopRef}
@@ -220,10 +219,10 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
           </Text>
           <Segmented options={fitOptions} value={preferredFitBottom} onChange={setPreferredFitBottom} accessibilityLabel={t('profile.fitBottom')} />
         </View>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title={t('profile.measuresTitle')} subtitle={t('profile.measuresHint')} />
+      <RingCard padding="sm">
+        <Heading overline={t('profile.measuresOverline')} title={t('profile.measuresTitle')} subtitle={t('profile.measuresHint')} />
         <Segmented options={unitOptions} value={unit} onChange={setUnit} accessibilityLabel={t('profile.unit')} />
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
@@ -246,16 +245,16 @@ function ProfileForm({ profile }: { profile: FashionProfileData | undefined }) {
             </View>
           ))}
         </View>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('profile.styleTitle')} subtitle={t('profile.styleHint')} />
+      <RingCard padding="sm">
+        <Heading overline={t('profile.styleOverline')} title={t('profile.styleTitle')} subtitle={t('profile.styleHint')} />
         <ChipGroup>
           {STYLE_OPTIONS.map((tag) => (
             <Chip key={tag} label={styleLabel(tag)} accent="fashion" selected={styleTags.includes(tag)} onPress={() => toggleStyleTag(tag)} />
           ))}
         </ChipGroup>
-      </Card>
+      </RingCard>
 
       <View style={{ marginTop: layout.itemGap }}>
         <Button title={t('profile.save')} leftIcon="checkmark" loading={saveProfile.isPending} onPress={handleSave} />

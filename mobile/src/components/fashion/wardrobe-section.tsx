@@ -10,6 +10,7 @@ import { CATEGORIES, type FashionItem } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
 import { spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { Heading } from './section-kit';
 import { categoryLabel } from './labels';
 import {
   GRID_COLUMNS,
@@ -125,6 +126,7 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
           <StaleNotice state={state} />
           {!gate && hasWardrobe ? (
             <View style={{ gap: spacing.md }}>
+              <Heading overline={t('wardrobe.overline')} title={t('sections.wardrobe')} subtitle={t('wardrobe.subtitle')} />
               <SearchBar value={search} onChangeText={setSearch} debounceMs={200} placeholder={t('wardrobe.search')} accessibilityLabel={t('wardrobe.searchA11y')} returnKeyType="search" autoCorrect={false} />
 
               <ChipRow>

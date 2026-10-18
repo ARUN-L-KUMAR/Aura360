@@ -1,4 +1,23 @@
+import type Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
+
 import { i18n } from '@/i18n';
+
+/** The picture stand-in for an item without a photo: one glyph per category. */
+export function categoryIcon(value?: string | null): ComponentProps<typeof Ionicons>['name'] {
+  switch ((value ?? '').toLowerCase()) {
+    case 'bottoms':
+      return 'layers-outline';
+    case 'shoes':
+      return 'footsteps-outline';
+    case 'outerwear':
+      return 'snow-outline';
+    case 'accessories':
+      return 'watch-outline';
+    default:
+      return 'shirt-outline';
+  }
+}
 
 /**
  * Names for the values the API stores in English ("Tops", "Summer", "needs_wash"). The stored value never changes;

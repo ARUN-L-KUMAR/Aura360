@@ -41,9 +41,9 @@ function FashionCardBase({ item, onPress }: FashionCardProps) {
     .join(', ');
 
   return (
-    <Card padding="none" onPress={() => onPress(item)} accessibilityLabel={spoken} accessibilityHint={t('card.open')} style={{ flex: 1, overflow: 'hidden' }}>
-      <View style={{ aspectRatio: 1 }}>
-        <FashionImage uri={item.imageUrl} style={{ flex: 1 }} />
+    <Card padding="none" rounded="xl" onPress={() => onPress(item)} accessibilityLabel={spoken} accessibilityHint={t('card.open')} style={{ flex: 1, overflow: 'hidden' }}>
+      <View style={{ aspectRatio: 4 / 5 }}>
+        <FashionImage uri={item.imageUrl} category={item.category} iconSize={44} style={{ flex: 1 }} />
 
         {item.isFavorite ? (
           <View
@@ -68,15 +68,15 @@ function FashionCardBase({ item, onPress }: FashionCardProps) {
       </View>
 
       <View style={{ padding: spacing.md, gap: spacing.xs, minHeight: layout.minTouchTarget }}>
-        <Text variant="label" weight="semiBold" numberOfLines={1}>
+        <Text variant="label" weight="bold" numberOfLines={1}>
           {item.name}
         </Text>
-        <Text variant="caption" color="textSecondary" numberOfLines={1}>
+        <Text variant="caption" color="textMuted" numberOfLines={1}>
           {subtitle}
         </Text>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, flexWrap: 'wrap' }}>
-          <Text variant="label" weight="semiBold" numeric>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, flexWrap: 'wrap', marginTop: spacing.xs }}>
+          <Text variant="label" weight="bold" numeric>
             {price ?? t('common.dash')}
           </Text>
           {wears !== null ? <Tag label={t('card.worn', { n: wears })} accent="fashion" /> : item.status === 'wishlist' ? <Tag label={t('card.tagWishlist')} accent="fashion" /> : null}

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 
 import { ItemDetailSheet } from '@/components/fashion/item-detail-sheet';
@@ -15,12 +15,15 @@ import type { FashionItem } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
 
 type Section = 'overview' | 'wardrobe' | 'wishlist' | 'outfits' | 'planner' | 'fit';
+const SECTIONS: Section[] = ['overview', 'wardrobe', 'wishlist', 'outfits', 'planner', 'fit'];
 
 export default function FashionTabScreen() {
   const router = useRouter();
   const { t } = useTranslation('fashion');
-  const [section, setSection] = useState<Section>('overview');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // `/fashion?section=wardrobe` opens a section, `&item=<id>` its detail sheet (links and the preview harness use them).
+  const { section: requested, item: requestedItem } = useLocalSearchParams<{ section?: string; item?: string }>();
+  const [section, setSection] = useState<Section>(SECTIONS.includes(requested as Section) ? (requested as Section) : 'overview');
+  const [selectedId, setSelectedId] = useState<string | null>(requestedItem ?? null);
 
   const itemsQuery = useFashionItems();
   const { data, isPending, fetchStatus, isError, error, isRefetching, refetch } = itemsQuery;
@@ -71,6 +74,8 @@ export default function FashionTabScreen() {
     }
   }, [router, section]);
 
+  const handlePlanOutfit = useCallback(() => router.push('/fashion/outfit'), [router]);
+
   const handleEditItem = useCallback(
     (item: FashionItem) => {
       router.push({ pathname: '/fashion/add', params: { id: item.id } });
@@ -89,6 +94,7 @@ export default function FashionTabScreen() {
           header={header}
           onSelectItem={handleSelect}
           onAddNew={handleOpenAdd}
+          onPlanOutfit={handlePlanOutfit}
           onGoToWardrobe={() => setSection('wardrobe')}
           onGoToWishlist={() => setSection('wishlist')}
           onGoToLaundry={() => setSection('planner')}

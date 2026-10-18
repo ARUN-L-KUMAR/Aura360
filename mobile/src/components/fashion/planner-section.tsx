@@ -4,21 +4,20 @@ import Animated from 'react-native-reanimated';
 
 import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipRow, Tag } from '@/components/ui/chip';
 import { Divider } from '@/components/ui/divider';
 import { EmptyState } from '@/components/ui/empty-state';
-import { ListItem } from '@/components/ui/list-item';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
-import { SectionHeader } from '@/components/ui/section-header';
+import { IconTile } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import { useSaveFashionItem } from '@/features/fashion/hooks';
 import { SEASONS, type FashionItem } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
-import { spacing } from '@/theme';
+import { layout, spacing } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { Heading, RingCard } from './section-kit';
 import { categoryLabel, seasonLabel } from './labels';
 import {
   GRID_COLUMNS,
@@ -51,28 +50,30 @@ type LaundryRowProps = { item: FashionItem; first: boolean; busy: boolean; onMar
 const LaundryRow = memo(function LaundryRow({ item, first, busy, onMarkClean }: LaundryRowProps) {
   const { t } = useTranslation('fashion');
   const motion = useListMotion();
+  const subtitle = t('planner.itemSubtitle', { category: categoryLabel(item.category), colour: item.color || t('planner.noColour') });
   return (
     <Animated.View {...motion}>
       {!first ? <Divider /> : null}
-      <ListItem
-        title={item.name}
-        subtitle={t('planner.itemSubtitle', { category: categoryLabel(item.category), colour: item.color || t('planner.noColour') })}
-        icon="water-outline"
-        accent="fashion"
-        accessible={false}
-        trailing={
-          <Button
-            title={t('planner.markClean')}
-            size="sm"
-            variant="secondary"
-            leftIcon="checkmark"
-            fullWidth={false}
-            loading={busy}
-            accessibilityLabel={t('planner.markCleanA11y', { name: item.name })}
-            onPress={() => onMarkClean(item)}
-          />
-        }
-      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, minHeight: layout.minTouchTarget }}>
+        <View accessible accessibilityLabel={`${item.name}, ${subtitle}`} style={{ flex: 1, gap: 2 }}>
+          <Text variant="label" weight="bold" numberOfLines={2}>
+            {item.name}
+          </Text>
+          <Text variant="caption" color="textMuted" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+        <Button
+          title={t('planner.markClean')}
+          size="sm"
+          variant="secondary"
+          leftIcon="checkmark"
+          fullWidth={false}
+          loading={busy}
+          accessibilityLabel={t('planner.markCleanA11y', { name: item.name })}
+          onPress={() => onMarkClean(item)}
+        />
+      </View>
     </Animated.View>
   );
 });
@@ -176,35 +177,30 @@ export function PlannerSection({ items, state, header, onSelectItem, onAddNew }:
           <StaleNotice state={state} />
 
           {!gate ? (
-            <Card variant="outlined" padding="sm" style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-                <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
-                  {t('planner.laundryTitle')}
-                </Text>
+            <RingCard style={{ gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm }}>
+                <IconTile icon="water-outline" accent="fashion" />
                 <Tag
                   label={laundryItems.length === 0 ? t('planner.allClean') : t('planner.toWash', { count: laundryItems.length })}
                   icon={laundryItems.length === 0 ? 'checkmark-circle' : 'water-outline'}
                   accent="fashion"
                 />
               </View>
+              <Heading overline={t('planner.careOverline')} title={t('planner.laundryTitle')} subtitle={laundryItems.length === 0 ? t('planner.allCleanBody') : undefined} />
 
-              {laundryItems.length === 0 ? (
-                <Text variant="body" color="textSecondary">
-                  {t('planner.allCleanBody')}
-                </Text>
-              ) : (
+              {laundryItems.length > 0 ? (
                 <View>
                   {laundryItems.map((item, index) => (
                     <LaundryRow key={item.id} item={item} first={index === 0} busy={busyId === item.id} onMarkClean={handleMarkClean} />
                   ))}
                 </View>
-              )}
-            </Card>
+              ) : null}
+            </RingCard>
           ) : null}
 
           {!gate && wardrobeItems.length > 0 ? (
             <View style={{ gap: spacing.md }}>
-              <SectionHeader title={t('planner.seasonalTitle')} subtitle={t('planner.seasonalHint')} />
+              <Heading overline={t('planner.seasonalOverline')} title={t('planner.seasonalTitle')} subtitle={t('planner.seasonalHint')} />
               <ChipRow>
                 {SEASONS.map((season) => (
                   <Chip key={season} label={seasonLabel(season)} accent="fashion" selected={activeSeason === season} count={seasonCounts.get(season) ?? 0} onPress={() => setActiveSeason(season)} />

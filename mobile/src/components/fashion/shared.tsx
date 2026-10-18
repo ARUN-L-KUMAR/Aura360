@@ -4,13 +4,15 @@ import { useState, type ReactElement, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { OfflineState, RefreshError } from '@/components/finance/load-error';
+import { accentTint } from '@/components/ui/accent-tint';
 import { Card } from '@/components/ui/card';
 import { ErrorState, errorKindFromError } from '@/components/ui/error-state';
 import { useScreenPadding } from '@/components/ui/screen';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import type { FashionItem } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
-import { layout, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
+import { categoryIcon } from './labels';
 
 /** Gap between grid cells and rows. */
 export const GRID_GAP = spacing.md;
@@ -77,15 +79,19 @@ export function FashionImage({
   uri,
   style,
   iconSize = 32,
+  category,
   accessibilityLabel,
 }: {
   uri?: string | null;
   style?: StyleProp<ViewStyle>;
   iconSize?: number;
+  /** Chooses the glyph shown when there is no picture. */
+  category?: string | null;
   /** Set when the picture is the content (the detail view); leave off when the parent already names the piece. */
   accessibilityLabel?: string;
 }) {
-  const { colors, accent, reduceMotion } = useTheme();
+  const { colors, scheme, accent, reduceMotion } = useTheme();
+  const fashion = accent('fashion');
   const [loadedUri, setLoadedUri] = useState<string | null>(null);
   const [failedUri, setFailedUri] = useState<string | null>(null);
 
@@ -117,7 +123,13 @@ export function FashionImage({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-          <Ionicons name="shirt-outline" size={iconSize} color={accent('fashion').text} />
+          {iconSize >= 32 ? (
+            <View style={{ width: iconSize * 1.9, height: iconSize * 1.9, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center', backgroundColor: accentTint(fashion, scheme, 0.14) }}>
+              <Ionicons name={categoryIcon(category)} size={iconSize} color={fashion.text} />
+            </View>
+          ) : (
+            <Ionicons name={categoryIcon(category)} size={iconSize} color={fashion.text} />
+          )}
         </View>
       ) : null}
     </View>

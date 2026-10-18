@@ -1,20 +1,19 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useRouter } from 'expo-router';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, View, type TextInput } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { categoryLabel, occasionLabel } from '@/components/fashion/labels';
+import { Heading, RingCard } from '@/components/fashion/section-kit';
 import { FashionImage, SpacerCell, isSpacer, itemsGate, type GridEntry } from '@/components/fashion/shared';
 import { failureMessage } from '@/components/finance/failure-message';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { Input } from '@/components/ui/input';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useFashionItems, useSaveOutfit } from '@/features/fashion/hooks';
 import { OCCASIONS, type FashionItem } from '@/features/fashion/types';
@@ -53,13 +52,13 @@ const PieceTile = memo(function PieceTile({ item, selected, onToggle }: TileProp
       style={{
         flex: 1,
         overflow: 'hidden',
-        borderRadius: radius.md,
+        borderRadius: radius.lg,
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? a.solid : colors.border,
         backgroundColor: colors.card,
       }}>
       <View style={{ aspectRatio: 1 }}>
-        <FashionImage uri={item.imageUrl} style={{ flex: 1 }} iconSize={24} />
+        <FashionImage uri={item.imageUrl} category={item.category} style={{ flex: 1 }} iconSize={24} />
         <View
           style={{
             position: 'absolute',
@@ -163,7 +162,7 @@ export default function FashionOutfitModal() {
   const count = selectedItemIds.length;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior="padding">
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Stack.Screen options={{ title: t('look.title') }} />
       <FlatList
         data={gate ? [] : entries}
@@ -183,7 +182,8 @@ export default function FashionOutfitModal() {
           <View style={{ gap: layout.sectionGap, marginBottom: layout.itemGap }}>
             {saveError ? <ErrorState size="inline" title={t('errors.saveTitle')} message={saveError} /> : null}
 
-            <Card style={{ gap: spacing.lg }}>
+            <RingCard>
+              <Heading overline={t('look.overline')} title={t('look.detailsTitle')} />
               <Input
                 label={t('look.nameLabel')}
                 placeholder={t('look.namePlaceholder')}
@@ -222,10 +222,10 @@ export default function FashionOutfitModal() {
                 autoCapitalize="sentences"
                 returnKeyType="done"
               />
-            </Card>
+            </RingCard>
 
             <View style={{ gap: spacing.sm }}>
-              <SectionHeader title={t('look.pickTitle')} subtitle={t('look.pickHint')} count={count} />
+              <Heading overline={t('look.pickOverline')} title={t('look.pickTitle')} subtitle={t('look.pickHint')} count={count} />
               {piecesError ? (
                 <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                   <Ionicons name="alert-circle" size={16} color={colors.errorText} />
