@@ -3,10 +3,10 @@ import { memo, type ComponentProps } from 'react';
 import { View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
-import { withAlpha } from '@/components/ui/logic';
+import { IconTile, TrendPill } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import { useTranslation } from '@/i18n';
-import { radius, spacing, useTheme, type ModuleKey } from '@/theme';
+import { spacing, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -29,21 +29,11 @@ export interface StatCardProps {
 
 /** Label, big tabular number, optional trend and subtitle. Reads as one element for screen readers. */
 function StatCardImpl({ label, value, subtitle, icon, accent, color, trend, onPress }: StatCardProps) {
-  const { colors, accent: accentFor } = useTheme();
   const { t } = useTranslation('common');
-  const a = accent ? accentFor(accent) : null;
-  const iconColor = a ? a.text : (color ?? colors.textSecondary);
-  const tile = a ? a.soft : color ? withAlpha(color, 0.14) : colors.cardMuted;
 
   const direction = trend ? (trend.isPositive === undefined ? 'flat' : trend.isPositive ? 'up' : 'down') : null;
-  const trendTone =
-    direction === 'up'
-      ? { bg: colors.successContainer, fg: colors.onSuccessContainer, icon: 'arrow-up' as const, word: 'up' as const }
-      : direction === 'down'
-        ? { bg: colors.errorContainer, fg: colors.onErrorContainer, icon: 'arrow-down' as const, word: 'down' as const }
-        : { bg: colors.cardMuted, fg: colors.textSecondary, icon: 'remove' as const, word: 'unchanged' as const };
-
-  const spoken = [`${label}: ${value}`, trend ? t(`statCard.${trendTone.word}`, { value: trend.value }) : null, subtitle].filter(Boolean).join(', ');
+  const word = direction === 'up' ? 'up' : direction === 'down' ? 'down' : 'unchanged';
+  const spoken = [`${label}: ${value}`, trend ? t(`statCard.${word}`, { value: trend.value }) : null, subtitle].filter(Boolean).join(', ');
 
   return (
     <Card
@@ -53,48 +43,28 @@ function StatCardImpl({ label, value, subtitle, icon, accent, color, trend, onPr
       accent={accent}
       tintColor={accent ? undefined : color}
       padding="sm"
-      style={{ gap: spacing.xs }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-        <Text variant="caption" weight="medium" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
-          {label}
-        </Text>
-        {icon ? (
-          <View style={{ width: spacing.xxl, height: spacing.xxl, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: tile }}>
-            <Ionicons name={icon} size={18} color={iconColor} />
-          </View>
-        ) : null}
-      </View>
-
-      <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {value}
-      </Text>
-
-      {subtitle || trend ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          {trend ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 2,
-                paddingHorizontal: spacing.sm,
-                paddingVertical: 2,
-                borderRadius: radius.pill,
-                backgroundColor: trendTone.bg,
-              }}>
-              <Ionicons name={trendTone.icon} size={12} color={trendTone.fg} />
-              <Text variant="caption" weight="semiBold" numeric style={{ color: trendTone.fg }}>
-                {trend.value}
-              </Text>
-            </View>
-          ) : null}
-          {subtitle ? (
-            <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
-              {subtitle}
-            </Text>
-          ) : null}
+      rounded="lg"
+      style={{ gap: spacing.md }}>
+      {icon || trend ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm }}>
+          {icon ? <IconTile icon={icon} accent={accent} color={color} /> : <View />}
+          {trend && direction ? <TrendPill text={trend.value} direction={direction} good={trend.isPositive} /> : null}
         </View>
       ) : null}
+
+      <View style={{ gap: spacing.xs }}>
+        <Text variant="overline" color="textMuted" numberOfLines={2}>
+          {label}
+        </Text>
+        <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          {value}
+        </Text>
+        {subtitle ? (
+          <Text variant="caption" color="textSecondary" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
     </Card>
   );
 }

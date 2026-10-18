@@ -4,6 +4,7 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { APP_BAR_HEIGHT, LargeTitle, TopAppBar, useCollapsingHeader } from '@/components/ui/app-bar';
+import { useHasHeader } from '@/components/ui/chrome';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
@@ -43,7 +44,9 @@ type Props<T> = {
 export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, extraData, initialNumToRender = 8, windowSize = 9 }: Props<T>) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = insets.top + APP_BAR_HEIGHT;
+  // Inside the tabs a persistent header already shows the page and the status-bar space, so no second app bar here.
+  const hasHeader = useHasHeader();
+  const headerHeight = hasHeader ? 0 : insets.top + APP_BAR_HEIGHT;
   const padding = useScreenPadding(false, headerHeight);
   const { scrollHandler, scrollY } = useCollapsingHeader();
   const refreshControl = useRefreshControl({ onRefresh, refreshing, progressViewOffset: headerHeight });
@@ -64,7 +67,7 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
         columnWrapperStyle={numColumns > 1 ? { gap: layout.itemGap } : undefined}
         ListHeaderComponent={
           <View style={{ gap: layout.itemGap, marginBottom: spacing.xs }}>
-            <LargeTitle title={title} subtitle={subtitle} scrollY={scrollY} />
+            <LargeTitle title={title} subtitle={subtitle} scrollY={hasHeader ? undefined : scrollY} />
             {header}
           </View>
         }
@@ -82,7 +85,7 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
         maxToRenderPerBatch={initialNumToRender}
       />
       {fab}
-      <TopAppBar title={title} scrollY={scrollY} large />
+      {hasHeader ? null : <TopAppBar title={title} scrollY={scrollY} large />}
     </View>
   );
 }

@@ -32,36 +32,37 @@ interface TabConfig {
   module?: ModuleKey;
   activeIcon: IconName;
   inactiveIcon: IconName;
-  /** Module whose accent colours this tab. Home uses the brand accent. */
-  accent: ModuleKey;
 }
 
 const TAB_CONFIG: Record<string, TabConfig> = {
-  index: { activeIcon: 'home', inactiveIcon: 'home-outline', accent: 'ai' },
-  finance: { module: 'finance', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', accent: 'finance' },
-  fashion: { module: 'fashion', activeIcon: 'shirt', inactiveIcon: 'shirt-outline', accent: 'fashion' },
-  saved: { module: 'saved', activeIcon: 'bookmark', inactiveIcon: 'bookmark-outline', accent: 'saved' },
-  fitness: { module: 'fitness', activeIcon: 'barbell', inactiveIcon: 'barbell-outline', accent: 'fitness' },
-  food: { module: 'food', activeIcon: 'restaurant', inactiveIcon: 'restaurant-outline', accent: 'food' },
-  skincare: { module: 'skincare', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline', accent: 'skincare' },
-  notes: { module: 'notes', activeIcon: 'document-text', inactiveIcon: 'document-text-outline', accent: 'notes' },
-  time: { module: 'time', activeIcon: 'time', inactiveIcon: 'time-outline', accent: 'time' },
-  ai: { module: 'ai', activeIcon: 'chatbubble-ellipses', inactiveIcon: 'chatbubble-ellipses-outline', accent: 'ai' },
+  index: { activeIcon: 'home', inactiveIcon: 'home-outline' },
+  finance: { module: 'finance', activeIcon: 'wallet', inactiveIcon: 'wallet-outline' },
+  fashion: { module: 'fashion', activeIcon: 'shirt', inactiveIcon: 'shirt-outline' },
+  saved: { module: 'saved', activeIcon: 'bookmark', inactiveIcon: 'bookmark-outline' },
+  fitness: { module: 'fitness', activeIcon: 'barbell', inactiveIcon: 'barbell-outline' },
+  food: { module: 'food', activeIcon: 'restaurant', inactiveIcon: 'restaurant-outline' },
+  skincare: { module: 'skincare', activeIcon: 'sparkles', inactiveIcon: 'sparkles-outline' },
+  notes: { module: 'notes', activeIcon: 'document-text', inactiveIcon: 'document-text-outline' },
+  time: { module: 'time', activeIcon: 'time', inactiveIcon: 'time-outline' },
+  ai: { module: 'ai', activeIcon: 'chatbubble-ellipses', inactiveIcon: 'chatbubble-ellipses-outline' },
 };
 
-/** How many tabs fit on screen at once: 5 whole tabs and half of the next, so the strip visibly continues. */
-const VISIBLE_TABS = 5.5;
-const MIN_ITEM_WIDTH = 64;
+/** How many tabs fit on screen at once: 5 whole tabs and a quarter of the next, so the strip visibly continues. */
+const VISIBLE_TABS = 5.25;
+const MIN_ITEM_WIDTH = 68;
 const MAX_ITEM_WIDTH = 96;
 const ITEM_HEIGHT = 56;
 /** How far the strip widens with the system font size (labels are capped at 1.2x). */
 const MAX_LABEL_SCALE = 1.2;
-const PILL_HEIGHT = 32;
-const PILL_INSET = spacing.sm;
-const ICON_SIZE = 22;
+const PILL_HEIGHT = 52;
+const PILL_INSET = 3;
+const ICON_SIZE = 21;
+const ICON_SLOT = 24;
 /** The sliding pill stretches by this much per tab of distance still to travel, up to `MAX_STRETCH_TABS` tabs. */
 const STRETCH_PER_TAB = 0.06;
 const MAX_STRETCH_TABS = 3;
+/** Breathing room at both ends of the strip, so the first and last pills do not touch the screen edge. */
+const STRIP_PAD = spacing.sm;
 const FADE_STEPS = 6;
 const FADE_STEP_WIDTH = spacing.xs;
 
@@ -71,11 +72,12 @@ export type AppTabsProps = BottomTabBarProps & {
 };
 
 /**
- * Bottom navigation for the ten module tabs: a glass strip that scrolls sideways. Every tab has an icon and a label,
- * the active one is accent-coloured with a sliding indicator pill, and the strip keeps it centred on screen.
+ * Bottom navigation for the ten module tabs, styled like the web's mobile nav: a quiet bar with a hairline ring on top,
+ * muted icons over tiny uppercase labels, and the active tab as a solid primary pill (white on dark, deep slate on light)
+ * that slides between tabs. The strip scrolls sideways and keeps the active tab centred on screen.
  */
 export function AppTabs({ state, descriptors, navigation, insets, badges }: AppTabsProps) {
-  const { colors, accent: accentFor, elevation, reduceMotion } = useTheme();
+  const { colors, scheme, elevation, reduceMotion } = useTheme();
   const { t } = useTranslation('common');
   const { width: viewport, fontScale } = useWindowDimensions();
   const glassActive = useGlassSupported();
@@ -85,14 +87,14 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   const labelScale = Math.min(MAX_LABEL_SCALE, Math.max(1, fontScale));
   const itemWidth = Math.round(Math.min(MAX_ITEM_WIDTH * labelScale, Math.max(MIN_ITEM_WIDTH * labelScale, viewport / VISIBLE_TABS)));
   const contentWidth = count * itemWidth;
-  const maxScroll = Math.max(0, contentWidth - viewport);
+  const maxScroll = Math.max(0, contentWidth + STRIP_PAD * 2 - viewport);
   const pillWidth = itemWidth - PILL_INSET * 2;
 
   const scrollRef = useRef<Animated.ScrollView>(null);
   const placed = useRef(false);
   const sized = useRef(false);
   const scrollX = useSharedValue(0);
-  const initialPill = state.index * itemWidth + PILL_INSET;
+  const initialPill = STRIP_PAD + state.index * itemWidth + PILL_INSET;
   const sign = directionSign();
   const pillX = useSharedValue(initialPill);
   const pillTarget = useSharedValue(initialPill);
@@ -104,12 +106,12 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
   // Geometry is derived from the window width, not from onLayout refs, so it can never be stale: slide the pill and
   // bring the active tab to the middle of the strip whenever the route (or the width) changes.
   const scrollToActive = (animated: boolean) => {
-    const to = Math.min(maxScroll, Math.max(0, state.index * itemWidth + itemWidth / 2 - viewport / 2));
+    const to = Math.min(maxScroll, Math.max(0, STRIP_PAD + state.index * itemWidth + itemWidth / 2 - viewport / 2));
     scrollRef.current?.scrollTo({ x: to, animated: animated && !reduceMotion });
   };
 
   useEffect(() => {
-    const toPill = state.index * itemWidth + PILL_INSET;
+    const toPill = STRIP_PAD + state.index * itemWidth + PILL_INSET;
     const first = !placed.current;
     placed.current = true;
     pillTarget.value = toPill;
@@ -132,14 +134,15 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
     opacity: interpolate(scrollX.value, [maxScroll - spacing.lg, maxScroll], [1, 0], Extrapolation.CLAMP),
   }));
 
-  const activeConfig = TAB_CONFIG[state.routes[state.index]?.name ?? ''];
-  const activePill = accentFor(activeConfig?.accent ?? 'ai');
-
   return (
     <GlassSurface
       accessibilityRole="tablist"
-      // Level-3 shadow on the opaque fallback (Android, older iOS, reduce transparency); real glass is translucent.
-      style={[styles.bar, { paddingBottom: Math.max(insets?.bottom ?? 0, spacing.sm) }, glassActive ? null : elevation(3)]}>
+      // The web's bar: a hairline ring on top, no shadow in dark mode; a soft lift on the opaque fallback in light mode.
+      style={[
+        styles.bar,
+        { paddingBottom: Math.max(insets?.bottom ?? 0, spacing.sm), borderTopWidth: 1, borderTopColor: colors.border },
+        glassActive || scheme === 'dark' ? null : elevation(2),
+      ]}>
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -155,10 +158,10 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
         }}
         keyboardShouldPersistTaps="handled"
         // Don't snap or paginate: a free-scrolling strip is easiest to flick, and centring happens on selection.
-        contentContainerStyle={{ width: contentWidth, minHeight: ITEM_HEIGHT }}>
+        contentContainerStyle={{ width: contentWidth + STRIP_PAD * 2, paddingHorizontal: STRIP_PAD, minHeight: ITEM_HEIGHT }}>
         <Animated.View
           pointerEvents="none"
-          style={[styles.pill, { width: pillWidth, backgroundColor: activePill.soft }, pillStyle]}
+          style={[styles.pill, { width: pillWidth, backgroundColor: colors.primary }, pillStyle]}
         />
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -167,10 +170,8 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
           const config: TabConfig = known ?? {
             activeIcon: 'ellipse',
             inactiveIcon: 'ellipse-outline',
-            accent: 'ai',
           };
-          const tint = accentFor(config.accent);
-          const color = focused ? tint.text : colors.textMuted;
+          const color = focused ? colors.primaryText : colors.textMuted;
 
           const badge = badges?.[route.name] ?? (typeof options.tabBarBadge === 'number' ? options.tabBarBadge : undefined);
           const title = known ? (known.module ? modules[known.module].short : t('tabs.home')) : (options.title ?? route.name);
@@ -205,7 +206,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
                   </View>
                 ) : null}
               </View>
-              <Text variant="caption" weight={focused ? 'semiBold' : 'medium'} color={color} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+              <Text variant="overline" color={color} numberOfLines={1} maxFontSizeMultiplier={1.2} style={styles.label}>
                 {title}
               </Text>
             </PressableScale>
@@ -253,22 +254,23 @@ const styles = StyleSheet.create({
   },
   pill: {
     position: 'absolute',
-    top: spacing.xs,
+    top: 0,
     start: 0,
     height: PILL_HEIGHT,
-    borderRadius: radius.pill,
+    borderRadius: radius.lg,
   },
   item: {
-    minHeight: ITEM_HEIGHT,
-    paddingTop: spacing.xs,
-    alignItems: 'center',
-    gap: 2,
-  },
-  iconSlot: {
     height: PILL_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
+  iconSlot: {
+    height: ICON_SLOT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { letterSpacing: 0.5 },
   badge: {
     position: 'absolute',
     top: 0,

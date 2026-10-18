@@ -56,7 +56,8 @@ function Orb({ color, opacity, style }: { color: string; opacity: number; style:
 function ActionButton({ action }: { action: HeroAction }) {
   const { colors, elevation } = useTheme();
   const solid = (action.variant ?? 'solid') === 'solid';
-  const textColor = solid ? colors.primaryText : colors.onHero;
+  // The hero is dark in both themes, so the solid button is always white with dark text (never the theme primary).
+  const textColor = solid ? colors.heroSurface : colors.onHero;
   return (
     <PressableScale
       accessibilityRole="button"
@@ -67,6 +68,9 @@ function ActionButton({ action }: { action: HeroAction }) {
       onPress={action.onPress}
       style={[
         {
+          // Two buttons share a row equally; on a very narrow screen they wrap onto two full-width rows.
+          flexGrow: 1,
+          flexBasis: layout.minTouchTarget * 3,
           minHeight: layout.minTouchTarget + spacing.md,
           borderRadius: radius.lg,
           paddingHorizontal: spacing.xl,
@@ -74,7 +78,7 @@ function ActionButton({ action }: { action: HeroAction }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: spacing.sm,
-          backgroundColor: solid ? colors.primary : colors.heroChip,
+          backgroundColor: solid ? colors.onHero : colors.heroChip,
           borderWidth: solid ? 0 : 1,
           borderColor: colors.heroChipBorder,
         },

@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
-import { AccentGradient } from '@/components/ui/gradient';
+import { Gradient } from '@/components/ui/gradient';
 import { readableOn as readableColor, withAlpha } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { neutral, radius, spacing, useTheme, type ModuleKey } from '@/theme';
@@ -8,7 +8,7 @@ import { neutral, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 export type CardVariant = 'flat' | 'outlined' | 'elevated' | 'tinted';
 export type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
-const PADDING: Record<CardPadding, number> = { none: 0, sm: spacing.md, md: spacing.lg, lg: spacing.xl };
+const PADDING: Record<CardPadding, number> = { none: 0, sm: spacing.lg, md: 20, lg: spacing.xl };
 
 export { withAlpha };
 
@@ -22,9 +22,9 @@ export type CardProps = ViewProps & {
   variant?: CardVariant;
   /** Module accent used by the `tinted` variant (and for the pressed ring). Defaults to the brand colour. */
   accent?: ModuleKey;
-  /** Inner padding. Default `md` (16). */
+  /** Inner padding: sm 16, md 20 (default), lg 24. */
   padding?: CardPadding;
-  /** Corner radius token or number. Default `lg`. */
+  /** Corner radius token or number. Default `xl` (the web's rounded-3xl). */
   rounded?: keyof typeof radius | number;
   /** Makes the whole card a button with scale feedback. */
   onPress?: () => void;
@@ -49,7 +49,7 @@ export function Card({
   variant = 'outlined',
   accent,
   padding = 'md',
-  rounded = 'lg',
+  rounded = 'xl',
   onPress,
   onLongPress,
   disabled,
@@ -64,37 +64,47 @@ export function Card({
   const { colors, scheme, accent: accentFor, elevation } = useTheme();
   const borderRadius = typeof rounded === 'number' ? rounded : radius[rounded];
 
+  const dark = scheme === 'dark';
+  // The web card: a hairline ring on the card surface. No shadow in dark mode; a whisper of elevation in light.
   let surface: ViewStyle;
+  /** Accent wash drawn over the surface (dark tinted cards stay near-black and only glow faintly). */
+  let tint: string | null = null;
   switch (variant) {
     case 'flat':
       surface = { backgroundColor: colors.cardMuted, borderWidth: 0 };
       break;
     case 'elevated':
-      surface = { backgroundColor: colors.surfaceRaised, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderSubtle, ...elevation(2) };
+      surface = { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, ...(dark ? null : elevation(2)) };
       break;
     case 'tinted': {
       const a = accent ? accentFor(accent) : null;
-      surface = {
-        backgroundColor: a ? a.soft : colors.primaryContainer,
-        borderWidth: 1,
-        borderColor: a ? a.border : colors.border,
-      };
+      if (a) {
+        // A near-neutral card with a faint module wash and ring, not a coloured block.
+        surface = { backgroundColor: colors.card, borderWidth: 1, borderColor: withAlpha(a.solid, dark ? 0.3 : 0.25), ...(dark ? null : elevation(1)) };
+        tint = withAlpha(a.solid, dark ? 0.08 : 0.06);
+      } else {
+        surface = { backgroundColor: colors.primaryContainer, borderWidth: 1, borderColor: colors.border };
+      }
       break;
     }
     default:
-      surface = { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border };
+      surface = { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, ...(dark ? null : elevation(1)) };
   }
   if (tintColor) {
-    surface = { ...surface, borderWidth: 1, borderColor: withAlpha(tintColor, scheme === 'dark' ? 0.4 : 0.3) };
+    surface = { ...surface, borderWidth: 1, borderColor: withAlpha(tintColor, dark ? 0.4 : 0.3) };
   }
 
-  const containerStyle: StyleProp<ViewStyle> = [surface, { borderRadius, padding: PADDING[padding] }, gradient ? { overflow: 'hidden' } : null, style];
-  const wash = gradient ? (
-    <AccentGradient accent={gradient} />
+  const containerStyle: StyleProp<ViewStyle> = [surface, { borderRadius, padding: PADDING[padding] }, gradient || tint ? { overflow: 'hidden' } : null, style];
+  const gradientAccent = gradient ? accentFor(gradient) : null;
+  const wash = gradientAccent ? (
+    // Subtle: the module colour fading to nothing, not a coloured card.
+    <Gradient from={withAlpha(gradientAccent.solid, dark ? 0.16 : 0.1)} to={withAlpha(gradientAccent.solid, 0)} />
+  ) : tint ? (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
   ) : tintColor ? (
     <View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, { borderRadius, backgroundColor: withAlpha(tintColor, scheme === 'dark' ? 0.12 : 0.06) }]}
+      style={[StyleSheet.absoluteFill, { borderRadius, backgroundColor: withAlpha(tintColor, dark ? 0.12 : 0.06) }]}
     />
   ) : null;
 
@@ -113,8 +123,14 @@ export function Card({
         accessibilityState={{ disabled: !!disabled }}
         accessible
         style={containerStyle}>
-        {wash}
-        {children}
+        {({ pressed }) => (
+          <>
+            {wash}
+            {children}
+            {/* Pressed: the ring gets stronger, as on the web's hover. */}
+            {pressed ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius, borderWidth: 1, borderColor: colors.borderStrong }]} /> : null}
+          </>
+        )}
       </PressableScale>
     );
   }

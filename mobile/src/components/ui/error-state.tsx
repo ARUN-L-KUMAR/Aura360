@@ -90,7 +90,7 @@ export function ErrorState({ kind, error, title, message, icon, scene, onRetry, 
             alignItems: 'center',
             gap: spacing.md,
             padding: spacing.md,
-            borderRadius: radius.md,
+            borderRadius: radius.lg,
             borderWidth: 1,
             borderColor: colors.errorBorder,
             backgroundColor: colors.errorContainer,
@@ -126,7 +126,7 @@ export function ErrorState({ kind, error, title, message, icon, scene, onRetry, 
           style={{
             width: 72,
             height: 72,
-            borderRadius: radius.full,
+            borderRadius: radius.xl,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: spacing.xs,
@@ -135,7 +135,7 @@ export function ErrorState({ kind, error, title, message, icon, scene, onRetry, 
           <Ionicons name={icon ?? presetIcon} size={32} color={colors.onErrorContainer} />
         </View>
       )}
-      <Text variant="title" style={{ textAlign: 'center' }}>
+      <Text variant="title" weight="bold" style={{ textAlign: 'center' }}>
         {heading}
       </Text>
       <Text variant="body" color="textSecondary" style={{ textAlign: 'center', maxWidth: 320 }}>

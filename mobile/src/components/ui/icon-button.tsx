@@ -107,7 +107,7 @@ export function IconButton({
 const DOT = spacing.sm + spacing.xs; // 12
 
 const styles = StyleSheet.create({
-  box: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  box: { borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: spacing.xs, end: spacing.xs, width: DOT, height: DOT, borderRadius: radius.pill, borderWidth: 2 },
-  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.pill, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.lg, borderWidth: 2 },
 });

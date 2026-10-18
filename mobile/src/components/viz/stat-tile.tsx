@@ -1,16 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
+import type { Ionicons } from '@expo/vector-icons';
 import { memo, type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
+import { IconTile, TILE_SIZE, TrendPill } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import { AnimatedNumber } from '@/components/viz/animated-number';
 import { MiniBars } from '@/components/viz/mini-bars';
 import { Sparkline } from '@/components/viz/sparkline';
-import { useVizTones } from '@/components/viz/tones';
 import { useTranslation } from '@/i18n';
-import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
+import { layout, spacing, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -58,24 +58,20 @@ export type StatTileProps = {
   accessibilityLabel?: string;
 };
 
-const CHIP = spacing.xxl;
-const CHIP_ICON = spacing.lg + 2;
-const DELTA_ICON = spacing.md;
+const CHIP = TILE_SIZE;
 const CHART_HEIGHT = spacing.xxl;
 
 function StatTileImpl({ label, value, format, icon, accent, delta, sparkline, bars, highlightIndex, chartLabel, onPress, loading, accessibilityLabel }: StatTileProps) {
-  const { colors } = useTheme();
   const { t } = useTranslation('common');
-  const tones = useVizTones(accent);
 
   if (loading) {
     return (
-      <Card padding="sm" style={{ minHeight: layout.minTouchTarget }}>
+      <Card padding="sm" rounded="lg" style={{ minHeight: layout.minTouchTarget }}>
         <SkeletonGroup style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-            <Skeleton shape="line" width="40%" />
             <Skeleton shape="box" width={CHIP} height={CHIP} />
           </View>
+          <Skeleton shape="line" width="40%" />
           <Skeleton shape="box" width="60%" height={spacing.xl} />
           <Skeleton shape="box" height={CHART_HEIGHT} />
         </SkeletonGroup>
@@ -85,15 +81,6 @@ function StatTileImpl({ label, value, format, icon, accent, delta, sparkline, ba
 
   const valueText = typeof value === 'number' ? (format ? format(value) : String(value)) : typeof value === 'string' ? value : null;
   const good = delta ? (delta.good ?? (delta.direction === 'up' ? true : delta.direction === 'down' ? false : undefined)) : undefined;
-  const deltaTone =
-    delta === undefined
-      ? null
-      : good === true
-        ? { bg: colors.successContainer, fg: colors.onSuccessContainer }
-        : good === false
-          ? { bg: colors.errorContainer, fg: colors.onErrorContainer }
-          : { bg: colors.cardMuted, fg: colors.textSecondary };
-  const deltaIcon: IconName = delta?.direction === 'up' ? 'arrow-up' : delta?.direction === 'down' ? 'arrow-down' : 'remove';
   const deltaWord = delta?.direction === 'up' ? 'up' : delta?.direction === 'down' ? 'down' : 'unchanged';
 
   const spoken =
@@ -101,37 +88,19 @@ function StatTileImpl({ label, value, format, icon, accent, delta, sparkline, ba
     [valueText === null ? label : `${label}: ${valueText}`, delta ? t(`statCard.${deltaWord}`, { value: delta.text }) : null, chartLabel].filter(Boolean).join(', ');
 
   return (
-    <Card accessible accessibilityLabel={spoken} onPress={onPress} accent={accent} padding="sm" style={{ gap: spacing.sm, minHeight: layout.minTouchTarget }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-        <Text variant="caption" weight="medium" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
+    <Card accessible accessibilityLabel={spoken} onPress={onPress} accent={accent} padding="sm" rounded="lg" style={{ gap: spacing.md, minHeight: layout.minTouchTarget }}>
+      {icon || delta ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm }}>
+          {icon ? <IconTile icon={icon} accent={accent} /> : <View />}
+          {delta ? <TrendPill text={delta.text} direction={delta.direction} good={good} /> : null}
+        </View>
+      ) : null}
+
+      <View style={{ gap: spacing.xs }}>
+        <Text variant="overline" color="textMuted" numberOfLines={2}>
           {label}
         </Text>
-        {icon ? (
-          <View style={{ width: CHIP, height: CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: tones.soft }}>
-            <Ionicons name={icon} size={CHIP_ICON} color={tones.text} />
-          </View>
-        ) : null}
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
         {typeof value === 'number' ? <AnimatedNumber value={value} format={format} accessibilityLabel={valueText ?? undefined} /> : typeof value === 'string' ? <Text variant="headline" numeric numberOfLines={1}>{value}</Text> : value}
-        {delta && deltaTone ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.xs / 2,
-              paddingHorizontal: spacing.sm,
-              paddingVertical: spacing.xs / 2,
-              borderRadius: radius.pill,
-              backgroundColor: deltaTone.bg,
-            }}>
-            <Ionicons name={deltaIcon} size={DELTA_ICON} color={deltaTone.fg} />
-            <Text variant="caption" weight="semiBold" numeric style={{ color: deltaTone.fg }}>
-              {delta.text}
-            </Text>
-          </View>
-        ) : null}
       </View>
 
       {sparkline ? (

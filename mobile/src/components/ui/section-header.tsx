@@ -30,7 +30,7 @@ export function SectionHeader({ title, subtitle, count, actionLabel, onActionPre
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: hasAction ? layout.minTouchTarget : undefined }, style]}>
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Text variant="title" accessibilityRole="header" numberOfLines={2} style={{ flexShrink: 1 }}>
+          <Text variant="title" weight="bold" accessibilityRole="header" numberOfLines={2} style={{ flexShrink: 1 }}>
             {title}
           </Text>
           {typeof count === 'number' ? (

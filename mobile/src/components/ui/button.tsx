@@ -16,17 +16,19 @@ import { instant } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
 import { haptics } from '@/lib/haptics';
+import { withAlpha } from '@/components/ui/logic';
 import { duration, layout, radius, spacing, spring, useTheme, type ThemeColors } from '@/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'destructive' | 'glass';
 /**
  * Legacy variants still accepted by the existing call sites. Mapping:
  *   'secondarySolid' -> solid secondary-brand fill (colors.secondary / secondaryText), kept as its own look
  *   'outline'        -> 'tertiary'    (bordered, transparent)
  *   'danger'         -> 'destructive' (colors.error / onError)
  * 'secondary' and 'ghost' keep their names but follow the v2 look (tonal brand container / brand-coloured text).
+ * 'glass' is the web's translucent white/10 button with a white/20 border, for hero and other always-dark surfaces.
  */
 export type LegacyButtonVariant = 'secondarySolid' | 'outline' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -61,7 +63,9 @@ const HEIGHT: Record<ButtonSize, number> = {
   md: spacing.xxxl, // 48
   lg: spacing.xxxl + spacing.sm, // 56
 };
-const PADDING_X: Record<ButtonSize, number> = { sm: spacing.md, md: spacing.lg, lg: spacing.xl };
+const PADDING_X: Record<ButtonSize, number> = { sm: spacing.md, md: spacing.lg + spacing.xs, lg: spacing.xl };
+/** rounded-xl on the small button, rounded-2xl on the rest. */
+const RADIUS: Record<ButtonSize, number> = { sm: radius.md, md: radius.lg, lg: radius.lg };
 const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 20 };
 /** The success check is a little larger than the icons beside a label. */
 const CHECK_SCALE = 1.25;
@@ -112,9 +116,12 @@ function paletteFor(variant: ButtonVariant | LegacyButtonVariant, c: ThemeColors
       return { bg: c.primaryContainer, fg: c.onPrimaryContainer, border: c.primaryContainer, pressedBg: c.primaryContainer };
     case 'secondarySolid':
       return { bg: c.secondary, fg: c.secondaryText, border: c.secondary, pressedBg: c.secondary };
+    case 'glass':
+      return { bg: c.heroChip, fg: c.onHero, border: c.heroChipBorder, pressedBg: withAlpha(c.onHero, 0.18) };
     case 'tertiary':
     case 'outline':
-      return { bg: 'transparent', fg: c.text, border: c.borderStrong, pressedBg: c.cardMuted };
+      // The web's outline button: a faint fill and a ring a step above the card border.
+      return { bg: withAlpha(c.text, 0.04), fg: c.text, border: withAlpha(c.text, 0.2), pressedBg: withAlpha(c.text, 0.1) };
     case 'ghost':
       return { bg: 'transparent', fg: c.primaryAccent, border: 'transparent', pressedBg: c.cardMuted };
     case 'destructive':
@@ -223,6 +230,7 @@ export function Button({
                   paddingHorizontal: PADDING_X[size],
                   backgroundColor: pressed ? palette.pressedBg : palette.bg,
                   borderColor: palette.border,
+                  borderRadius: RADIUS[size],
                 },
                 inner,
               ]}>
@@ -230,7 +238,7 @@ export function Button({
                 <View style={[styles.row, loading ? styles.hidden : null]}>
                   {leftIcon ? <Ionicons name={leftIcon} size={iconSize} color={palette.fg} /> : null}
                   {/* Two lines at most: a long label wraps at large font sizes instead of clipping. */}
-                  <Text variant={labelVariant} weight="semiBold" style={[styles.label, { color: palette.fg }]} numberOfLines={2}>
+                  <Text variant={labelVariant} weight="bold" style={[styles.label, { color: palette.fg }]} numberOfLines={2}>
                     {title}
                   </Text>
                   {rightIcon ? <Ionicons name={rightIcon} size={iconSize} color={palette.fg} /> : null}
@@ -242,7 +250,7 @@ export function Button({
                   <ActivityIndicator color={palette.fg} />
                 </View>
               ) : null}
-              {focused ? <View pointerEvents="none" style={[styles.ring, { borderColor: colors.focusRing }]} /> : null}
+              {focused ? <View pointerEvents="none" style={[styles.ring, { borderColor: colors.focusRing, borderRadius: RADIUS[size] }]} /> : null}
             </View>
           );
         }}

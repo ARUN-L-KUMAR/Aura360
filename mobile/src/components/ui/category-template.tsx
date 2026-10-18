@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { IconTile } from '@/components/ui/stat-parts';
 import { FloatingAction } from '@/components/ui/floating-action';
 import { Segmented } from '@/components/ui/segmented';
 import { Tabs } from '@/components/ui/tabs';
@@ -42,13 +43,13 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
   const showSwitcher = sections && sections.length > 1 && section !== undefined && onSectionChange;
 
   return (
-    <View style={{ gap: spacing.md }}>
+    <View style={{ gap: spacing.lg }}>
       <View accessibilityRole="header" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <View style={{ flex: 1, gap: spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: spacing.sm, height: spacing.sm, borderRadius: radius.pill, backgroundColor: a.solid }} />
-            <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1}>
-              {(eyebrow ?? info.description).toLocaleUpperCase()}
+            <View style={{ width: spacing.sm - 2, height: spacing.sm - 2, borderRadius: radius.pill, backgroundColor: a.solid }} />
+            <Text variant="overline" color="textMuted" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {eyebrow ?? info.description}
             </Text>
           </View>
           <Text variant="headline" numberOfLines={2}>
@@ -56,21 +57,7 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
           </Text>
         </View>
         {action}
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{
-            width: layout.minTouchTarget,
-            height: layout.minTouchTarget,
-            borderRadius: radius.lg,
-            backgroundColor: a.soft,
-            borderWidth: 1,
-            borderColor: a.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Ionicons name={info.icon} size={22} color={a.text} />
-        </View>
+        <IconTile icon={info.icon} accent={module} size={layout.minTouchTarget + spacing.xs} />
       </View>
       {showSwitcher ? (
         sections.length > 4 ? (

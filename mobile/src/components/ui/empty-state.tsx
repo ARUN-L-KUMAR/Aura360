@@ -4,6 +4,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { Illustration } from '@/components/illustrations/illustration';
+import { accentTint } from '@/components/ui/accent-tint';
 import { Button } from '@/components/ui/button';
 import { accentForScene, sceneForEmptyState } from '@/components/ui/empty-scenes';
 import { withAlpha } from '@/components/ui/logic';
@@ -73,12 +74,12 @@ export function EmptyState({
   color,
   style,
 }: EmptyStateProps) {
-  const { colors, accent: accentFor } = useTheme();
+  const { colors, scheme, accent: accentFor } = useTheme();
   const { t } = useTranslation('common');
   const motion = useBlockMotion();
   const a = accent ? accentFor(accent) : null;
   const iconColor = a ? a.text : (color ?? colors.textSecondary);
-  const tile = a ? a.soft : color ? withAlpha(color, 0.12) : colors.cardMuted;
+  const tile = a ? accentTint(a, scheme) : color ? withAlpha(color, 0.12) : colors.cardMuted;
 
   const artScene = illustration ? undefined : scene === null ? undefined : (scene ?? sceneForEmptyState(variant, icon));
   const heading = title ?? t(`emptyState.${variant}.title`);
@@ -113,7 +114,7 @@ export function EmptyState({
           style={{
             width: 72,
             height: 72,
-            borderRadius: radius.full,
+            borderRadius: radius.xl,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: spacing.xs,
@@ -123,7 +124,7 @@ export function EmptyState({
         </View>
       ))}
 
-      <Text variant="title" accessibilityRole="header" style={{ textAlign: 'center' }}>
+      <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
         {heading}
       </Text>
 
