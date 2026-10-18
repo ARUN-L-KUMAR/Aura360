@@ -1,22 +1,23 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { RingCard } from '@/components/fitness/section-kit';
+import { FoodHeading } from '@/components/food/food-kit';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard } from '@/components/ui/skeleton';
+import { IconTile } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
+import { AnimatedNumber } from '@/components/viz/animated-number';
 import { useParseMeal, useSaveMeals } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type MealType, type ParsedMeal, type ParsedMealItem } from '@/features/food/types';
 import { useErrorMessage } from '@/features/food/use-error-message';
-import { useTranslation } from '@/i18n';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
@@ -27,7 +28,7 @@ const EXAMPLE_KEYS = ['eggs', 'chicken', 'shake'] as const;
 const NUMERIC_KEYS = ['calories', 'protein', 'carbs', 'fats'] as const;
 
 export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged: () => void }) {
-  const { accent } = useTheme();
+  const { accent, colors } = useTheme();
   const notify = useNotify();
   const { t } = useTranslation('food');
   const errorMessage = useErrorMessage();
@@ -105,21 +106,11 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
     <Screen>
       {header}
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: accent('ai').soft, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="sparkles" size={20} color={accent('ai').text} />
-          </View>
+          <IconTile icon="sparkles" accent="ai" />
           <View style={{ flex: 1 }}>
-            <Text variant="title" accessibilityRole="header">
-              {t('aiLog.title')}
-            </Text>
-            <Text variant="caption" color="textSecondary">
-              {t('aiLog.subtitle')}
-            </Text>
+            <FoodHeading overline={t('aiLog.overline')} title={t('aiLog.title')} subtitle={t('aiLog.subtitle')} />
           </View>
         </View>
 
@@ -139,7 +130,7 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
         />
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label" color="textSecondary">
+          <Text variant="overline" color="textMuted">
             {t('aiLog.meal')}
           </Text>
           <ChipGroup>
@@ -150,42 +141,81 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
         </View>
 
         {!parsed ? (
-          <View style={{ gap: spacing.xs }}>
-            <Text variant="label" color="textSecondary">
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="overline" color="textMuted">
               {t('aiLog.tryExample')}
             </Text>
-            {EXAMPLE_KEYS.map((key) => {
-              const example = t(`aiLog.examples.${key}`);
-              return <ListItem key={key} icon="sparkles-outline" accent="ai" title={example} titleLines={2} accessibilityHint={t('aiLog.exampleHint')} onPress={() => setText(example)} chevron={false} />;
-            })}
+            <View style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+              {EXAMPLE_KEYS.map((key, index) => {
+                const example = t(`aiLog.examples.${key}`);
+                return (
+                  <ListItem
+                    key={key}
+                    icon="sparkles-outline"
+                    accent="ai"
+                    title={example}
+                    titleLines={2}
+                    divider={index < EXAMPLE_KEYS.length - 1}
+                    accessibilityHint={t('aiLog.exampleHint')}
+                    onPress={() => setText(example)}
+                    chevron={false}
+                  />
+                );
+              })}
+            </View>
           </View>
         ) : null}
 
         <Button title={parsed ? t('aiLog.analyseAgain') : t('aiLog.analyse')} leftIcon="sparkles" variant={parsed ? 'secondary' : 'primary'} onPress={analyse} loading={parse.isPending} />
-      </Card>
+      </RingCard>
 
       {parse.isPending ? <SkeletonCard lines={3} /> : null}
 
       {parsed && totals ? (
         <>
-          <Card variant="tinted" accent="food" style={{ gap: spacing.xs }}>
-            <Text variant="label" color="textSecondary">
+          <RingCard
+            accessible
+            accessibilityLabel={[
+              t('aiLog.estimatedTotal'),
+              t('units.kcal', { value: Math.round(totals.calories) }),
+              t('macros.proteinSpoken', { count: Math.round(totals.protein) }),
+              t('macros.carbsSpoken', { count: Math.round(totals.carbs) }),
+              t('macros.fatsSpoken', { count: Math.round(totals.fats) }),
+              parsed.summary,
+            ]
+              .filter(Boolean)
+              .join(', ')}
+            style={{ gap: spacing.md }}>
+            <Text variant="overline" style={{ color: accent('food').text }}>
               {t('aiLog.estimatedTotal')}
             </Text>
-            <Text variant="display" numeric style={{ color: accent('food').text }}>
-              {t('units.kcal', { value: Math.round(totals.calories) })}
-            </Text>
-            <Text variant="body" weight="semiBold" numeric>
-              {[t('macros.protein', { value: Math.round(totals.protein) }), t('macros.carbs', { value: Math.round(totals.carbs) }), t('macros.fats', { value: Math.round(totals.fats) })].join(' · ')}
-            </Text>
+            <AnimatedNumber value={Math.round(totals.calories)} format={(n) => t('units.kcal', { value: n.toLocaleString(getDeviceLocale()) })} variant="display" />
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {(
+                [
+                  { key: 'protein', label: t('rings.protein'), value: totals.protein },
+                  { key: 'carbs', label: t('rings.carbs'), value: totals.carbs },
+                  { key: 'fats', label: t('rings.fats'), value: totals.fats },
+                ] as const
+              ).map((macro) => (
+                <View key={macro.key} style={{ flex: 1, gap: spacing.xs, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.cardMuted }}>
+                  <Text variant="label" weight="bold" numeric numberOfLines={1}>
+                    {t('units.grams', { value: Math.round(macro.value) })}
+                  </Text>
+                  <Text variant="overline" color="textMuted" numberOfLines={1}>
+                    {macro.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
             {parsed.summary ? (
-              <Text variant="caption" color="textSecondary" style={{ marginTop: spacing.xs }}>
+              <Text variant="caption" color="textSecondary">
                 {parsed.summary}
               </Text>
             ) : null}
-          </Card>
+          </RingCard>
 
-          <SectionHeader title={t('aiLog.items')} count={parsed.items.length} subtitle={t('aiLog.itemsSubtitle')} />
+          <FoodHeading overline={t('aiLog.itemsOverline')} title={t('aiLog.items')} count={parsed.items.length} subtitle={t('aiLog.itemsSubtitle')} />
 
           {parsed.items.length === 0 ? (
             <Text variant="body" color="textSecondary">
@@ -194,7 +224,7 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
           ) : null}
 
           {parsed.items.map((item, index) => (
-            <Card key={index} style={{ gap: spacing.sm }}>
+            <RingCard key={index} style={{ gap: spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
                 <Input
                   containerStyle={{ flex: 1 }}
@@ -214,7 +244,7 @@ export function AiLogSection({ header, onLogged }: { header: ReactNode; onLogged
                   <NumberField key={key} label={t(`aiLog.fields.${key}`)} value={item[key] ?? 0} onChange={(value) => updateItem(index, { [key]: value })} />
                 ))}
               </View>
-            </Card>
+            </RingCard>
           ))}
 
           <Button

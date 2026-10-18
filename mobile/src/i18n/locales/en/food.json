@@ -1,7 +1,18 @@
 {
-  "sections": { "today": "Today", "ai": "AI log", "history": "History" },
-  "fab": { "logFood": "Log food" },
-  "actions": { "cancel": "Cancel", "delete": "Delete", "logFood": "Log food", "saveChanges": "Save changes" },
+  "sections": {
+    "today": "Today",
+    "ai": "AI log",
+    "history": "History"
+  },
+  "fab": {
+    "logFood": "Log food"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "logFood": "Log food",
+    "saveChanges": "Save changes"
+  },
   "errors": {
     "network": "Couldn't connect. Check your internet connection and try again.",
     "timeout": "That took too long. Try again in a moment.",
@@ -13,8 +24,18 @@
     "grams": "{{value}}g",
     "ml": "{{value}} ml"
   },
-  "mealTypes": { "breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner", "snack": "Snacks" },
-  "mealsLower": { "breakfast": "breakfast", "lunch": "lunch", "dinner": "dinner", "snack": "snacks" },
+  "mealTypes": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "dinner": "Dinner",
+    "snack": "Snacks"
+  },
+  "mealsLower": {
+    "breakfast": "breakfast",
+    "lunch": "lunch",
+    "dinner": "dinner",
+    "snack": "snacks"
+  },
   "macros": {
     "protein": "P {{value}}g",
     "carbs": "C {{value}}g",
@@ -36,9 +57,6 @@
     "protein": "Protein",
     "carbs": "Carbs",
     "fats": "Fats",
-    "kcalLeft": "kcal left",
-    "kcalOver": "kcal over",
-    "percentOfGoal": "{{value}}% of calorie goal",
     "ofTarget": "of {{value}}",
     "overSpoken_one": "{{count}} kilocalorie over",
     "overSpoken_other": "{{count}} kilocalories over",
@@ -47,7 +65,11 @@
     "ofGramsSpoken": "{{label}} {{current}} of {{target}} grams",
     "ofKcalSpoken": "{{label}} {{current}} of {{target}} kilocalories",
     "tileGramsSpoken": "{{label}}: {{current}} of {{target}} grams, {{pct}} percent",
-    "tileKcalSpoken": "{{label}}: {{current}} of {{target}} kilocalories, {{pct}} percent"
+    "percent": "{{value}}%",
+    "kcalOfTarget": "{{eaten}} of {{target}} kcal",
+    "kcalLeftOf": "{{value}} kcal left",
+    "kcalOverBy": "{{value}} kcal over",
+    "gramsOfTarget": "{{current}}g of {{target}}g"
   },
   "today": {
     "today": "Today",
@@ -64,26 +86,43 @@
     "emptyDay": "Nothing logged this day",
     "emptyDescription": "Add what you ate to see your calories and macros fill in.",
     "describeWithAi": "Describe a meal with AI",
+    "addTo": "Add to {{slot}}",
     "slotEmpty": "Nothing logged",
-    "addTo": "Add to {{slot}}"
+    "nutritionOverline": "Nutrition",
+    "mealsOverline": "Meals",
+    "addSlot": "Add {{slot}}"
   },
   "water": {
     "title": "Hydration",
-    "dailyTarget": "Daily target: {{value}} L",
     "percentOfGoal": "{{value}}% of goal",
     "goalReached": "Daily water goal reached",
     "spoken": "{{ml}} millilitres of {{target}}, {{percent}} percent of goal",
     "progress": "of {{target}} L ({{ml}} ml)",
     "undo": "Undo {{value}} millilitres",
-    "quick": { "glass": "Adds a glass of water", "bottle": "Adds a bottle of water", "flask": "Adds a flask of water" }
+    "quick": {
+      "glass": "Adds a glass of water",
+      "bottle": "Adds a bottle of water",
+      "flask": "Adds a flask of water"
+    },
+    "heading": "Water intake",
+    "add": "+{{value}} ml"
   },
   "history": {
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
     "emptyTitle": "No meals logged in {{month}}",
     "emptyDescription": "Log meals from the Today tab or with the AI log.",
-    "dayTotal_one": "{{kcal}} kcal · {{count}} item",
-    "dayTotal_other": "{{kcal}} kcal · {{count}} items"
+    "dayTotal_one": "{{kcal}} kcal, {{count}} item",
+    "dayTotal_other": "{{kcal}} kcal, {{count}} items",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "summaryOverline": "Summary",
+    "summaryTitle": "Month at a glance",
+    "summarySubtitle": "Averages count the days you logged.",
+    "ofDays_one": "of {{count}} day",
+    "ofDays_other": "of {{count}} days",
+    "logOverline": "Log",
+    "logTitle": "Day by day"
   },
   "aiLog": {
     "title": "Log with AI",
@@ -107,12 +146,19 @@
     "itemsSubtitle": "Check the estimates and fix anything that looks off.",
     "nothingLeft": "Nothing left to log. Analyse again to start over.",
     "removeItem": "Remove {{name}}",
-    "fields": { "calories": "Calories (kcal)", "protein": "Protein (g)", "carbs": "Carbs (g)", "fats": "Fats (g)" },
+    "fields": {
+      "calories": "Calories (kcal)",
+      "protein": "Protein (g)",
+      "carbs": "Carbs (g)",
+      "fats": "Fats (g)"
+    },
     "logAll_one": "Log {{count}} item to {{slot}}",
     "logAll_other": "Log {{count}} items to {{slot}}",
     "logged_one": "Logged {{count}} item to {{slot}}",
     "logged_other": "Logged {{count}} items to {{slot}}",
-    "saveFailed": "Couldn't save these meals. Try again."
+    "saveFailed": "Couldn't save these meals. Try again.",
+    "overline": "AI log",
+    "itemsOverline": "Review"
   },
   "meal": {
     "editTitle": "Edit food",
@@ -143,14 +189,26 @@
     "deleteMessage": "{{name}} will be removed from your log.",
     "deleteButton": "Delete entry",
     "deleted": "Entry deleted",
-    "deleteFailed": "Couldn't delete this entry. Try again."
+    "deleteFailed": "Couldn't delete this entry. Try again.",
+    "overlineMeal": "Meal",
+    "slotTitle": "Which meal is this?",
+    "overlineFood": "Food",
+    "foodTitle": "What you ate",
+    "overlineDetails": "Details",
+    "detailsTitle": "Date and notes"
   },
   "targets": {
     "title": "Daily targets",
     "eyebrow": "Nutrition and hydration goals",
     "heading": "Your daily targets",
     "description": "Calorie and macro targets set how full your rings get on the Today tab. They are saved on this phone.",
-    "fields": { "calories": "Calories", "protein": "Protein", "carbs": "Carbs", "fats": "Fats", "waterMl": "Water" },
+    "fields": {
+      "calories": "Calories",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fats": "Fats",
+      "waterMl": "Water"
+    },
     "fieldLabel": "{{name}} ({{unit}})",
     "errorPositive": "{{name}} must be greater than 0.",
     "save": "Save daily targets",
@@ -159,5 +217,28 @@
     "resetTitle": "Reset to defaults?",
     "resetMessage": "Your targets will go back to the standard values.",
     "resetDone": "Targets reset to defaults"
+  },
+  "hero": {
+    "titleIdle": "Fuel your day",
+    "subtitleIdle": "Log what you eat to see your calories and macros fill in.",
+    "eatenToday": "eaten today",
+    "eaten": "eaten",
+    "subtitleNone": "Nothing logged yet. Your target is {{target}} kcal.",
+    "subtitleLeft": "{{remaining}} kcal left of your {{target}} kcal target.",
+    "subtitleLeftProtein": "{{remaining}} kcal left of your {{target}} kcal target, and {{protein}}g of protein to go.",
+    "subtitleOver": "{{over}} kcal over your {{target}} kcal target.",
+    "logMeal": "Log meal",
+    "describeWithAi": "AI log"
+  },
+  "stats": {
+    "overline": "Performance",
+    "title": "Last 7 days",
+    "subtitle": "Averages count the days you logged, compared with the 7 days before.",
+    "avgCalories": "Avg calories",
+    "avgProtein": "Avg protein",
+    "meals": "Meals logged",
+    "daysLogged": "Days logged",
+    "ofDays": "of the last 7 days",
+    "deltaPercent": "{{value}}%"
   }
 }

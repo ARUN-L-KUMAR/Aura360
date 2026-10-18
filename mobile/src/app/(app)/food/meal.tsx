@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
+import { RingCard } from '@/components/fitness/section-kit';
+import { FoodHeading } from '@/components/food/food-kit';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useDeleteMeal, useSaveMeal } from '@/features/food/hooks';
 import { MEAL_TYPES, suggestMealType, type Meal, type MealInput, type MealType } from '@/features/food/types';
@@ -147,16 +147,17 @@ export default function MealScreen() {
     <Screen topInset={false}>
       <Stack.Screen options={{ title: existing ? t('meal.editTitle') : t('actions.logFood') }} />
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('meal.meal')} />
+      <RingCard style={{ gap: spacing.md }}>
+        <FoodHeading overline={t('meal.overlineMeal')} title={t('meal.slotTitle')} />
         <ChipGroup>
           {MEAL_TYPES.map((slot) => (
             <Chip key={slot.value} label={slot.label} icon={slot.icon} selected={mealType === slot.value} accent="food" onPress={() => setMealType(slot.value)} />
           ))}
         </ChipGroup>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard style={{ gap: spacing.md }}>
+        <FoodHeading overline={t('meal.overlineFood')} title={t('meal.foodTitle')} />
         <Input
           label={t('meal.food')}
           value={foodName}
@@ -184,10 +185,10 @@ export default function MealScreen() {
           <Input containerStyle={macroField} label={t('meal.quantity')} value={quantity} onChangeText={edit('quantity', setQuantity)} keyboardType="decimal-pad" placeholder="1" error={errors.quantity} />
           <Input containerStyle={macroField} label={t('meal.unit')} value={unit} onChangeText={setUnit} placeholder={t('meal.unitPlaceholder')} autoCapitalize="none" returnKeyType="done" />
         </View>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('meal.macros')} subtitle={t('meal.allOptional')} />
+      <RingCard style={{ gap: spacing.md }}>
+        <FoodHeading overline={t('meal.allOptional')} title={t('meal.macros')} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
           <Input containerStyle={macroField} label={t('meal.protein')} value={protein} onChangeText={edit('protein', setProtein)} keyboardType="decimal-pad" placeholder="0" error={errors.protein} />
           <Input containerStyle={macroField} label={t('meal.carbs')} value={carbs} onChangeText={edit('carbs', setCarbs)} keyboardType="decimal-pad" placeholder="0" error={errors.carbs} />
@@ -202,9 +203,10 @@ export default function MealScreen() {
         ) : (
           <Button title={t('meal.addFiberSugar')} variant="tertiary" size="sm" leftIcon="add" fullWidth={false} onPress={() => setShowMore(true)} />
         )}
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard style={{ gap: spacing.md }}>
+        <FoodHeading overline={t('meal.overlineDetails')} title={t('meal.detailsTitle')} />
         <DateField label={t('meal.date')} value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
         <Input
           label={t('meal.notes')}
@@ -215,7 +217,7 @@ export default function MealScreen() {
           autoCapitalize="sentences"
           style={{ minHeight: 64 }}
         />
-      </Card>
+      </RingCard>
 
       <View style={{ gap: spacing.sm }}>
         <Button title={existing ? t('actions.saveChanges') : t('actions.logFood')} leftIcon="checkmark" onPress={submit} loading={save.isPending} />
