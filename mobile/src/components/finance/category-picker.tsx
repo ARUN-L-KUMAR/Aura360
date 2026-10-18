@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -17,7 +17,6 @@ type Props<T extends string> = {
   onChange: (value: T) => void;
   /** Spoken name of the group, for example "Category". */
   accessibilityLabel: string;
-  accent?: ModuleKey;
 };
 
 const TILE_ICON = layout.minTouchTarget - spacing.xs;
@@ -27,9 +26,8 @@ const TILE_BORDER = 2;
  * Single choice from a handful of categories, drawn as icon tiles. The chosen tile gets a thicker border, a filled icon
  * disc and a check mark, so the selection never depends on colour alone. Announced as a radio group.
  */
-export function CategoryPicker<T extends string>({ options, value, onChange, accessibilityLabel, accent = 'finance' }: Props<T>) {
-  const { colors, accent: accentFor } = useTheme();
-  const tone = accentFor(accent);
+export function CategoryPicker<T extends string>({ options, value, onChange, accessibilityLabel }: Props<T>) {
+  const { colors } = useTheme();
 
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={accessibilityLabel} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
@@ -53,8 +51,8 @@ export function CategoryPicker<T extends string>({ options, value, onChange, acc
               padding: spacing.sm,
               borderRadius: radius.md,
               borderWidth: TILE_BORDER,
-              borderColor: selected ? tone.solid : colors.borderSubtle,
-              backgroundColor: selected ? tone.soft : colors.card,
+              borderColor: selected ? colors.primary : colors.borderSubtle,
+              backgroundColor: selected ? colors.cardMuted : colors.card,
             }}>
             <View
               style={{
@@ -63,12 +61,12 @@ export function CategoryPicker<T extends string>({ options, value, onChange, acc
                 borderRadius: radius.pill,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: selected ? tone.solid : colors.cardMuted,
+                backgroundColor: selected ? colors.primary : colors.cardMuted,
               }}>
-              <Ionicons name={option.icon} size={22} color={selected ? tone.onSolid : colors.textSecondary} />
+              <Ionicons name={option.icon} size={22} color={selected ? colors.primaryText : colors.textSecondary} />
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
-              {selected ? <Ionicons name="checkmark-circle" size={14} color={tone.text} /> : null}
+              {selected ? <Ionicons name="checkmark-circle" size={14} color={colors.text} /> : null}
               <Text variant="caption" weight={selected ? 'semiBold' : 'medium'} numberOfLines={2} style={{ flexShrink: 1, textAlign: 'center' }}>
                 {option.label}
               </Text>

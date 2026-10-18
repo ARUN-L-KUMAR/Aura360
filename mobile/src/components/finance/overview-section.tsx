@@ -1,17 +1,18 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { BudgetRing } from '@/components/finance/budget-ring';
-import { BreakdownSkeleton, HeroSkeleton } from '@/components/finance/finance-skeletons';
+import { BreakdownSkeleton, HeroSkeleton, StatGridSkeleton } from '@/components/finance/finance-skeletons';
 import { budgetLevel, dailySpend, spendByCategory } from '@/components/finance/insights';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
+import { IconTile, SectionHead } from '@/components/finance/finance-ui';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { MoneyHero } from '@/components/finance/money-hero';
+import { MonthStats } from '@/components/finance/month-stats';
 import { SpendingBreakdown } from '@/components/finance/spending-breakdown';
-import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
+import { NO_DESCRIPTION, openTransaction, TransactionRow } from '@/components/finance/transaction-row';
 import { useCountUpOnce } from '@/components/finance/use-count-up-once';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -19,7 +20,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useBlockMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
@@ -27,7 +27,7 @@ import { useBalances, useBudgets, useTransactions } from '@/features/finance/hoo
 import { OVERALL_BUDGET } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
 import { formatMoney, monthKey, monthLabel, shiftMonth } from '@/lib/format';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { categoryLabel } from './labels';
 
 type Props = {
@@ -43,7 +43,6 @@ const MAX_SPEND_PAGES = 12;
 
 export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
   const router = useRouter();
-  const { colors } = useTheme();
   const { t } = useTranslation('finance');
   const month = monthKey();
   const heroMotion = useBlockMotion();
@@ -85,6 +84,11 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
   const spendRows = useMemo(() => spend.data?.pages.flatMap((page) => page.data) ?? [], [spend.data]);
   const breakdown = useMemo(() => spendByCategory(spendRows), [spendRows]);
   const daily = useMemo(() => dailySpend(spendRows, month, new Date().getDate()), [spendRows, month]);
+  const largest = useMemo(() => {
+    let best: (typeof spendRows)[number] | null = null;
+    for (const row of spendRows) if (!best || Number(row.amount) > Number(best.amount)) best = row;
+    return best ? { amount: Number(best.amount), description: best.description === NO_DESCRIPTION ? t('row.noDescription') : best.description } : null;
+  }, [spendRows, t]);
   const spendPartial = !!spend.hasNextPage && !spendLoadingMore;
   const previousTotal = previous.data && !spendPartial ? (previous.data.pages[0]?.totalAmount ?? 0) : null;
   const spendBusy = spend.isPending || spendLoadingMore;
@@ -120,8 +124,8 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
             balances={visibleBalances}
             month={monthStats}
             monthLoading={dashboard.isPending}
-            countUp={countUp}
             onAdjust={() => router.push('/finance/balances')}
+            onAddTransaction={() => openTransaction(router)}
           />
         </Animated.View>
       )}
@@ -130,16 +134,21 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
         <LoadError size="inline" error={dashboard.error} title={t('overview.monthError')} onRetry={() => void dashboard.refetch()} retrying={dashboard.isRefetching} />
       ) : null}
 
-      {/* This month: where the money went */}
+      {/* This month: the numbers, then where the money went */}
       <View style={{ gap: spacing.md }}>
-        <SectionHeader title={t('overview.thisMonth')} subtitle={monthLabel(month)} />
+        <SectionHead overline={monthLabel(month)} title={t('overview.thisMonth')} />
+        {spendBusy || dashboard.isPending ? (
+          <StatGridSkeleton />
+        ) : (
+          <MonthStats month={monthStats} slices={breakdown.slices} spendTotal={breakdown.total} previousTotal={previousTotal} largest={largest} />
+        )}
         {spendBusy ? (
           <BreakdownSkeleton />
         ) : spend.isError && !spend.data ? (
           <LoadError size="inline" error={spend.error} title={t('overview.spendError')} onRetry={() => void spend.refetch()} retrying={spend.isRefetching} />
         ) : breakdown.slices.length === 0 ? (
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <Ionicons name="leaf-outline" size={24} color={colors.textSecondary} />
+            <IconTile icon="leaf-outline" tone="neutral" />
             <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
               {t('overview.noSpending')}
             </Text>
@@ -163,14 +172,15 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
       {budgets.isPending ? (
         <SkeletonCard lines={3} />
       ) : closeToLimit.length > 0 ? (
-        <Animated.View {...budgetMotion}>
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader
-              title={t('overview.budgetsTitle')}
-              actionLabel={onSeeBudgets ? t('overview.seeAll') : undefined}
-              actionAccessibilityLabel={t('overview.seeAllBudgets')}
-              onActionPress={onSeeBudgets}
-            />
+        <Animated.View {...budgetMotion} style={{ gap: spacing.sm }}>
+          <SectionHead
+            overline={t('overview.budgetsOverline')}
+            title={t('overview.budgetsTitle')}
+            actionLabel={onSeeBudgets ? t('overview.seeAll') : undefined}
+            actionAccessibilityLabel={t('overview.seeAllBudgets')}
+            onActionPress={onSeeBudgets}
+          />
+          <Card style={{ gap: spacing.xs }}>
             {closeToLimit.map((b) => {
               const level = budgetLevel(b);
               const category = categoryLabel(b.category);
@@ -186,10 +196,10 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
                   haptic="select"
                   ringRadius={radius.md}
                   onPress={onSeeBudgets}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: spacing.xxxl + spacing.lg }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: spacing.xxxl + spacing.lg, paddingVertical: spacing.xs }}>
                   <BudgetRing budget={b} size={spacing.xxxl + spacing.md} thickness={spacing.sm - 1} />
                   <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-                    <Text variant="body" weight="semiBold" numberOfLines={1}>
+                    <Text variant="body" weight="bold" numberOfLines={1}>
                       {category}
                     </Text>
                     <Text variant="caption" numeric color="textSecondary">
@@ -197,9 +207,9 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
                     </Text>
                   </View>
                   {level === 'over' ? (
-                    <Badge severity="error" label={t('budgets.overBudget')} size="sm" />
+                    <Badge severity="error" label={t('budgets.overBudget')} size="sm" style={{ alignSelf: 'center' }} />
                   ) : level === 'near' ? (
-                    <Badge severity="warning" label={t('budgets.nearLimit')} size="sm" />
+                    <Badge severity="warning" label={t('budgets.nearLimit')} size="sm" style={{ alignSelf: 'center' }} />
                   ) : (
                     <Text variant="label" weight="bold" numeric color="textSecondary">
                       {b.percentage}%
@@ -213,41 +223,42 @@ export function OverviewSection({ header, onSeeBudgets, onSeeHistory }: Props) {
       ) : null}
 
       {/* Recent activity */}
-      <Card padding="none" style={{ overflow: 'hidden' }}>
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
-          <SectionHeader
-            title={t('overview.recentTitle')}
-            actionLabel={onSeeHistory ? t('overview.seeAll') : undefined}
-            actionAccessibilityLabel={t('overview.seeAllTransactions')}
-            onActionPress={onSeeHistory}
-          />
-        </View>
-        {recent.isPending ? (
-          <View style={{ paddingHorizontal: spacing.lg }}>
-            <SkeletonList count={3} trailing />
-          </View>
-        ) : recent.isError && !recent.data ? (
-          <LoadError
-            size="inline"
-            error={recent.error}
-            title={t('overview.recentError')}
-            onRetry={() => void recent.refetch()}
-            retrying={recent.isRefetching}
-            style={{ margin: spacing.md }}
-          />
-        ) : recentItems.length === 0 ? (
-          <EmptyState
-            accent="finance"
-            icon="receipt-outline"
-            title={t('overview.recentEmptyTitle')}
-            description={t('overview.recentEmptyBody')}
-            actionTitle={t('actions.addTransaction')}
-            onAction={() => openTransaction(router)}
-          />
-        ) : (
-          recentItems.map((tx, i) => <TransactionRow key={tx.id} tx={tx} divider={i < recentItems.length - 1} />)
-        )}
-      </Card>
+      <View style={{ gap: spacing.sm }}>
+        <SectionHead
+          overline={t('overview.recentOverline')}
+          title={t('overview.recentTitle')}
+          actionLabel={onSeeHistory ? t('overview.seeAll') : undefined}
+          actionAccessibilityLabel={t('overview.seeAllTransactions')}
+          onActionPress={onSeeHistory}
+        />
+        <Card padding="none" style={{ overflow: 'hidden' }}>
+          {recent.isPending ? (
+            <View style={{ paddingHorizontal: spacing.lg }}>
+              <SkeletonList count={3} trailing />
+            </View>
+          ) : recent.isError && !recent.data ? (
+            <LoadError
+              size="inline"
+              error={recent.error}
+              title={t('overview.recentError')}
+              onRetry={() => void recent.refetch()}
+              retrying={recent.isRefetching}
+              style={{ margin: spacing.md }}
+            />
+          ) : recentItems.length === 0 ? (
+            <EmptyState
+              accent="finance"
+              icon="receipt-outline"
+              title={t('overview.recentEmptyTitle')}
+              description={t('overview.recentEmptyBody')}
+              actionTitle={t('actions.addTransaction')}
+              onAction={() => openTransaction(router)}
+            />
+          ) : (
+            recentItems.map((tx, i) => <TransactionRow key={tx.id} tx={tx} divider={i < recentItems.length - 1} />)
+          )}
+        </Card>
+      </View>
     </Screen>
   );
 }

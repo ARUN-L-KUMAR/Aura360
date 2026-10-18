@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { BudgetsSection } from '@/components/finance/budgets-section';
@@ -10,11 +10,14 @@ import { CategoryFab, CategoryFrame, CategoryHeader, type CategorySection } from
 import { useTranslation } from '@/i18n';
 
 type Section = 'overview' | 'history' | 'budgets' | 'goals';
+const SECTIONS: readonly string[] = ['overview', 'history', 'budgets', 'goals'];
 
 export default function FinanceScreen() {
   const router = useRouter();
   const { t } = useTranslation('finance');
-  const [section, setSection] = useState<Section>('overview');
+  // `/finance?section=budgets` opens a section directly (links and the preview harness use it).
+  const { section: requested } = useLocalSearchParams<{ section?: string }>();
+  const [section, setSection] = useState<Section>(SECTIONS.includes(requested as Section) ? (requested as Section) : 'overview');
 
   const sections: CategorySection<Section>[] = [
     { value: 'overview', label: t('sections.overview') },

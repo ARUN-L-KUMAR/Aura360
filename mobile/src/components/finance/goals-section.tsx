@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { RingCardSkeleton } from '@/components/finance/finance-skeletons';
+import { SectionHead } from '@/components/finance/finance-ui';
 import { goalAccent } from '@/components/finance/goal-accent';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
@@ -70,7 +71,7 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
 
   return (
     <Animated.View {...motion}>
-      <Card tintColor={goal.color} style={{ gap: spacing.md }}>
+      <Card style={{ gap: spacing.md }}>
         <PressableScale
           accessibilityRole="button"
           accessibilityLabel={label}
@@ -98,13 +99,13 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
             )}
           </ProgressRing>
           <View style={{ flex: 1, gap: spacing.xs }}>
-            <Text variant="body" weight="semiBold" numberOfLines={2}>
+            <Text variant="body" weight="bold" numberOfLines={2}>
               {goal.title}
             </Text>
             <Text variant="caption" color={overdue ? 'errorText' : 'textSecondary'} numberOfLines={2}>
               {deadline ? t('goals.categoryDeadline', { category, deadline }) : category}
             </Text>
-            <Text variant="label" numeric>
+            <Text variant="label" weight="bold" numeric>
               {progress}
             </Text>
             {!goal.isCompleted ? (
@@ -119,6 +120,7 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
         ) : (
           <Button
             title={t('goals.addMoney')}
+            variant="secondary"
             size="md"
             leftIcon="add"
             accessibilityLabel={t('goals.addMoneyTo', { title: goal.title })}
@@ -159,7 +161,7 @@ export function GoalsSection({ header }: { header: ReactNode }) {
 
           {summary && summary.totalGoals > 0 ? (
             <Animated.View {...blockMotion}>
-              <Card variant="tinted" accent="finance" gradient="finance" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
                 <ProgressRing
                   value={summary.overallProgress}
                   size={SUMMARY_RING}
@@ -167,12 +169,12 @@ export function GoalsSection({ header }: { header: ReactNode }) {
                   accent="finance"
                   label={t('goals.overallProgress')}
                   valueText={t('goals.summaryValue', { percent: Math.round(summary.overallProgress), saved: formatMoney(summary.totalSaved), target: formatMoney(summary.totalTarget) })}>
-                  <Text variant="title" numeric>
+                  <Text variant="title" weight="bold" numeric>
                     {Math.round(summary.overallProgress)}%
                   </Text>
                 </ProgressRing>
                 <View style={{ flex: 1, gap: spacing.xs }}>
-                  <Text variant="label" weight="semiBold" color="textSecondary" accessibilityRole="header">
+                  <Text variant="overline" color="textMuted" accessibilityRole="header">
                     {t('goals.savingsTitle')}
                   </Text>
                   <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
@@ -189,6 +191,7 @@ export function GoalsSection({ header }: { header: ReactNode }) {
 
           {goals.length > 0 ? (
             <View style={{ gap: spacing.md }}>
+              <SectionHead overline={t('goals.listOverline')} title={t('goals.listTitle')} />
               {goals.map((goal, i) => (
                 <GoalCard key={goal.id} goal={goal} index={i} />
               ))}

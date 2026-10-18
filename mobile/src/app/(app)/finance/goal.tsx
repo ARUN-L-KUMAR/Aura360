@@ -132,15 +132,15 @@ export default function GoalScreen() {
       <Stack.Screen options={{ title: existing ? t('goal.titleEdit') : t('goal.titleNew') }} />
 
       {/* Live preview of the goal card. It repeats what the fields below already say, so screen readers skip it. */}
-      <Card tintColor={color} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <ProgressRing value={progressPercent} size={PREVIEW_RING} thickness={PREVIEW_RING_THICKNESS} accent={goalAccent(color)}>
-          <Text variant="title" numeric>
+          <Text variant="title" weight="bold" numeric>
             {progressPercent}%
           </Text>
         </ProgressRing>
         <View style={{ flex: 1, gap: spacing.xs }}>
           <Tag label={categoryLabel(category)} color={color} tone="accent" />
-          <Text variant="title" numberOfLines={2}>
+          <Text variant="title" weight="bold" numberOfLines={2}>
             {title.trim() || t('goal.namePlaceholder')}
           </Text>
           <Text variant="caption" numeric color="textSecondary">

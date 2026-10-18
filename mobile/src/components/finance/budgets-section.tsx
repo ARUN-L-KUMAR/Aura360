@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated';
 
 import { BudgetRing, budgetRingAccent } from '@/components/finance/budget-ring';
 import { RingCardSkeleton } from '@/components/finance/finance-skeletons';
+import { SectionHead } from '@/components/finance/finance-ui';
 import { budgetLevel, daysLeftInMonth } from '@/components/finance/insights';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
@@ -71,19 +72,19 @@ const BudgetCard = memo(function BudgetCard({ budget, month, index, daysLeft }: 
         <BudgetRing budget={budget} size={CARD_RING} thickness={CARD_RING_THICKNESS} />
         <View style={{ flex: 1, gap: spacing.xs }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
-            <Text variant="body" weight="semiBold" numberOfLines={1} style={{ flexShrink: 1 }}>
+            <Text variant="body" weight="bold" numberOfLines={1} style={{ flexShrink: 1 }}>
               {category}
             </Text>
             <BudgetStatus budget={budget} />
           </View>
-          <Text variant="label" numeric>
+          <Text variant="label" weight="bold" numeric>
             {t('budgets.usage', { spent: formatMoney(budget.spent), limit: formatMoney(budget.amount) })}
           </Text>
           <Text variant="caption" numeric color={level === 'over' ? 'errorText' : 'textSecondary'}>
             {t('budgets.leftWithPercent', { left, percent: budget.percentage })}
           </Text>
           {pace ? (
-            <Text variant="caption" numeric color="textSecondary">
+            <Text variant="caption" numeric color="textMuted">
               {pace}
             </Text>
           ) : null}
@@ -130,7 +131,7 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
 
           {summary && (summary.overallCap > 0 || categories.length > 0) ? (
             <Animated.View {...blockMotion}>
-              <Card variant="tinted" accent="finance" gradient="finance" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
                 <ProgressRing
                   value={summary.percentage}
                   size={SUMMARY_RING}
@@ -138,13 +139,13 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
                   accent={budgetRingAccent(summaryLevel)}
                   label={summary.hasOverallBudget ? t('budgets.overallTitle') : t('budgets.totalTitle')}
                   valueText={t('budgets.summaryValue', { spent: formatMoney(summary.totalSpent), percent: summary.percentage })}>
-                  <Text variant="title" numeric>
+                  <Text variant="title" weight="bold" numeric>
                     {summary.percentage}%
                   </Text>
                 </ProgressRing>
                 <View style={{ flex: 1, gap: spacing.xs }}>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
-                    <Text variant="label" weight="semiBold" color="textSecondary" accessibilityRole="header" style={{ flexShrink: 1 }}>
+                    <Text variant="overline" color="textMuted" accessibilityRole="header" style={{ flexShrink: 1 }}>
                       {summary.hasOverallBudget ? t('budgets.overallTitle') : t('budgets.totalTitle')}
                     </Text>
                     {summary.isOverBudget ? <Badge severity="error" label={t('budgets.overBudget')} size="sm" /> : null}
@@ -158,7 +159,7 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
                       : t('budgets.noneSet')}
                   </Text>
                   {summaryPace ? (
-                    <Text variant="caption" numeric color="textSecondary">
+                    <Text variant="caption" numeric color="textMuted">
                       {summaryPace}
                     </Text>
                   ) : null}
@@ -181,6 +182,7 @@ export function BudgetsSection({ header }: { header: ReactNode }) {
 
           {categories.length > 0 ? (
             <View style={{ gap: spacing.md }}>
+              <SectionHead overline={t('overview.budgetsOverline')} title={t('budgets.byCategory')} />
               {categories.map((b, i) => (
                 <BudgetCard key={b.id} budget={b} month={month} index={i} daysLeft={daysLeft} />
               ))}

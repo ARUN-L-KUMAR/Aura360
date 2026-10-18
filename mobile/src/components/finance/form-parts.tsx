@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
+import { IconTile } from './finance-ui';
 import { spacing, useTheme } from '@/theme';
 
 /** Parses what the user typed into an amount field. NaN when empty or not a number. Commas are ignored. */
@@ -36,13 +37,12 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /** A titled card that groups related form fields, with an optional inline error under them. */
 export function FormCard({ title, icon, children, error }: { title?: string; icon?: IconName; children: ReactNode; error?: string | null }) {
-  const { colors } = useTheme();
   return (
     <Card style={{ gap: spacing.md }}>
       {title ? (
-        <View accessibilityRole="header" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          {icon ? <Ionicons name={icon} size={18} color={colors.textSecondary} /> : null}
-          <Text variant="label" color="textSecondary" style={{ flex: 1 }}>
+        <View accessibilityRole="header" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          {icon ? <IconTile icon={icon} size={spacing.xxl + spacing.xs} /> : null}
+          <Text variant="overline" color="textMuted" style={{ flex: 1 }}>
             {title}
           </Text>
         </View>

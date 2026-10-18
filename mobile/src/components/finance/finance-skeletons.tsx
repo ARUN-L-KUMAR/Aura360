@@ -1,29 +1,45 @@
-import { View } from 'react-native';
+import { View, type DimensionValue } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
-import { layout, spacing } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
-const ART_HEIGHT = spacing.xxxl * 3;
 const RING = spacing.xxxl * 3 + spacing.lg;
 const PILL = spacing.xxxl + spacing.sm;
 
-/** Placeholder for the money hero: artwork block, title, big number and three stat pills. */
+/** Placeholder for the money hero: a dark hero card with a chip, the big number, two buttons and the stat strip. */
 export function HeroSkeleton() {
+  const { colors } = useTheme();
+  const block = (width: DimensionValue, height: number, round: number) => <View style={{ width, height, borderRadius: round, backgroundColor: colors.heroChip }} />;
   return (
     <SkeletonGroup>
-      <Card padding="none" rounded="xl" style={{ overflow: 'hidden' }}>
-        <Skeleton height={ART_HEIGHT} rounded={0} />
-        <View style={{ padding: spacing.lg, gap: spacing.md }}>
-          <Skeleton shape="line" width="45%" height={spacing.xl} />
-          <Skeleton height={spacing.xxxl} width="60%" />
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Skeleton height={PILL} style={{ flex: 1 }} />
-            <Skeleton height={PILL} style={{ flex: 1 }} />
-            <Skeleton height={PILL} style={{ flex: 1 }} />
-          </View>
+      <View style={{ borderRadius: radius.xl, backgroundColor: colors.heroSurface, padding: spacing.xl, gap: spacing.lg }}>
+        {block('38%', spacing.xl, radius.pill)}
+        {block('62%', spacing.xxxl, radius.md)}
+        {block('72%', spacing.lg, radius.sm)}
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          {block('52%', layout.minTouchTarget + spacing.md, radius.lg)}
+          {block('36%', layout.minTouchTarget + spacing.md, radius.lg)}
         </View>
-      </Card>
+        {block('100%', PILL, radius.lg)}
+      </View>
+    </SkeletonGroup>
+  );
+}
+
+/** Placeholder for the stat-card grid. */
+export function StatGridSkeleton() {
+  return (
+    <SkeletonGroup>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i} style={{ flexGrow: 1, flexBasis: spacing.xxxl * 3, gap: spacing.md }}>
+            <Skeleton shape="box" width={layout.minTouchTarget} height={layout.minTouchTarget} rounded="lg" />
+            <Skeleton shape="line" width="45%" height={spacing.sm + spacing.xs} />
+            <Skeleton shape="box" width="70%" height={spacing.xl} />
+          </Card>
+        ))}
+      </View>
     </SkeletonGroup>
   );
 }

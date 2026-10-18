@@ -95,7 +95,7 @@ export default function ContributeScreen() {
     <Screen topInset={false}>
       <Stack.Screen options={{ title: t('contribute.title') }} />
 
-      <Card tintColor={goal.color} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
         {/* The ring follows the amount being typed, so the deposit's effect is visible before saving. */}
         <ProgressRing
           value={newPercent}
@@ -107,22 +107,22 @@ export default function ContributeScreen() {
           {reached ? (
             <SuccessCheck size={CHECK} accessibilityLabel={null} />
           ) : (
-            <Text variant="title" numeric>
+            <Text variant="title" weight="bold" numeric>
               {newPercent}%
             </Text>
           )}
         </ProgressRing>
         <View style={{ flex: 1, gap: spacing.xs }}>
-          <Text variant="caption" weight="semiBold" color="textSecondary" accessibilityLiveRegion="polite">
+          <Text variant="overline" color="textMuted" accessibilityLiveRegion="polite">
             {reached ? t('contribute.reachedLabel') : t('contribute.contributing')}
           </Text>
-          <Text variant="title" accessibilityRole="header" numberOfLines={2}>
+          <Text variant="title" weight="bold" accessibilityRole="header" numberOfLines={2}>
             {goal.title}
           </Text>
           <Text variant="caption" numeric color="textSecondary">
             {t('contribute.savedSoFar', { amount: formatMoney(goal.currentAmount) })}
           </Text>
-          <Text variant="caption" weight="semiBold" numeric>
+          <Text variant="label" weight="bold" numeric>
             {value > 0 && newPercent > oldPercent
               ? t('contribute.newTotalGain', { amount: formatMoney(newTotal), percent: newPercent - oldPercent })
               : t('contribute.newTotal', { amount: formatMoney(newTotal) })}

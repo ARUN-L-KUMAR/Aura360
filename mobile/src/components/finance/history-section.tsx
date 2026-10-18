@@ -7,7 +7,6 @@ import { groupByDay } from '@/components/finance/insights';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useListMotion } from '@/components/ui/motion';
@@ -20,11 +19,13 @@ import { useTransactions, type TransactionFilters } from '@/features/finance/hoo
 import type { Transaction } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
 import { formatDay, formatMoney, monthKey, shiftMonth, todayIso, weekdayShort } from '@/lib/format';
-import { spacing, useTheme } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 type MonthFilter = 'all' | 'this' | 'last';
 
-type ListRow = { kind: 'day'; key: string; date: string; net: number; showTotal: boolean } | { kind: 'tx'; key: string; tx: Transaction; index: number };
+type Edge = 'first' | 'middle' | 'last' | 'only';
+
+type ListRow = { kind: 'day'; key: string; date: string; net: number; showTotal: boolean } | { kind: 'tx'; key: string; tx: Transaction; index: number; edge: Edge };
 
 const keyExtractor = (row: ListRow) => row.key;
 
@@ -49,12 +50,12 @@ const DayHeader = memo(function DayHeader({ date, net, showTotal }: { date: stri
       accessible
       accessibilityRole="header"
       accessibilityLabel={showTotal ? t('history.dayA11y', { day: label, amount: net < 0 ? `-${amount}` : amount }) : label}
-      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingTop: spacing.md }}>
-      <Text variant="label" weight="semiBold" color="textSecondary" style={{ flexShrink: 1 }}>
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
+      <Text variant="overline" color="textMuted" style={{ flexShrink: 1 }}>
         {label}
       </Text>
       {showTotal ? (
-        <Text variant="label" weight="semiBold" numeric color={net > 0 ? 'successText' : net < 0 ? 'errorText' : 'textSecondary'}>
+        <Text variant="label" weight="bold" numeric color={net > 0 ? 'successText' : net < 0 ? 'errorText' : 'textSecondary'}>
           {sign}
           {amount}
         </Text>
@@ -63,13 +64,30 @@ const DayHeader = memo(function DayHeader({ date, net, showTotal }: { date: stri
   );
 });
 
-const HistoryItem = memo(function HistoryItem({ tx, index }: { tx: Transaction; index: number }) {
+/** One row of a day's table: the rows of a day share one card edge to edge (rounded at the first and last). */
+const HistoryItem = memo(function HistoryItem({ tx, index, edge }: { tx: Transaction; index: number; edge: Edge }) {
   const motion = useListMotion(index);
+  const { colors } = useTheme();
+  const top = edge === 'first' || edge === 'only';
+  const bottom = edge === 'last' || edge === 'only';
   return (
     <Animated.View {...motion}>
-      <Card padding="none" rounded="md" style={{ overflow: 'hidden' }}>
-        <TransactionRow tx={tx} hideDate />
-      </Card>
+      <View
+        style={{
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          borderStartWidth: 1,
+          borderEndWidth: 1,
+          borderTopWidth: top ? 1 : 0,
+          borderBottomWidth: bottom ? 1 : 0,
+          borderTopStartRadius: top ? radius.lg : 0,
+          borderTopEndRadius: top ? radius.lg : 0,
+          borderBottomStartRadius: bottom ? radius.lg : 0,
+          borderBottomEndRadius: bottom ? radius.lg : 0,
+          overflow: 'hidden',
+        }}>
+        <TransactionRow tx={tx} hideDate divider={!bottom} />
+      </View>
     </Animated.View>
   );
 });
@@ -97,7 +115,10 @@ export function HistorySection({ header }: { header: ReactNode }) {
       // The last day on screen may continue on the next page, so its total is held back until the rest has loaded.
       const complete = !(g === groups.length - 1 && query.hasNextPage);
       out.push({ kind: 'day', key: `day-${group.date}`, date: group.date, net: group.net, showTotal: complete });
-      for (const tx of group.items) out.push({ kind: 'tx', key: tx.id, tx, index: index++ });
+      group.items.forEach((tx, i) => {
+        const edge: Edge = group.items.length === 1 ? 'only' : i === 0 ? 'first' : i === group.items.length - 1 ? 'last' : 'middle';
+        out.push({ kind: 'tx', key: tx.id, tx, index: index++, edge });
+      });
     });
     return out;
   }, [items, query.hasNextPage]);
@@ -140,7 +161,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
         ))}
       </ChipRow>
       {!query.isPending && !query.isError ? (
-        <Text variant="caption" numeric color="textSecondary" accessibilityLiveRegion="polite">
+        <Text variant="label" weight="semiBold" numeric color="textSecondary" accessibilityLiveRegion="polite">
           {t('history.count', { count: total, amount: formatMoney(totalAmount) })}
         </Text>
       ) : null}
@@ -165,7 +186,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
     <FlatList<ListRow>
       data={rows}
       keyExtractor={keyExtractor}
-      renderItem={({ item }) => (item.kind === 'day' ? <DayHeader date={item.date} net={item.net} showTotal={item.showTotal} /> : <HistoryItem tx={item.tx} index={item.index} />)}
+      renderItem={({ item }) => (item.kind === 'day' ? <DayHeader date={item.date} net={item.net} showTotal={item.showTotal} /> : <HistoryItem tx={item.tx} index={item.index} edge={item.edge} />)}
       ListHeaderComponent={listHeader}
       ListEmptyComponent={
         loading ? (
@@ -202,7 +223,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
       refreshControl={refreshControl}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      contentContainerStyle={[padding, { gap: spacing.sm, paddingBottom: FAB_CLEARANCE }]}
+      contentContainerStyle={[padding, { gap: 0, paddingBottom: FAB_CLEARANCE }]}
       style={{ flex: 1, backgroundColor: colors.background }}
     />
   );

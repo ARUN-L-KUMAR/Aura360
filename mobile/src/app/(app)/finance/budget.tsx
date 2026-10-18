@@ -105,7 +105,7 @@ export default function BudgetScreen() {
 
       {existing ? (
         <FormCard title={t('budget.category')} icon="pie-chart-outline">
-          <Text variant="title">{isOverallExisting ? t('budgets.overallTitle') : categoryLabel(existing.category)}</Text>
+          <Text variant="title" weight="bold">{isOverallExisting ? t('budgets.overallTitle') : categoryLabel(existing.category)}</Text>
         </FormCard>
       ) : (
         <FormCard title={t('budget.category')} icon="pie-chart-outline" error={submitted ? categoryError : null}>

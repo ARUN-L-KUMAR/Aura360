@@ -1,6 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
@@ -10,8 +9,8 @@ import { Sparkline } from '@/components/viz/sparkline';
 import { useDonutColors } from '@/components/viz/tones';
 import { useTranslation, getDeviceLocale } from '@/i18n';
 import { formatDay, formatMoney } from '@/lib/format';
-import { radius, spacing, useTheme } from '@/theme';
-import { categoryIcon } from './category-icons';
+import { layout, radius, spacing, useTheme } from '@/theme';
+import { IconTile, Overline } from './finance-ui';
 import { percentChange, type SpendSlice } from './insights';
 import { categoryLabel } from './labels';
 
@@ -35,13 +34,12 @@ type Props = {
 const DONUT_SIZE = spacing.xxxl * 3 + spacing.lg;
 const DONUT_THICKNESS = spacing.lg + 2;
 const DOT = spacing.sm + 2;
-const ICON = spacing.lg + 2;
-const SPARK_HEIGHT = spacing.xxxl + spacing.sm;
+const SPARK_HEIGHT = spacing.xxxl + spacing.lg;
 
 /**
- * "Where it went": a donut of this month's spending by category with a legend that names every slice (icon, name,
- * share and amount, so the chart is never colour only), a line of daily spending and a comparison with last month.
- * All numbers are sums of the loaded transactions. The card reads as one sentence to a screen reader.
+ * "Where it went": two quiet cards. The first is a donut of this month's spending by category with a legend that names
+ * every slice (name, share and amount, so the chart is never colour only); the second is the daily average with a line
+ * of daily spending. All numbers are sums of the loaded transactions. Each card reads as one sentence to a screen reader.
  */
 export function SpendingBreakdown({ slices, total, daily, month, previousTotal, partialCount, countUp }: Props) {
   const { t } = useTranslation('finance');
@@ -52,7 +50,6 @@ export function SpendingBreakdown({ slices, total, daily, month, previousTotal, 
   const rows = slices.map((slice, i) => ({
     key: slice.category ?? '__rest__',
     label: slice.category === null ? t('overview.otherCategories') : categoryLabel(slice.category),
-    icon: slice.category === null ? ('ellipsis-horizontal-circle-outline' as const) : categoryIcon(slice.category),
     value: slice.value,
     share: total > 0 ? slice.value / total : 0,
     color: palette[i],
@@ -71,89 +68,93 @@ export function SpendingBreakdown({ slices, total, daily, month, previousTotal, 
     t('overview.spendingA11y', { total: formatMoney(total) }),
     rows.map((r) => t('overview.sliceA11y', { name: r.label, percent: percent.format(r.share), amount: formatMoney(r.value) })).join(', '),
     change !== null && change !== 0 ? (lessThanBefore ? t('overview.lessThanLast', { percent: Math.abs(change) }) : t('overview.moreThanLast', { percent: change })) : null,
-    showTrend ? t('overview.trendA11y', { peak: formatMoney(peakValue), day: peakDay, average: formatMoney(Math.round(average)) }) : null,
     partialCount !== null ? t('overview.partial', { count: partialCount }) : null,
   ]
     .filter(Boolean)
     .join('. ');
 
+  const trendSpoken = showTrend ? t('overview.trendA11y', { peak: formatMoney(peakValue), day: peakDay, average: formatMoney(Math.round(average)) }) : null;
+
   return (
-    <Card accessible accessibilityLabel={spoken} style={{ gap: spacing.lg }}>
-      <View style={{ alignItems: 'center', gap: spacing.md }}>
-        <DonutChart
-          segments={rows.map((r) => ({ label: r.label, value: r.value }))}
-          size={DONUT_SIZE}
-          thickness={DONUT_THICKNESS}
-          accent="finance"
-          label={t('overview.spendingChart')}>
-          <AnimatedNumber
-            value={total}
-            from={countUp ? 0 : total}
-            format={(n) => formatMoney(Math.round(n), { compact: true })}
-            variant="title"
-            accessibilityLabel={formatMoney(total)}
-          />
-          <Text variant="caption" color="textSecondary" numberOfLines={1}>
-            {t('overview.spent')}
-          </Text>
-        </DonutChart>
+    <View style={{ gap: spacing.md }}>
+      <Card accessible accessibilityLabel={spoken} style={{ gap: spacing.lg }}>
+        <Overline>{t('overview.spendingChart')}</Overline>
+        <View style={{ alignItems: 'center' }}>
+          <DonutChart
+            segments={rows.map((r) => ({ label: r.label, value: r.value }))}
+            size={DONUT_SIZE}
+            thickness={DONUT_THICKNESS}
+            accent="finance"
+            label={t('overview.spendingChart')}>
+            <AnimatedNumber
+              value={total}
+              from={countUp ? 0 : total}
+              format={(n) => formatMoney(Math.round(n), { compact: true })}
+              variant="title"
+              weight="bold"
+              accessibilityLabel={formatMoney(total)}
+            />
+            <Text variant="overline" color="textMuted" numberOfLines={1}>
+              {t('overview.spent')}
+            </Text>
+          </DonutChart>
+        </View>
 
-        {change !== null && change !== 0 ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.xs,
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.xs,
-              borderRadius: radius.pill,
-              backgroundColor: lessThanBefore ? colors.successContainer : colors.errorContainer,
-            }}>
-            <Ionicons name={lessThanBefore ? 'arrow-down' : 'arrow-up'} size={14} color={lessThanBefore ? colors.onSuccessContainer : colors.onErrorContainer} />
-            <Text variant="caption" weight="semiBold" style={{ color: lessThanBefore ? colors.onSuccessContainer : colors.onErrorContainer, flexShrink: 1 }}>
-              {lessThanBefore ? t('overview.lessThanLast', { percent: Math.abs(change) }) : t('overview.moreThanLast', { percent: change })}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={{ gap: spacing.md }}>
-        {rows.map((r) => (
-          <View key={r.key} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: DOT, height: DOT, borderRadius: radius.pill, backgroundColor: r.color }} />
-            <Ionicons name={r.icon} size={ICON} color={colors.textSecondary} />
-            <Text variant="body" numberOfLines={1} style={{ flex: 1 }}>
-              {r.label}
-            </Text>
-            <Text variant="caption" weight="semiBold" numeric color="textSecondary">
-              {percent.format(r.share)}
-            </Text>
-            <View style={{ minWidth: spacing.xxxl + spacing.xl, alignItems: 'flex-end' }}>
-              <Text variant="label" numeric numberOfLines={1}>
-                {formatMoney(r.value, { compact: true })}
+        <View>
+          {rows.map((r, i) => (
+            <View
+              key={r.key}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                minHeight: layout.minTouchTarget,
+                borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                borderTopColor: colors.border,
+              }}>
+              <View style={{ width: DOT, height: DOT, borderRadius: radius.pill, backgroundColor: r.color }} />
+              <Text variant="body" weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+                {r.label}
               </Text>
+              <Text variant="caption" weight="semiBold" numeric color="textMuted">
+                {percent.format(r.share)}
+              </Text>
+              <View style={{ minWidth: spacing.xxxl + spacing.xl, alignItems: 'flex-end' }}>
+                <Text variant="label" weight="bold" numeric numberOfLines={1}>
+                  {formatMoney(r.value, { compact: true })}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+
+        {partialCount !== null ? (
+          <Text variant="caption" color="textSecondary">
+            {t('overview.partial', { count: partialCount })}
+          </Text>
+        ) : null}
+      </Card>
 
       {showTrend ? (
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="caption" weight="semiBold" color="textSecondary">
-            {t('overview.dailyTitle')}
-          </Text>
+        <Card accessible accessibilityLabel={trendSpoken ?? undefined} style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Overline>{t('overview.dailyTitle')}</Overline>
+              <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {formatMoney(Math.round(average), { compact: true })}
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                {t('overview.perDay')}
+              </Text>
+            </View>
+            <IconTile icon="pulse" tone="info" />
+          </View>
           <Sparkline values={daily} accent="finance" height={SPARK_HEIGHT} />
           <Text variant="caption" numeric color="textSecondary">
-            {t('overview.trendNote', { peak: formatMoney(peakValue, { compact: true }), day: peakDay, average: formatMoney(Math.round(average), { compact: true }) })}
+            {t('overview.peakNote', { peak: formatMoney(peakValue, { compact: true }), day: peakDay })}
           </Text>
-        </View>
+        </Card>
       ) : null}
-
-      {partialCount !== null ? (
-        <Text variant="caption" color="textSecondary">
-          {t('overview.partial', { count: partialCount })}
-        </Text>
-      ) : null}
-    </Card>
+    </View>
   );
 }

@@ -150,7 +150,25 @@
     "trendA11y": "Daily spending: highest {{peak}} on {{day}}, average {{average}} a day",
     "partial_one": "Based on your latest {{count}} expense.",
     "partial_other": "Based on your latest {{count}} expenses.",
-    "budgetRowHint": "Opens your budgets"
+    "budgetRowHint": "Opens your budgets",
+    "net": "Net",
+    "heroSubtitle_one": "Across {{count}} account",
+    "heroSubtitle_other": "Across {{count}} accounts",
+    "vsLastMonth": "vs last month",
+    "savingsRate": "Savings rate",
+    "keptOfIncome": "{{net}} kept of {{income}}",
+    "overIncome": "Spending is above income",
+    "savingsRateA11y": "Savings rate this month: {{percent}}, {{net}} of {{income}} income",
+    "topCategory": "Top category",
+    "topCategoryA11y": "Top category this month: {{category}}, {{amount}}",
+    "biggestExpense": "Biggest expense",
+    "biggestExpenseA11y": "Biggest expense this month: {{description}}, {{amount}}",
+    "perDay": "Average per day",
+    "peakNote": "Highest {{peak}} on {{day}}",
+    "budgetsOverline": "Limits",
+    "recentOverline": "Latest",
+    "addEntry": "Add entry",
+    "addEntryA11y": "Add a transaction"
   },
   "history": {
     "search": "Search description or category",
@@ -206,7 +224,8 @@
     "leftWithPercent": "{{left}} · {{percent}}% used",
     "daysLeftMonth_one": "{{count}} day left this month",
     "daysLeftMonth_other": "{{count}} days left this month",
-    "paceHint": "{{days}} · about {{amount}} a day"
+    "paceHint": "{{days}} · about {{amount}} a day",
+    "byCategory": "Category budgets"
   },
   "goals": {
     "reached": "Goal reached",
@@ -233,7 +252,9 @@
     "new": "New goal",
     "ringValue": "{{percent}} percent, {{progress}}",
     "summaryValue": "{{percent}} percent, {{saved}} saved of {{target}}",
-    "toGo": "{{amount}} to go"
+    "toGo": "{{amount}} to go",
+    "listOverline": "Targets",
+    "listTitle": "Your goals"
   },
   "balances": {
     "title": "Money on hand",

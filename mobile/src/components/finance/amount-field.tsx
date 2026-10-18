@@ -47,8 +47,8 @@ export function AmountField({
   const hasValue = Number.isFinite(parsed) && parsed > 0;
 
   return (
-    <Card variant="tinted" accent="finance" padding="lg" style={{ alignItems: 'center', gap: spacing.md, ...(error ? { borderColor: colors.error, borderWidth: 2 } : null) }}>
-      <Text variant="caption" weight="semiBold" color="textSecondary" accessibilityElementsHidden importantForAccessibility="no">
+    <Card padding="lg" style={{ alignItems: 'center', gap: spacing.md, ...(error ? { borderColor: colors.error, borderWidth: 2 } : null) }}>
+      <Text variant="overline" color="textMuted" accessibilityElementsHidden importantForAccessibility="no">
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>

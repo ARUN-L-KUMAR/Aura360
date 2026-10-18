@@ -92,7 +92,7 @@ export default function BalancesScreen() {
         <>
           {isError ? <RefreshError error={error} onRetry={() => void refetch()} retrying={isRefetching} /> : null}
 
-          <Card variant="tinted" accent="finance" gradient="finance" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
             {/* Cash against bank and UPI, redrawn as the fields change. */}
             <DonutChart
               segments={[
@@ -106,7 +106,7 @@ export default function BalancesScreen() {
               <Ionicons name="wallet-outline" size={26} color={colors.textSecondary} />
             </DonutChart>
             <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text variant="caption" weight="semiBold" color="textSecondary">
+              <Text variant="overline" color="textMuted">
                 {t('balances.total')}
               </Text>
               <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
