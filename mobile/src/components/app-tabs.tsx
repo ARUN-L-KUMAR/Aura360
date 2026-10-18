@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useEffect, useRef, type ComponentProps } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';

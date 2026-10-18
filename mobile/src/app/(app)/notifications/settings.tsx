@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState, Linking, StyleSheet, View } from 'react-native';

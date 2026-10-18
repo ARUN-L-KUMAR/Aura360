@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, View } from 'react-native';

@@ -1,4 +1,4 @@
-import type { Ionicons } from '@expo/vector-icons';
+import type Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 

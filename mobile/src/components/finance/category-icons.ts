@@ -1,4 +1,4 @@
-import type { Ionicons } from '@expo/vector-icons';
+import type Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 
 import { OVERALL_BUDGET, type PaymentMethod } from '@/features/finance/types';

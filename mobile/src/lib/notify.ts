@@ -32,7 +32,7 @@
  *   received in the foreground becomes a toast with an action that deep-links to the notification's route.
  * - **Offline pill** (`OfflineBanner`): stays its own surface; offline = `warning`, rejected entries = `error`.
  */
-import type { Ionicons } from '@expo/vector-icons';
+import type Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 
 import type { ThemeColors } from '@/theme';

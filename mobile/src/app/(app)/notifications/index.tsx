@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { TFunction } from 'i18next';
 import { Stack, useRouter } from 'expo-router';
 import { memo, useMemo, type ComponentProps } from 'react';
