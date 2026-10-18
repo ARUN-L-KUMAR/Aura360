@@ -6,14 +6,13 @@ import { FlatList, View } from 'react-native';
 import { addDays, isoOf } from '@/components/fitness/activity';
 import { EntryRow, openEntry } from '@/components/fitness/entry-row';
 import { FitnessSummary } from '@/components/fitness/fitness-summary';
-import { FAB_CLEARANCE, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
+import { FAB_CLEARANCE, Heading, PeriodStepper, QueryError } from '@/components/fitness/section-kit';
 import { WorkoutCard, WorkoutCardSkeleton } from '@/components/fitness/workout-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
 import { useFitnessEntries } from '@/features/fitness/hooks';
 import { isWorkout, volumeOf } from '@/features/fitness/stats';
@@ -70,11 +69,11 @@ function DayHeading({ row }: { row: Extract<Row, { kind: 'day' }> }) {
       accessibilityRole="header"
       accessibilityLabel={[label, t('log.dayCount', { count: row.count }), details].filter(Boolean).join(', ')}
       style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: spacing.md, paddingTop: spacing.xs }}>
-      <Text variant="label" weight="semiBold" style={{ flexShrink: 1 }}>
+      <Text variant="overline" color="textMuted" style={{ flexShrink: 1 }}>
         {label}
       </Text>
       {details ? (
-        <Text variant="caption" color="textSecondary" numeric>
+        <Text variant="caption" color="textMuted" numeric>
           {details}
         </Text>
       ) : null}
@@ -140,7 +139,7 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
       {workouts.length > 0 ? (
         <>
           <FitnessSummary entries={workouts} />
-          <SectionHeader title={t('log.workouts')} count={workouts.length} />
+          <Heading overline={t('log.overline')} title={t('log.workouts')} count={workouts.length} />
         </>
       ) : null}
     </View>
@@ -150,8 +149,8 @@ export function LogSection({ header, onLogWorkout }: { header: ReactNode; onLogW
     <View style={{ gap: layout.sectionGap, paddingTop: rows.length > 0 ? layout.sectionGap : 0 }}>
       {others.length > 0 ? (
         <View style={{ gap: spacing.sm }}>
-          <SectionHeader title={t('log.measurementsAndGoals')} count={others.length} />
-          <Card padding="none" style={{ overflow: 'hidden' }}>
+          <Heading overline={t('log.overlineBody')} title={t('log.measurementsAndGoals')} count={others.length} />
+          <Card rounded="xl" padding="none" style={{ overflow: 'hidden' }}>
             {others.map((entry, index) => (
               <EntryRow key={entry.id} entry={entry} divider={index < others.length - 1} />
             ))}

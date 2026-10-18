@@ -1,22 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useMemo, type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { currentStreak, lastDays, todayIndexOf, WEEKLY_GOAL_MINUTES, weekMinutes, type ActivityItem } from '@/components/fitness/activity';
+import { currentStreak, directionOf, lastDays, percentChange, rollingWeeks, todayIndexOf, WEEKLY_GOAL_MINUTES, weekMinutes, type ActivityItem } from '@/components/fitness/activity';
 import { CountUp } from '@/components/fitness/count-up';
+import { openEntry } from '@/components/fitness/entry-row';
 import { FitnessSummary } from '@/components/fitness/fitness-summary';
-import { FAB_CLEARANCE, QueryError } from '@/components/fitness/section-kit';
-import { StartCta } from '@/components/fitness/start-cta';
+import { FAB_CLEARANCE, Heading, HeroButtons, IconTile, MetricCard, MetricCell, MetricGrid, QueryError, RingCard, type Trend } from '@/components/fitness/section-kit';
 import { WorkoutCard, WorkoutCardSkeleton } from '@/components/fitness/workout-card';
-import { HeroBanner } from '@/components/illustrations/hero-banner';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useBlockMotion } from '@/components/ui/motion';
+import { PremiumHero } from '@/components/ui/premium-hero';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { MiniBars } from '@/components/viz/mini-bars';
@@ -34,7 +33,6 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 const RING_SIZE = spacing.xxxl * 2 + spacing.lg; // 112
 const RING_THICKNESS = spacing.md;
 const BARS_HEIGHT = spacing.xxxl + spacing.lg;
-const CHIP_ICON = spacing.xl + spacing.xs; // 28
 const CHIP_BASIS = 88;
 
 /** One-letter weekday for a day like "2026-10-09", in the phone's language. */
@@ -51,10 +49,9 @@ function readinessTone(score: number) {
 
 type HeadlineProps = { id: string; icon: IconName; value: number; label: string; spoken: string };
 
-/** A headline number in the hero: icon, count-up number and a short label. One spoken sentence. */
+/** A frosted stat chip in the hero: icon, count-up number and a tiny tracked label. One spoken sentence. */
 function HeadlineChip({ id, icon, value, label, spoken }: HeadlineProps) {
-  const { colors, accent } = useTheme();
-  const fitness = accent('fitness');
+  const { colors } = useTheme();
   return (
     <View
       accessible
@@ -64,30 +61,27 @@ function HeadlineChip({ id, icon, value, label, spoken }: HeadlineProps) {
         flexBasis: CHIP_BASIS,
         gap: spacing.xs,
         padding: spacing.md,
-        borderRadius: radius.md,
+        borderRadius: radius.lg,
         borderWidth: 1,
-        borderColor: fitness.border,
-        backgroundColor: colors.card,
+        borderColor: colors.heroChipBorder,
+        backgroundColor: colors.heroChip,
       }}>
-      <View style={{ width: CHIP_ICON, height: CHIP_ICON, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
-        <Ionicons name={icon} size={spacing.lg} color={fitness.text} />
-      </View>
-      <CountUp id={id} value={value} variant="title" />
-      <Text variant="caption" color="textSecondary">
+      <Ionicons name={icon} size={spacing.lg} color={colors.onHeroMuted} />
+      <CountUp id={id} value={value} variant="headline" color="onHero" />
+      <Text variant="overline" numberOfLines={2} style={{ color: colors.onHeroMuted }}>
         {label}
       </Text>
     </View>
   );
 }
 
-/** Same footprint as three `HeadlineChip`s while the entries load. */
+/** Same footprint as three `HeadlineChip`s while the entries load, drawn in the hero's own frosted tone. */
 function HeadlineSkeleton({ label }: { label: string }) {
+  const { colors } = useTheme();
   return (
     <SkeletonGroup label={label} style={{ flexDirection: 'row', gap: spacing.sm }}>
       {[0, 1, 2].map((i) => (
-        <View key={i} style={{ flexGrow: 1, flexBasis: CHIP_BASIS }}>
-          <Skeleton shape="box" height={spacing.xxxl + spacing.xl} rounded="md" />
-        </View>
+        <View key={i} style={{ flexGrow: 1, flexBasis: CHIP_BASIS, height: spacing.xxxl + spacing.xl, borderRadius: radius.lg, backgroundColor: colors.heroChip }} />
       ))}
     </SkeletonGroup>
   );
@@ -96,12 +90,13 @@ function HeadlineSkeleton({ label }: { label: string }) {
 export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header: ReactNode; onOpenTrain: () => void; onLogWorkout: () => void }) {
   const { colors, accent } = useTheme();
   const { t } = useTranslation('fitness');
+  const router = useRouter();
   const entries = useRecentFitness();
   const readiness = useReadiness();
   const { session } = useLiveSession();
   const fitness = accent('fitness');
   const heroMotion = useBlockMotion(0);
-  const ctaMotion = useBlockMotion(60);
+  const statsMotion = useBlockMotion(60);
   const weekMotion = useBlockMotion(120);
   const streakMotion = useBlockMotion(180);
   const readinessMotion = useBlockMotion(240);
@@ -121,6 +116,11 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
   const streakDays = useMemo(() => lastDays(workoutDays, 7), [workoutDays]);
   const workedOutToday = streakDays[streakDays.length - 1]?.done ?? false;
 
+  // The last 7 days against the 7 days before: rolling windows compare like with like.
+  const [before, latest] = useMemo(() => rollingWeeks(items, 2), [items]);
+  const averageNow = latest.sessions > 0 ? Math.round(latest.minutes / latest.sessions) : 0;
+  const averageBefore = before.sessions > 0 ? Math.round(before.minutes / before.sessions) : 0;
+
   const goalPercent = Math.round((weekTotal / WEEKLY_GOAL_MINUTES) * 100);
   const goalReached = weekTotal >= WEEKLY_GOAL_MINUTES;
   const minutesLeft = Math.max(0, WEEKLY_GOAL_MINUTES - weekTotal);
@@ -134,7 +134,27 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
   const failed = entries.isError && !entries.data;
   const ready = !loading && !failed;
 
-  const heroTitle = session ? t('overview.inProgress', { title: session.title }) : workedOutToday ? t('overview.heroDone') : doneThisWeek > 0 ? t('overview.heroKeepGoing') : t('overview.heroStart');
+  const percentTrend = (now: number, then: number): Trend | undefined => {
+    const pct = percentChange(now, then);
+    return pct === null ? undefined : { text: t('stats.deltaPercent', { value: Math.abs(pct) }), direction: directionOf(pct) };
+  };
+  const workoutsTrend: Trend | undefined =
+    latest.sessions > 0 || before.sessions > 0 ? { text: String(Math.abs(latest.sessions - before.sessions)), direction: directionOf(latest.sessions - before.sessions) } : undefined;
+  const numberText = (n: number) => Math.round(n).toLocaleString(getDeviceLocale());
+
+  const heroLead = session
+    ? t('overview.inProgress', { title: session.title })
+    : workedOutToday
+      ? t('overview.heroDoneLead')
+      : doneThisWeek > 0
+        ? t('overview.heroKeepGoingLead')
+        : t('overview.heroStartLead');
+  const heroAccent = session ? undefined : workedOutToday ? t('overview.heroDoneAccent') : doneThisWeek > 0 ? t('overview.heroKeepGoingAccent') : t('overview.heroStartAccent');
+  const heroSubtitle = session
+    ? t('overview.ctaSubtitle')
+    : ready && (doneThisWeek > 0 || weekTotal > 0)
+      ? t('overview.heroSummary', { workouts: t('overview.workoutsCount', { count: doneThisWeek }), minutes: t('units.min', { value: weekTotal }) })
+      : t('overview.heroSubtitle');
 
   const weekSummary = [
     t('overview.barsSummary', { total: weekTotal }),
@@ -148,7 +168,17 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
       {header}
 
       <Animated.View {...heroMotion}>
-        <HeroBanner scene="fitness-hero" accent="fitness" eyebrow={t('overview.today')} title={heroTitle} subtitle={session ? undefined : t('overview.heroSubtitle')}>
+        <PremiumHero
+          chip={{ icon: 'flash', label: t('overview.thisWeek') }}
+          title={heroLead}
+          accentWord={heroAccent}
+          subtitle={heroSubtitle}>
+          <HeroButtons
+            actions={[
+              { label: session ? t('actions.resumeWorkout') : t('actions.startWorkout'), icon: 'play', variant: 'solid', onPress: onOpenTrain },
+              { label: t('overview.logEntry'), icon: 'add', variant: 'glass', onPress: () => openEntry(router) },
+            ]}
+          />
           {ready ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               <HeadlineChip id="week-workouts" icon="barbell-outline" value={doneThisWeek} label={t('overview.chipWorkouts')} spoken={t('overview.spokenWorkouts', { count: doneThisWeek })} />
@@ -158,23 +188,14 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
           ) : loading ? (
             <HeadlineSkeleton label={t('overview.loadingWeek')} />
           ) : null}
-        </HeroBanner>
-      </Animated.View>
-
-      <Animated.View {...ctaMotion}>
-        <StartCta
-          title={session ? t('actions.resumeWorkout') : t('actions.startWorkout')}
-          subtitle={session ? session.title : t('overview.ctaSubtitle')}
-          icon={session ? 'play' : 'barbell-outline'}
-          onPress={onOpenTrain}
-        />
+        </PremiumHero>
       </Animated.View>
 
       {entries.isError ? <QueryError error={entries.error} hasData={!!entries.data} retrying={entries.isFetching} onRetry={() => entries.refetch()} /> : null}
 
       {loading ? (
         <>
-          <Card>
+          <RingCard>
             <SkeletonGroup label={t('overview.loadingWeek')} style={{ gap: spacing.md }}>
               <Skeleton shape="line" width="40%" />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
@@ -186,15 +207,35 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
               </View>
               <Skeleton shape="box" height={BARS_HEIGHT} />
             </SkeletonGroup>
-          </Card>
+          </RingCard>
           <WorkoutCardSkeleton />
         </>
       ) : null}
 
       {ready ? (
+        <Animated.View {...statsMotion} style={{ gap: spacing.md }}>
+          <Heading overline={t('overview.statsOverline')} title={t('overview.statsTitle')} subtitle={t('overview.statsSubtitle')} />
+          <MetricGrid>
+            <MetricCell>
+              <MetricCard label={t('stats.tileWorkouts')} icon="calendar-outline" value={latest.sessions} trend={workoutsTrend} />
+            </MetricCell>
+            <MetricCell>
+              <MetricCard label={t('stats.tileMinutes')} icon="time-outline" value={latest.minutes} format={(n) => t('units.min', { value: numberText(n) })} trend={percentTrend(latest.minutes, before.minutes)} />
+            </MetricCell>
+            <MetricCell>
+              <MetricCard label={t('stats.tileVolume')} icon="barbell-outline" value={latest.volume} format={(n) => t('units.kg', { value: numberText(n) })} trend={percentTrend(latest.volume, before.volume)} />
+            </MetricCell>
+            <MetricCell>
+              <MetricCard label={t('summary.averageSession')} icon="speedometer-outline" value={averageNow} format={(n) => t('units.min', { value: n })} trend={percentTrend(averageNow, averageBefore)} />
+            </MetricCell>
+          </MetricGrid>
+        </Animated.View>
+      ) : null}
+
+      {ready ? (
         <Animated.View {...weekMotion}>
-          <Card style={{ gap: spacing.lg }}>
-            <SectionHeader title={t('overview.thisWeek')} subtitle={t('overview.workoutsCount', { count: doneThisWeek })} />
+          <RingCard>
+            <Heading overline={t('overview.goalTitle')} title={t('overview.thisWeek')} subtitle={t('overview.workoutsCount', { count: doneThisWeek })} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg }}>
               <ProgressRing
                 value={weekTotal}
@@ -204,13 +245,10 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
                 accent="fitness"
                 label={t('overview.goalTitle')}
                 valueText={t('overview.goalProgress', { done: weekTotal, goal: WEEKLY_GOAL_MINUTES })}>
-                <CountUp id="goal-percent" value={goalPercent} format={(n) => t('overview.percent', { value: n })} variant="title" />
+                <CountUp id="goal-percent" value={goalPercent} format={(n) => t('overview.percent', { value: n })} variant="title" weight="bold" />
               </ProgressRing>
               <View style={{ flex: 1, flexBasis: 140, gap: spacing.xs }}>
-                <Text variant="label" weight="semiBold">
-                  {t('overview.goalTitle')}
-                </Text>
-                <Text variant="caption" color="textSecondary" numeric>
+                <Text variant="body" weight="bold" numeric>
                   {t('overview.goalProgress', { done: weekTotal, goal: WEEKLY_GOAL_MINUTES })}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
@@ -221,30 +259,30 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
                 </View>
               </View>
             </View>
-            <MiniBars
-              values={minutesPerDay}
-              highlightIndex={todayIndex}
-              labels={week.map((day) => narrowWeekday(day.iso))}
-              accent="fitness"
-              height={BARS_HEIGHT}
-              accessibilityLabel={weekSummary}
-            />
-          </Card>
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="overline" color="textMuted">
+                {t('overview.minutesByDay')}
+              </Text>
+              <MiniBars
+                values={minutesPerDay}
+                highlightIndex={todayIndex}
+                labels={week.map((day) => narrowWeekday(day.iso))}
+                accent="fitness"
+                height={BARS_HEIGHT}
+                accessibilityLabel={weekSummary}
+              />
+            </View>
+          </RingCard>
         </Animated.View>
       ) : null}
 
       {ready ? (
         <Animated.View {...streakMotion}>
-          <Card style={{ gap: spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Ionicons name="flame" size={spacing.xl} color={streak > 0 ? fitness.text : colors.textMuted} />
+          <RingCard>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <IconTile icon="flame-outline" />
               <View style={{ flex: 1 }}>
-                <Text variant="title" accessibilityRole="header">
-                  {t('overview.streakTitle')}
-                </Text>
-                <Text variant="caption" color="textSecondary">
-                  {streak > 0 ? t('overview.streakDays', { count: streak }) : t('overview.streakNone')}
-                </Text>
+                <Heading overline={t('overview.streakTitle')} title={streak > 0 ? t('overview.streakDays', { count: streak }) : t('overview.streakNone')} />
               </View>
             </View>
             <StreakDots
@@ -255,13 +293,13 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
               size={spacing.xl + spacing.xs}
               accessibilityLabel={t('overview.streakSummary', { done: streakDays.filter((day) => day.done).length, total: streakDays.length })}
             />
-          </Card>
+          </RingCard>
         </Animated.View>
       ) : null}
 
       <Animated.View {...readinessMotion}>
-        <Card style={{ gap: spacing.md }}>
-          <SectionHeader title={t('overview.readinessTitle')} />
+        <RingCard style={{ gap: spacing.md }}>
+          <Heading overline={t('overview.readinessOverline')} title={t('overview.readinessTitle')} />
           {readiness.isPending ? (
             <SkeletonGroup label={t('overview.readinessLoading')} style={{ gap: spacing.sm }}>
               <Skeleton shape="line" width="30%" height={spacing.xl} />
@@ -272,7 +310,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
           {readiness.data ? (
             <View style={{ gap: spacing.md }}>
               <View accessible accessibilityLabel={t('overview.readinessLabel', { score: readiness.data.score, status: readiness.data.status })} style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
-                <CountUp id="readiness" value={readiness.data.score} variant="headline" color={tone.text} />
+                <CountUp id="readiness" value={readiness.data.score} variant="display" color={tone.text} />
                 <Ionicons name={tone.icon} size={20} color={colors[tone.text]} />
                 <Text variant="label" color="textSecondary" style={{ flexShrink: 1 }}>
                   {readiness.data.status}
@@ -292,14 +330,14 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
               <Button title={t('actions.tryAgain')} variant="tertiary" size="sm" fullWidth={false} loading={readiness.isFetching} onPress={() => readiness.refetch()} />
             </View>
           ) : null}
-        </Card>
+        </RingCard>
       </Animated.View>
 
       {ready ? <FitnessSummary entries={workouts} /> : null}
 
       {ready ? (
         <View style={{ gap: spacing.md }}>
-          <SectionHeader title={t('overview.recent')} />
+          <Heading overline={t('overview.recentOverline')} title={t('overview.recent')} />
           {recentWorkouts.length === 0 ? (
             <EmptyState
               accent="fitness"

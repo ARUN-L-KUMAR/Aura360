@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Heading, IconTile, RingCard } from '@/components/fitness/section-kit';
 import { Chip } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -17,7 +17,7 @@ import { layout, radius, spacing, useTheme } from '@/theme';
 
 const PRESETS = [30, 60, 90, 120];
 const RING_SIZE = spacing.xxxl * 3 + spacing.xl; // 168
-const RING_THICKNESS = spacing.md;
+const RING_THICKNESS = spacing.sm;
 
 /** Rest-timer state. While running it stores the moment it ends, so the countdown stays right if the app stalls. */
 type TimerState = { totalSeconds: number; leftMs: number; endsAt: number | null };
@@ -30,9 +30,8 @@ const formatTime = (secs: number) => {
 
 /** Stand-alone rest interval timer (outside a live workout): presets, play / pause, reset and +15 s. */
 export function RestTimer() {
-  const { accent } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation('fitness');
-  const fitness = accent('fitness');
 
   const [timer, setTimer] = useState<TimerState>({ totalSeconds: 60, leftMs: 60_000, endsAt: null });
   const now = useNow(timer.endsAt !== null, 250);
@@ -75,13 +74,11 @@ export function RestTimer() {
   const reset = () => setTimer((prev) => ({ ...prev, leftMs: prev.totalSeconds * 1000, endsAt: null }));
 
   return (
-    <Card variant={isRunning ? 'tinted' : 'outlined'} accent="fitness" style={{ gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Ionicons name="timer-outline" size={20} color={fitness.text} />
-          <Text variant="title" accessibilityRole="header">
-            {t('restTimer.title')}
-          </Text>
+    <RingCard style={{ gap: spacing.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <IconTile icon="timer-outline" />
+        <View style={{ flex: 1 }}>
+          <Heading overline={t('restTimer.overline')} title={t('restTimer.title')} />
         </View>
         {/* One short phrase that only changes when the state does, so a screen reader announces it sparingly. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }} accessibilityLiveRegion="polite">
@@ -97,7 +94,7 @@ export function RestTimer() {
         <View accessible accessibilityLabel={t('restTimer.secondsRemaining', { count: secondsRemaining })}>
           <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <ProgressRing value={secondsRemaining} max={Math.max(1, totalSeconds)} size={RING_SIZE} thickness={RING_THICKNESS} accent="fitness">
-              <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} color={isComplete ? 'successText' : 'text'}>
+              <Text variant="hero" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} color={isComplete ? 'successText' : 'text'}>
                 {formatTime(secondsRemaining)}
               </Text>
             </ProgressRing>
@@ -117,9 +114,9 @@ export function RestTimer() {
               borderRadius: radius.pill,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: fitness.solid,
+              backgroundColor: colors.primary,
             }}>
-            <Ionicons name={isRunning ? 'pause' : 'play'} size={22} color={fitness.onSolid} />
+            <Ionicons name={isRunning ? 'pause' : 'play'} size={22} color={colors.primaryText} />
           </PressableScale>
           <IconButton icon="refresh" variant="tonal" accessibilityLabel={t('restTimer.reset')} onPress={reset} />
           <Button title={t('rest.plus15')} variant="tertiary" size="sm" fullWidth={false} accessibilityLabel={t('rest.plus15Label')} onPress={() => addTime(15)} />
@@ -131,6 +128,6 @@ export function RestTimer() {
           <Chip key={p} label={t('units.seconds', { value: p })} accent="fitness" selected={totalSeconds === p} onPress={() => selectPreset(p)} accessibilityHint={t('restTimer.presetHint', { count: p })} />
         ))}
       </View>
-    </Card>
+    </RingCard>
   );
 }

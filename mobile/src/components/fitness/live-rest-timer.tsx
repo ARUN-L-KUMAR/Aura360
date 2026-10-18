@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { RingCard } from '@/components/fitness/section-kit';
 import { Text } from '@/components/ui/text';
 import { ProgressRing } from '@/components/viz/progress-ring';
 import { sessionActions } from '@/features/fitness/session-store';
@@ -10,7 +10,7 @@ import { useTranslation } from '@/i18n';
 import { spacing } from '@/theme';
 
 const SIZE = spacing.xxxl * 3; // 144
-const THICKNESS = spacing.md;
+const THICKNESS = spacing.sm;
 /** The only point, besides starting and ending, where the live region changes its message. */
 const HEADS_UP_SECONDS = 10;
 
@@ -23,15 +23,15 @@ export function LiveRestTimer({ remaining, total }: { remaining: number; total: 
   const almostDone = remaining <= HEADS_UP_SECONDS;
 
   return (
-    <Card variant="tinted" accent="fitness" style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: spacing.lg }}>
+    <RingCard style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
       {/* One element that reads the time left when focused. It is not a live region: a ring that spoke every second would be noise. */}
       <View accessible accessibilityLabel={t('rest.secondsLeft', { count: remaining })}>
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <ProgressRing value={remaining} max={Math.max(1, total)} size={SIZE} thickness={THICKNESS} accent="fitness">
-            <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            <Text variant="hero" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {formatDuration(remaining)}
             </Text>
-            <Text variant="caption" color="textSecondary">
+            <Text variant="overline" color="textMuted">
               {t('rest.label')}
             </Text>
           </ProgressRing>
@@ -49,6 +49,6 @@ export function LiveRestTimer({ remaining, total }: { remaining: number; total: 
           {almostDone ? t('rest.almostDone') : t('rest.nextSet')}
         </Text>
       </View>
-    </Card>
+    </RingCard>
   );
 }

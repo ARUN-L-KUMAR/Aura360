@@ -12,16 +12,14 @@ import {
   type LiftSample,
   type PersonalBest,
 } from '@/components/fitness/activity';
-import { QueryError } from '@/components/fitness/section-kit';
+import { Heading, QueryError, RingCard } from '@/components/fitness/section-kit';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { MiniBars } from '@/components/viz/mini-bars';
@@ -111,7 +109,7 @@ const RecordRow = memo(function RecordRow({ best, index }: RecordRowProps) {
         style={{
           width: CHIP,
           height: CHIP,
-          borderRadius: radius.md,
+          borderRadius: radius.lg,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: best.isNew ? fitness.solid : fitness.soft,
@@ -119,7 +117,7 @@ const RecordRow = memo(function RecordRow({ best, index }: RecordRowProps) {
         <Ionicons name={best.isNew ? 'trophy' : 'medal-outline'} size={spacing.xl} color={best.isNew ? fitness.onSolid : fitness.text} />
       </View>
       <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-        <Text variant="label" weight="semiBold" numberOfLines={2}>
+        <Text variant="label" weight="bold" numberOfLines={2}>
           {best.name}
         </Text>
         <Text variant="caption" color="textSecondary" numeric>
@@ -319,8 +317,8 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
 
       {!loading && !failed ? (
         <Animated.View {...volumeMotion}>
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader title={t('stats.volumeTitle')} subtitle={hasTrend ? t('stats.volumeSubtitle', { weeks: WEEKS }) : undefined} />
+          <RingCard>
+            <Heading overline={t('stats.overlineTrends')} title={t('stats.volumeTitle')} subtitle={hasTrend ? t('stats.volumeSubtitle', { weeks: WEEKS }) : undefined} />
             {!hasTrend ? (
               <EmptyState
                 accent="fitness"
@@ -343,7 +341,7 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
                 {bestSession ? <Tag label={t('stats.bestSession', { value: kg(number(bestSession.volume)), date: formatDay(bestSession.date) })} icon="trophy" size="md" accent="fitness" /> : null}
                 {trendVolumes.length >= 2 ? (
                   <View style={{ gap: spacing.xs }}>
-                    <Text variant="label" color="textSecondary">
+                    <Text variant="overline" color="textMuted">
                       {t('stats.perWorkout')}
                     </Text>
                     <Sparkline
@@ -356,24 +354,24 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
                 ) : null}
               </>
             )}
-          </Card>
+          </RingCard>
         </Animated.View>
       ) : null}
 
       {!loading && !failed && bests.length > 0 ? (
         <Animated.View {...recordsMotion}>
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader title={t('stats.recordsTitle')} subtitle={t('stats.recordsSubtitle')} />
+          <RingCard>
+            <Heading overline={t('stats.overlineRecords')} title={t('stats.recordsTitle')} subtitle={t('stats.recordsSubtitle')} />
             {bests.map((best, index) => (
               <RecordRow key={best.name.toLowerCase()} best={best} index={index} />
             ))}
-          </Card>
+          </RingCard>
         </Animated.View>
       ) : null}
 
       {!loading && !failed ? (
-        <Card style={{ gap: spacing.md }}>
-          <SectionHeader title={t('stats.bodyWeight')} />
+        <RingCard>
+          <Heading overline={t('stats.overlineBody')} title={t('stats.bodyWeight')} />
           {latestWeight !== null ? (
             weightSeries.length >= 2 ? (
               <Sparkline
@@ -411,7 +409,7 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
 
           {weights.length > 0 ? (
             <View style={{ gap: spacing.sm }}>
-              <Text variant="label" color="textSecondary" accessibilityRole="header">
+              <Text variant="overline" color="textMuted" accessibilityRole="header">
                 {t('stats.recentWeighIns')}
               </Text>
               {weights.slice(0, 5).map((entry) => (
@@ -419,17 +417,17 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
               ))}
             </View>
           ) : null}
-        </Card>
+        </RingCard>
       ) : null}
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('stats.oneRmTitle')} subtitle={t('stats.oneRmSubtitle')} />
+      <RingCard>
+        <Heading overline={t('stats.overlineTools')} title={t('stats.oneRmTitle')} subtitle={t('stats.oneRmSubtitle')} />
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <Input containerStyle={{ flex: 1 }} label={t('stats.weightKg')} value={liftWeight} onChangeText={setLiftWeight} keyboardType="decimal-pad" returnKeyType="done" />
           <Input containerStyle={{ flex: 1 }} label={t('stats.reps')} value={liftReps} onChangeText={setLiftReps} keyboardType="number-pad" />
         </View>
         <View accessible accessibilityLabel={oneRm > 0 ? t('stats.oneRmSpoken', { value: oneRm }) : t('stats.oneRmPrompt')} accessibilityLiveRegion="polite">
-          <Text variant="display" numeric style={{ color: accent('fitness').text }}>
+          <Text variant="hero" numeric style={{ color: accent('fitness').text }}>
             {oneRm > 0 ? kg(oneRm) : '—'}
           </Text>
           <Text variant="caption" color="textSecondary">
@@ -443,10 +441,10 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
             ))}
           </View>
         ) : null}
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('stats.plateTitle')} subtitle={t('stats.plateSubtitle')} />
+      <RingCard>
+        <Heading overline={t('stats.overlineTools')} title={t('stats.plateTitle')} subtitle={t('stats.plateSubtitle')} />
         <Input
           label={t('stats.targetWeight')}
           value={plateTarget}
@@ -474,7 +472,7 @@ export function StatsSection({ header, onOpenTrain }: { header: ReactNode; onOpe
             </Text>
           </View>
         ) : null}
-      </Card>
+      </RingCard>
     </Screen>
   );
 }

@@ -6,11 +6,11 @@ import Animated from 'react-native-reanimated';
 
 import { LiveRestTimer } from '@/components/fitness/live-rest-timer';
 import { RestTimer } from '@/components/fitness/rest-timer';
-import { QueryError } from '@/components/fitness/section-kit';
+import { Heading, QueryError, RingCard } from '@/components/fitness/section-kit';
 import { StartCta } from '@/components/fitness/start-cta';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
+import { Chip, ChipGroup } from '@/components/ui/chip';
 import { toIsoDay } from '@/components/ui/date-field';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
@@ -19,11 +19,9 @@ import { ListItem } from '@/components/ui/list-item';
 import { useListMotion, usePop } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
-import { ProgressRing } from '@/components/viz/progress-ring';
 import { useRecentFitness, useSaveFitness, useSubstitutes } from '@/features/fitness/hooks';
 import {
   buildExercise,
@@ -93,8 +91,8 @@ function StartWorkout({ header }: { header: ReactNode }) {
 
       {recent.isError ? <QueryError error={recent.error} hasData retrying={recent.isFetching} onRetry={() => recent.refetch()} /> : null}
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('train.startTitle')} subtitle={t('train.startSubtitle')} />
+      <RingCard style={{ gap: spacing.md }}>
+        <Heading overline={t('train.overline')} title={t('train.startTitle')} subtitle={t('train.startSubtitle')} />
         <Input
           label={t('train.workoutName')}
           value={title}
@@ -105,11 +103,11 @@ function StartWorkout({ header }: { header: ReactNode }) {
           onSubmitEditing={startEmpty}
         />
         <StartCta title={t('train.startEmpty')} subtitle={title.trim() || t('train.defaultTitle')} icon="play" haptic={false} onPress={startEmpty} />
-      </Card>
+      </RingCard>
 
       {lastWorkout?.exercises ? (
-        <Card style={{ gap: spacing.sm }}>
-          <SectionHeader title={t('train.repeatTitle')} />
+        <RingCard style={{ gap: spacing.sm }}>
+          <Heading title={t('train.repeatTitle')} />
           <Text variant="body" numberOfLines={3}>
             {lastWorkout.exercises.map((ex) => ex.name).join(' · ')}
           </Text>
@@ -117,7 +115,7 @@ function StartWorkout({ header }: { header: ReactNode }) {
             {t('train.repeatHint')}
           </Text>
           <Button title={t('train.repeatButton')} variant="secondary" leftIcon="repeat" haptic={false} onPress={repeatLast} />
-        </Card>
+        </RingCard>
       ) : null}
 
       <RestTimer />
@@ -195,10 +193,11 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
     <Screen>
       {header}
 
-      <Card variant="tinted" accent="fitness" gradient="fitness" style={{ gap: spacing.lg }}>
-        <LiveSummary session={session} />
+      <LiveSummary session={session} />
+
+      <RingCard style={{ gap: spacing.md }}>
         <Input label={t('train.workoutName')} value={session.title} onChangeText={sessionActions.setTitle} autoCapitalize="sentences" returnKeyType="done" />
-      </Card>
+      </RingCard>
 
       <LiveRest session={session} />
 
@@ -222,57 +221,63 @@ function ActiveWorkout({ header, session, onFinished }: { header: ReactNode; ses
   );
 }
 
-/** Size of the ring that shows how many of the planned sets are done. */
-const SETS_RING = spacing.xxxl + spacing.xl + spacing.sm; // 88
+/** Height of the thin bar that shows how many of the planned sets are done. */
+const SETS_BAR = spacing.sm;
+/** Pause button diameter. */
+const PAUSE_BUTTON = layout.minTouchTarget + spacing.sm;
 
-/** Elapsed time, pause control and running totals. Owns the one-second clock so the exercise list does not re-render. */
+/**
+ * Elapsed time, pause control and running totals, on the web hero's dark card: a big tabular clock, a thin sets bar and
+ * frosted stat chips. Owns the one-second clock so the exercise list does not re-render.
+ */
 function LiveSummary({ session }: { session: LiveSession }) {
   const { t } = useTranslation('fitness');
-  const { accent } = useTheme();
-  const fitness = accent('fitness');
+  const { colors } = useTheme();
   const now = useNow(true);
   const seconds = elapsedSeconds(session, now);
   const { doneSets, totalSets, volume } = sessionTotals(session);
   const paused = !!session.pausedAt;
+  const percent = totalSets > 0 ? Math.min(100, Math.round((doneSets / totalSets) * 100)) : 0;
 
   return (
-    <View style={{ gap: spacing.lg }}>
+    <View style={{ borderRadius: radius.xl, backgroundColor: colors.heroSurface, padding: spacing.xl, gap: spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
         <View style={{ flexShrink: 1, gap: spacing.xs }}>
-          <Text variant="caption" weight="semiBold" style={{ color: fitness.text, textTransform: 'uppercase' }}>
+          <Text variant="overline" style={{ color: colors.onHeroMuted }}>
             {t('train.elapsedLabel')}
           </Text>
           {/* Not a live region: a clock that spoke every second would drown out everything else. */}
-          <Text variant="display" numeric accessibilityLabel={t('train.elapsed', { time: formatDuration(seconds) })}>
+          <Text variant="hero" numeric style={{ color: colors.onHero }} accessibilityLabel={t('train.elapsed', { time: formatDuration(seconds) })}>
             {formatDuration(seconds)}
           </Text>
-          {paused ? <Tag label={t('train.paused')} icon="pause" tone="neutral" /> : null}
+          {paused ? (
+            <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.heroChip, paddingHorizontal: spacing.md, paddingVertical: spacing.xs }}>
+              <Ionicons name="pause" size={12} color={colors.onHero} />
+              <Text variant="overline" style={{ color: colors.onHero }}>
+                {t('train.paused')}
+              </Text>
+            </View>
+          ) : null}
         </View>
-        <IconButton
-          icon={paused ? 'play' : 'pause'}
-          variant="tonal"
-          size="lg"
+        <PressableScale
+          accessibilityRole="button"
           accessibilityLabel={paused ? t('actions.resumeWorkout') : t('train.pause')}
           onPress={() => sessionActions.togglePause()}
-        />
+          haptic="tap"
+          ringRadius={radius.pill}
+          style={{ width: PAUSE_BUTTON, height: PAUSE_BUTTON, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.heroChip, borderWidth: 1, borderColor: colors.heroChipBorder }}>
+          <Ionicons name={paused ? 'play' : 'pause'} size={22} color={colors.onHero} />
+        </PressableScale>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: spacing.lg, rowGap: spacing.md }}>
-        <ProgressRing
-          value={doneSets}
-          max={Math.max(1, totalSets)}
-          size={SETS_RING}
-          thickness={spacing.sm}
-          accent="fitness"
-          label={t('train.setsProgress')}
-          valueText={t('train.setsProgressSpoken', { done: doneSets, total: totalSets })}>
-          <Text variant="label" weight="semiBold" numeric>
-            {doneSets}/{totalSets}
-          </Text>
-        </ProgressRing>
-        <View style={{ flex: 1, flexBasis: 140, flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: spacing.sm }}>
-          <Metric label={t('train.volume')} value={t('units.kg', { value: Math.round(volume).toLocaleString(getDeviceLocale()) })} />
-          <Metric label={t('train.burnEstimated')} value={t('units.kcal', { value: Math.round((seconds / 60) * 7.5 + doneSets * 4) })} />
-        </View>
+
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ height: SETS_BAR, borderRadius: radius.pill, backgroundColor: colors.heroChip, overflow: 'hidden' }}>
+        <View style={{ width: `${percent}%`, height: SETS_BAR, borderRadius: radius.pill, backgroundColor: colors.onHero }} />
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+        <Metric label={t('train.setsLabel')} value={`${doneSets}/${totalSets}`} spoken={t('train.setsProgressSpoken', { done: doneSets, total: totalSets })} />
+        <Metric label={t('train.volume')} value={t('units.kg', { value: Math.round(volume).toLocaleString(getDeviceLocale()) })} />
+        <Metric label={t('train.burnEstimated')} value={t('units.kcal', { value: Math.round((seconds / 60) * 7.5 + doneSets * 4) })} />
       </View>
     </View>
   );
@@ -296,13 +301,17 @@ function LiveRest({ session }: { session: LiveSession }) {
   return rest !== null && rest > 0 ? <LiveRestTimer remaining={rest} total={session.restTotalSec} /> : null;
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, spoken }: { label: string; value: string; spoken?: string }) {
+  const { colors } = useTheme();
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flexGrow: 1, flexBasis: 88, gap: 2 }}>
-      <Text variant="caption" color="textSecondary">
+    <View
+      accessible
+      accessibilityLabel={spoken ?? `${label}: ${value}`}
+      style={{ flexGrow: 1, flexBasis: 88, gap: spacing.xs, padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.heroChipBorder, backgroundColor: colors.heroChip }}>
+      <Text variant="overline" numberOfLines={2} style={{ color: colors.onHeroMuted }}>
         {label}
       </Text>
-      <Text variant="label" weight="semiBold" numeric>
+      <Text variant="label" weight="bold" numeric style={{ color: colors.onHero }}>
         {value}
       </Text>
     </View>
@@ -349,19 +358,19 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
 
   return (
     <Animated.View {...motion}>
-      <Card style={{ gap: spacing.sm }}>
+      <Card rounded="xl" style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
           <Animated.View
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
             style={[
-              { width: EXERCISE_CHIP, height: EXERCISE_CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: allDone ? fitness.solid : fitness.soft },
+              { width: EXERCISE_CHIP, height: EXERCISE_CHIP, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: allDone ? fitness.solid : fitness.soft },
               chipPop,
             ]}>
             <Ionicons name={allDone ? 'checkmark' : 'barbell-outline'} size={spacing.xl} color={allDone ? fitness.onSolid : fitness.text} />
           </Animated.View>
           <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-            <Text variant="title" numberOfLines={2} accessibilityRole="header">
+            <Text variant="title" weight="bold" numberOfLines={2} accessibilityRole="header">
               {exercise.name}
             </Text>
             <Text variant="caption" color="textSecondary">
@@ -413,13 +422,13 @@ const ExerciseCard = memo(function ExerciseCard({ exercise, last, index }: { exe
         ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ width: spacing.xxl, textTransform: 'uppercase' }}>
+          <Text variant="overline" color="textMuted" style={{ width: spacing.xxl }}>
             {t('train.columnSet')}
           </Text>
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center', textTransform: 'uppercase' }}>
+          <Text variant="overline" color="textMuted" style={{ flex: 1, textAlign: 'center' }}>
             {t('train.columnKg')}
           </Text>
-          <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1, textAlign: 'center', textTransform: 'uppercase' }}>
+          <Text variant="overline" color="textMuted" style={{ flex: 1, textAlign: 'center' }}>
             {t('train.columnReps')}
           </Text>
           <View style={{ width: SET_BUTTON }} />
@@ -464,7 +473,7 @@ const SetRow = memo(function SetRow({ exerciseId, index, weight, reps, done }: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
-        borderRadius: radius.md,
+        borderRadius: radius.lg,
         backgroundColor: done ? fitness.soft : undefined,
         marginHorizontal: -spacing.xs,
         paddingHorizontal: spacing.xs,
@@ -562,8 +571,8 @@ function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<s
   const canAddCustom = !!text.trim() && !names.some((name) => name.toLowerCase() === text.trim().toLowerCase());
 
   return (
-    <Card style={{ gap: spacing.md }}>
-      <SectionHeader title={t('train.addExercise')} />
+    <RingCard style={{ gap: spacing.md }}>
+      <Heading title={t('train.addExercise')} />
       <Input
         value={text}
         onChangeText={setText}
@@ -580,6 +589,6 @@ function AddExercise({ names, lastByName }: { names: string[]; lastByName: Map<s
         ))}
       </ChipGroup>
       {canAddCustom ? <Button title={t('train.addCustom', { name: text.trim() })} variant="secondary" leftIcon="add" haptic={false} onPress={() => add(text)} /> : null}
-    </Card>
+    </RingCard>
   );
 }

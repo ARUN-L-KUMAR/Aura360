@@ -3,12 +3,11 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Heading, RingCard } from '@/components/fitness/section-kit';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { useDeleteFitness, useSaveFitness } from '@/features/fitness/hooks';
@@ -167,17 +166,17 @@ export default function FitnessEntryScreen() {
 
       {type === 'workout' ? (
         <>
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader title={t('entry.activity')} />
+          <RingCard style={{ gap: spacing.md }}>
+            <Heading title={t('entry.activity')} />
             <ChipGroup>
               {WORKOUT_TYPES.map((name) => (
                 <Chip key={name} label={workoutTypeLabel(name)} selected={workoutType === name.toLowerCase()} accent="fitness" onPress={() => setWorkoutType(name.toLowerCase())} />
               ))}
             </ChipGroup>
-          </Card>
+          </RingCard>
 
-          <Card style={{ gap: spacing.md }}>
-            <SectionHeader title={t('entry.numbers')} subtitle={t('entry.allOptional')} />
+          <RingCard style={{ gap: spacing.md }}>
+            <Heading title={t('entry.numbers')} subtitle={t('entry.allOptional')} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
               <Input
                 containerStyle={{ flexGrow: 1, flexBasis: 96 }}
@@ -207,11 +206,11 @@ export default function FitnessEntryScreen() {
                 error={errors.distance}
               />
             </View>
-          </Card>
+          </RingCard>
 
-          <Card style={{ gap: spacing.lg }}>
+          <RingCard style={{ gap: spacing.lg }}>
             <View style={{ gap: spacing.sm }}>
-              <Text variant="label" color="textSecondary">
+              <Text variant="overline" color="textMuted">
                 {t('entry.intensity')}
               </Text>
               <ChipGroup>
@@ -228,7 +227,7 @@ export default function FitnessEntryScreen() {
             </View>
 
             <View style={{ gap: spacing.sm }}>
-              <Text variant="label" color="textSecondary">
+              <Text variant="overline" color="textMuted">
                 {t('entry.mood')}
               </Text>
               <ChipGroup>
@@ -237,11 +236,11 @@ export default function FitnessEntryScreen() {
                 ))}
               </ChipGroup>
             </View>
-          </Card>
+          </RingCard>
 
           {existing?.exercises && existing.exercises.length > 0 ? (
-            <Card style={{ gap: spacing.sm }}>
-              <SectionHeader title={t('entry.exercises')} subtitle={volume > 0 ? t('entry.totalVolume', { value: Math.round(volume).toLocaleString(getDeviceLocale()) }) : undefined} />
+            <RingCard style={{ gap: spacing.sm }}>
+              <Heading title={t('entry.exercises')} subtitle={volume > 0 ? t('entry.totalVolume', { value: Math.round(volume).toLocaleString(getDeviceLocale()) }) : undefined} />
               {existing.exercises.map((ex, index) => (
                 <View
                   key={`${ex.name}-${index}`}
@@ -256,15 +255,15 @@ export default function FitnessEntryScreen() {
                   </Text>
                 </View>
               ))}
-            </Card>
+            </RingCard>
           ) : null}
         </>
       ) : null}
 
       {type === 'measurement' ? (
-        <Card style={{ gap: spacing.lg }}>
+        <RingCard style={{ gap: spacing.lg }}>
           <View style={{ gap: spacing.sm }}>
-            <Text variant="label" color="textSecondary">
+            <Text variant="overline" color="textMuted">
               {t('entry.metric')}
             </Text>
             <ChipGroup>
@@ -286,10 +285,10 @@ export default function FitnessEntryScreen() {
             />
             <Input containerStyle={{ flexGrow: 1, flexBasis: 96 }} label={t('entry.unit')} value={measurementUnit} onChangeText={setMeasurementUnit} autoCapitalize="none" autoCorrect={false} />
           </View>
-        </Card>
+        </RingCard>
       ) : null}
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard style={{ gap: spacing.md }}>
         <DateField label={t('entry.date')} value={date} onChange={(next) => next && setDate(next)} maximumDate={new Date()} />
 
         <Input
@@ -302,7 +301,7 @@ export default function FitnessEntryScreen() {
           error={errors.notes}
           style={{ minHeight: 72 }}
         />
-      </Card>
+      </RingCard>
 
       <View style={{ gap: spacing.sm }}>
         <Button title={existing ? t('actions.saveChanges') : t('entry.add')} leftIcon="checkmark" onPress={submit} loading={save.isPending} />

@@ -1,13 +1,9 @@
 import { View } from 'react-native';
 
-import { SectionHeader } from '@/components/ui/section-header';
-import { StatTile } from '@/components/viz/stat-tile';
+import { Heading, MetricCard, MetricCell, MetricGrid } from '@/components/fitness/section-kit';
 import type { FitnessEntry } from '@/features/fitness/types';
-import { useTranslation } from '@/i18n';
+import { getDeviceLocale, useTranslation } from '@/i18n';
 import { spacing } from '@/theme';
-
-/** Tiles share a row two by two on a phone and wrap to one column when the text is large. */
-const TILE_BASIS = 140;
 
 /** Totals across a set of workouts: sessions, time, calories and average session length. */
 export function FitnessSummary({ entries }: { entries: FitnessEntry[] }) {
@@ -26,21 +22,21 @@ export function FitnessSummary({ entries }: { entries: FitnessEntry[] }) {
 
   return (
     <View style={{ gap: spacing.md }}>
-      <SectionHeader title={t('summary.title')} subtitle={t('summary.sessions', { count: totalWorkouts })} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-        <View style={{ flexGrow: 1, flexBasis: TILE_BASIS }}>
-          <StatTile label={t('summary.sessionsLabel')} icon="barbell-outline" accent="fitness" value={totalWorkouts} />
-        </View>
-        <View style={{ flexGrow: 1, flexBasis: TILE_BASIS }}>
-          <StatTile label={t('summary.duration')} icon="time-outline" accent="fitness" value={totalDuration} format={durationText} />
-        </View>
-        <View style={{ flexGrow: 1, flexBasis: TILE_BASIS }}>
-          <StatTile label={t('summary.burnedKcal')} icon="flame-outline" accent="fitness" value={totalCalories} />
-        </View>
-        <View style={{ flexGrow: 1, flexBasis: TILE_BASIS }}>
-          <StatTile label={t('summary.averageSession')} icon="speedometer-outline" accent="fitness" value={average} format={(n) => t('units.min', { value: n })} />
-        </View>
-      </View>
+      <Heading title={t('summary.title')} subtitle={t('summary.sessions', { count: totalWorkouts })} />
+      <MetricGrid>
+        <MetricCell>
+          <MetricCard label={t('summary.sessionsLabel')} icon="barbell-outline" value={totalWorkouts} />
+        </MetricCell>
+        <MetricCell>
+          <MetricCard label={t('summary.duration')} icon="time-outline" value={totalDuration} format={durationText} />
+        </MetricCell>
+        <MetricCell>
+          <MetricCard label={t('summary.burnedKcal')} icon="flame-outline" value={totalCalories} format={(n) => Math.round(n).toLocaleString(getDeviceLocale())} />
+        </MetricCell>
+        <MetricCell>
+          <MetricCard label={t('summary.averageSession')} icon="speedometer-outline" value={average} format={(n) => t('units.min', { value: n })} />
+        </MetricCell>
+      </MetricGrid>
     </View>
   );
 }

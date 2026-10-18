@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { Heading, IconTile, RingCard } from '@/components/fitness/section-kit';
 import { StartCta } from '@/components/fitness/start-cta';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup, ChipRow, Tag } from '@/components/ui/chip';
-import { Gradient } from '@/components/ui/gradient';
 import { useBlockMotion, useListMotion } from '@/components/ui/motion';
+import { PremiumHero } from '@/components/ui/premium-hero';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -40,8 +40,7 @@ const PROGRAM_KEY = 'aura.fitness.program';
 const DAY_OPTIONS = [2, 3, 4, 5, 6].map((value) => ({ value: String(value), label: String(value) }));
 
 export function CoachSection({ header, onStarted }: { header: ReactNode; onStarted: () => void }) {
-  const { accent, colors } = useTheme();
-  const fitness = accent('fitness');
+  const { colors } = useTheme();
   const notify = useNotify();
   const { t } = useTranslation('fitness');
   const errorMessage = useErrorMessage();
@@ -133,14 +132,12 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
       {header}
 
       <Animated.View {...builderMotion}>
-        <Card style={{ gap: spacing.lg }}>
+        <RingCard>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <View style={{ width: CHIP, height: CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: accent('ai').soft }}>
-              <Ionicons name="sparkles" size={spacing.xl} color={accent('ai').text} />
+            <IconTile icon="sparkles" />
+            <View style={{ flex: 1 }}>
+              <Heading overline={t('coach.overline')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
             </View>
-            <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
-              {t('coach.title')}
-            </Text>
           </View>
 
           <Field label={t('coach.goal')}>
@@ -169,7 +166,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
           </Field>
 
           <Button title={program ? t('coach.buildNew') : t('coach.title')} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
-        </Card>
+        </RingCard>
       </Animated.View>
 
       {generate.isPending ? (
@@ -185,28 +182,19 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
         <Animated.View {...planMotion} style={{ gap: layout.sectionGap }}>
           {day ? (
             <>
-              <Card padding="none" style={{ overflow: 'hidden' }}>
-                <View style={{ padding: spacing.lg, gap: spacing.xs, overflow: 'hidden', backgroundColor: fitness.solid }}>
-                  <Gradient from={fitness.solid} to={fitness.text} direction="diagonal" />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                    <Ionicons name="sparkles" size={spacing.lg} color={fitness.onSolid} />
-                    <Text variant="caption" weight="semiBold" style={{ color: fitness.onSolid, textTransform: 'uppercase' }}>
-                      {t('coach.planEyebrow')}
-                    </Text>
-                  </View>
-                  <Text variant="headline" accessibilityRole="header" style={{ color: fitness.onSolid }}>
-                    {program.programName}
-                  </Text>
-                  <Text variant="caption" style={{ color: fitness.onSolid }}>
-                    {[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ')}
-                  </Text>
-                </View>
-                <View style={{ padding: spacing.lg, gap: spacing.md }}>
+              <PremiumHero
+                chip={{ icon: 'sparkles', label: t('coach.planEyebrow') }}
+                title={program.programName}
+                subtitle={[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ') || undefined}
+              />
+
+              {program.weeklyOverview || program.progressiveOverloadTip || program.recoveryStrategy ? (
+                <RingCard style={{ gap: spacing.md }}>
                   {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
                   {program.progressiveOverloadTip ? <Tip icon="trending-up-outline" text={t('coach.progression', { tip: program.progressiveOverloadTip })} /> : null}
                   {program.recoveryStrategy ? <Tip icon="bed-outline" text={t('coach.recovery', { tip: program.recoveryStrategy })} /> : null}
-                </View>
-              </Card>
+                </RingCard>
+              ) : null}
 
               <ChipRow>
                 {program.days.map((item, index) => (
@@ -221,13 +209,14 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
               </ChipRow>
 
               <View key={dayIndex} style={{ gap: spacing.md }}>
-                <SectionHeader
+                <Heading
+                  overline={t('coach.dayOverline', { n: day.dayNumber })}
                   title={day.name}
                   subtitle={day.targetDurationMinutes ? t('coach.focusAndDuration', { focus: day.focus, minutes: day.targetDurationMinutes }) : day.focus}
                 />
 
                 {day.isRestDay || day.exercises.length === 0 ? (
-                  <Card variant="flat" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                  <Card variant="flat" rounded="xl" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                     <Ionicons name="moon-outline" size={spacing.xl} color={colors.textSecondary} />
                     <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
                       {t('coach.restDay')}
@@ -260,15 +249,13 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View style={{ gap: spacing.sm }}>
-      <Text variant="label" color="textSecondary">
+      <Text variant="overline" color="textMuted">
         {label}
       </Text>
       {children}
     </View>
   );
 }
-
-const CHIP = spacing.xxl + spacing.md; // 44
 
 /** A tip with a small accent icon. */
 function Tip({ icon, text }: { icon: 'trending-up-outline' | 'bed-outline'; text: string }) {
@@ -300,14 +287,14 @@ function StepCard({ step, total, exercise }: { step: number; total: number; exer
 
   return (
     <Animated.View {...motion}>
-      <Card accessible accessibilityLabel={spoken} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
-        <View style={{ width: spacing.xxl + spacing.sm, height: spacing.xxl + spacing.sm, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.solid }}>
-          <Text variant="label" weight="bold" numeric style={{ color: fitness.onSolid }}>
+      <Card rounded="xl" accessible accessibilityLabel={spoken} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+        <View style={{ width: spacing.xxl + spacing.sm, height: spacing.xxl + spacing.sm, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
+          <Text variant="label" weight="bold" numeric style={{ color: fitness.text }}>
             {step}
           </Text>
         </View>
         <View style={{ flex: 1, gap: spacing.sm }}>
-          <Text variant="title" numberOfLines={3}>
+          <Text variant="title" weight="bold" numberOfLines={3}>
             {exercise.name}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>

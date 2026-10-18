@@ -123,18 +123,18 @@ export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0, showDat
 
   return (
     <Animated.View {...motion}>
-      <Card style={{ gap: spacing.md }}>
+      <Card rounded="xl" style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <View accessible accessibilityRole="header" accessibilityLabel={t('card.headline', { title, date: formatDay(entry.date) })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <View style={{ width: ICON_CHIP, height: ICON_CHIP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
+            <View style={{ width: ICON_CHIP, height: ICON_CHIP, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
               <Ionicons name={workoutIcon(kind)} size={spacing.xl} color={fitness.text} />
             </View>
             <View style={{ flex: 1, gap: spacing.xs / 2 }}>
-              <Text variant="title" numberOfLines={2}>
+              <Text variant="title" weight="bold" numberOfLines={2}>
                 {title}
               </Text>
               {showDate ? (
-                <Text variant="caption" color="textSecondary">
+                <Text variant="caption" color="textMuted">
                   {formatDay(entry.date)}
                 </Text>
               ) : null}
@@ -165,10 +165,10 @@ export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0, showDat
             </View>
 
             {exercises.length > 0 ? (
-              <View style={{ backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: spacing.md, gap: spacing.md }}>
+              <View style={{ backgroundColor: colors.cardMuted, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }}>
                 {showChart ? (
                   <View style={{ gap: spacing.xs }}>
-                    <Text variant="caption" color="textSecondary">
+                    <Text variant="overline" color="textMuted">
                       {t('card.volumeByExercise')}
                     </Text>
                     <MiniBars values={exerciseVolumes} accent="fitness" height={CHART_HEIGHT} />
@@ -209,7 +209,7 @@ export const WorkoutCard = memo(function WorkoutCard({ entry, index = 0, showDat
 export function WorkoutCardSkeleton() {
   const { t } = useTranslation('fitness');
   return (
-    <Card>
+    <Card rounded="xl">
       <SkeletonGroup label={t('card.loading')} style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <Skeleton shape="box" width={ICON_CHIP} height={ICON_CHIP} />

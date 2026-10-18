@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { CoachSection } from '@/components/fitness/coach-section';
@@ -11,10 +11,14 @@ import { useTranslation } from '@/i18n';
 
 type Section = 'home' | 'train' | 'coach' | 'stats' | 'log';
 
+const SECTIONS: readonly Section[] = ['home', 'train', 'coach', 'stats', 'log'];
+
 export default function FitnessScreen() {
   const router = useRouter();
   const { t } = useTranslation('fitness');
-  const [section, setSection] = useState<Section>('home');
+  // `/fitness?section=stats` opens a section directly (deep links, previews).
+  const params = useLocalSearchParams<{ section?: string }>();
+  const [section, setSection] = useState<Section>(() => SECTIONS.find((value) => value === params.section) ?? 'home');
 
   const sections: CategorySection<Section>[] = [
     { value: 'home', label: t('sections.home') },
