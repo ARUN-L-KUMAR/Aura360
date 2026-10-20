@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, FlatList, KeyboardAvoidingView, ScrollView, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccessibilityInfo, FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
 
 import { MessageBubble } from '@/components/ai/message-bubble';
-import { APP_BAR_HEIGHT, TopAppBar } from '@/components/ui/app-bar';
-import { Card } from '@/components/ui/card';
-import { Chip } from '@/components/ui/chip';
-import { EmptyState } from '@/components/ui/empty-state';
+import Ionicons from '@expo/vector-icons/Ionicons';
+
 import { IconButton } from '@/components/ui/icon-button';
+import { PremiumHero } from '@/components/ui/premium-hero';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { IconTile } from '@/components/ui/stat-parts';
 import { Input } from '@/components/ui/input';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -16,8 +16,20 @@ import { aiActions } from '@/features/ai/threads';
 import { AI_MODELS, SUGGESTED_PROMPTS, type AiMessage } from '@/features/ai/types';
 import { useAiChat } from '@/features/ai/use-chat';
 import { useTranslation } from '@/i18n';
+import { haptics } from '@/lib/haptics';
+import { useOfflineSnapshot } from '@/lib/offline/use-offline';
 import { analytics } from '@/lib/telemetry';
-import { MAX_FONT_SCALE, layout, spacing, typeScale, useTheme } from '@/theme';
+import { MAX_FONT_SCALE, layout, radius, spacing, typeScale, useTheme, type ModuleKey } from '@/theme';
+
+/** Which module's colour each suggested prompt wears (by its icon), so the cards read like the rest of the app. */
+const PROMPT_ACCENT: Record<string, ModuleKey> = {
+  'wallet-outline': 'finance',
+  'barbell-outline': 'fitness',
+  'restaurant-outline': 'food',
+  'sparkles-outline': 'skincare',
+  'time-outline': 'time',
+  'document-text-outline': 'notes',
+};
 
 const MAX_LENGTH = 3000;
 const COMPOSER_LINES = 5;
@@ -81,7 +93,7 @@ export default function AskAuraScreen() {
   const router = useRouter();
   const { t } = useTranslation('ai');
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { online } = useOfflineSnapshot();
   const { fontScale } = useWindowDimensions();
   const { store, thread, busy, send, confirmAction, cancelAction, stop } = useAiChat();
   const [input, setInput] = useState('');
@@ -93,7 +105,7 @@ export default function AskAuraScreen() {
   // Inverted list: newest at the bottom, and the view stays anchored there while a reply grows.
   const data = useMemo(() => [...(messages ?? [])].reverse(), [messages]);
   const isEmpty = store.hydrated && data.length === 0;
-  const canSend = input.trim().length > 0 && !busy;
+  const canSend = input.trim().length > 0 && !busy && online;
 
   // About five lines, following the system font size.
   const composerMaxHeight = Math.round(typeScale.body.lineHeight * Math.min(fontScale, MAX_FONT_SCALE) * COMPOSER_LINES + spacing.md * 2);
@@ -106,11 +118,11 @@ export default function AskAuraScreen() {
 
   const submit = useCallback(() => {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || !online) return;
     setInput('');
     void send(text);
     analytics.track('ai_message_sent', { surface: 'tab' });
-  }, [busy, input, send]);
+  }, [busy, input, online, send]);
 
   const startNew = useCallback(() => {
     if (!(thread && thread.messages.length === 0)) aiActions.newThread();
@@ -167,24 +179,63 @@ export default function AskAuraScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={{ height: insets.top + APP_BAR_HEIGHT }} />
+      {/* The tab header above already names the screen, so this row only carries the chat's own controls. */}
+      <View style={styles.toolbar}>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.model', { name: modelName })}
+          accessibilityHint={t('chat.modelHint')}
+          haptic="tap"
+          ringRadius={radius.pill}
+          onPress={() => router.push('/ai/history')}
+          style={[styles.modelChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
+          <Ionicons name="sparkles" size={14} color={colors.primaryAccent} />
+          <Text variant="caption" weight="semiBold" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {modelName}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+        </PressableScale>
+        <View style={{ flex: 1 }} />
+        <IconButton icon="create-outline" accessibilityLabel={t('chat.newChat')} onPress={startNew} />
+        <IconButton icon="time-outline" accessibilityLabel={t('chat.conversations')} onPress={() => router.push('/ai/history')} />
+      </View>
 
-      <KeyboardAvoidingView style={styles.screen} behavior="padding">
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!store.hydrated ? (
           <ChatSkeleton />
         ) : isEmpty ? (
           <ScrollView contentContainerStyle={styles.emptyContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-            {/* The one soft hero wash on this screen. */}
-            <Card gradient="ai" padding="none">
-              <EmptyState
-                accent="ai"
-                icon="sparkles"
-                title={t('chat.emptyTitle')}
-                description={t('chat.emptyDescription')}
-                actionTitle={t('chat.writeMessage')}
-                onAction={() => inputRef.current?.focus()}
-              />
-            </Card>
+            <PremiumHero accent="ai"
+              chip={{ icon: 'sparkles', label: t('chat.heroChip') }}
+              title={t('chat.emptyTitle')}
+              subtitle={t('chat.emptyDescription')}
+              actions={[{ label: t('chat.writeMessage'), icon: 'create-outline', variant: 'solid', onPress: () => inputRef.current?.focus() }]}
+            />
+            <Text variant="overline" color="textMuted" accessibilityRole="header">
+              {t('chat.tryAsking')}
+            </Text>
+            <View style={styles.promptGrid}>
+              {SUGGESTED_PROMPTS.map((item) => (
+                <PressableScale
+                  key={item.label}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityHint={item.prompt}
+                  disabled={busy || !online}
+                  haptic="tap"
+                  ringRadius={radius.xl}
+                  onPress={() => {
+                    void send(item.prompt);
+                    analytics.track('ai_message_sent', { surface: 'tab' });
+                  }}
+                  style={[styles.promptCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <IconTile icon={item.icon} accent={PROMPT_ACCENT[item.icon] ?? 'ai'} />
+                  <Text variant="label" weight="semiBold" numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                </PressableScale>
+              ))}
+            </View>
           </ScrollView>
         ) : (
           <FlatList
@@ -202,25 +253,14 @@ export default function AskAuraScreen() {
         )}
 
         <View style={[styles.composerWrap, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-          {isEmpty ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              accessibilityLabel={t('chat.suggestedPrompts')}
-              contentContainerStyle={styles.suggestions}>
-              {SUGGESTED_PROMPTS.map((item) => (
-                <Chip key={item.label} label={item.label} icon={item.icon} selectable={false} accessibilityHint={item.prompt} disabled={busy} onPress={() => {
-                    void send(item.prompt);
-                    analytics.track('ai_message_sent', { surface: 'tab' });
-                  }} />
-              ))}
-            </ScrollView>
-          ) : null}
-
-          <Text variant="caption" color="textMuted" numberOfLines={1} style={styles.model}>
-            {t('chat.model', { name: modelName })}
-          </Text>
+          {online ? null : (
+            <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.offline}>
+              <Ionicons name="cloud-offline-outline" size={16} color={colors.warningText} />
+              <Text variant="caption" color="warningText" style={{ flex: 1 }}>
+                {t('chat.offline')}
+              </Text>
+            </View>
+          )}
           <View style={styles.composer}>
             <Input
               ref={inputRef}
@@ -241,7 +281,16 @@ export default function AskAuraScreen() {
               style={{ maxHeight: composerMaxHeight }}
             />
             {busy ? (
-              <IconButton icon="stop" variant="tonal" accessibilityLabel={t('chat.stop')} onPress={stop} style={styles.sendButton} />
+              <IconButton
+                icon="stop"
+                variant="tonal"
+                accessibilityLabel={t('chat.stop')}
+                onPress={() => {
+                  haptics.tap();
+                  stop();
+                }}
+                style={styles.sendButton}
+              />
             ) : (
               <IconButton icon="arrow-up" variant="filled" accessibilityLabel={t('chat.send')} disabled={!canSend} onPress={submit} style={styles.sendButton} />
             )}
@@ -249,15 +298,6 @@ export default function AskAuraScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      <TopAppBar
-        title={t('chat.title')}
-        elevated
-        centerTitle={false}
-        actions={[
-          { icon: 'create-outline', label: t('chat.newChat'), onPress: startNew },
-          { icon: 'time-outline', label: t('chat.conversations'), onPress: () => router.push('/ai/history') },
-        ]}
-      />
     </View>
   );
 }
@@ -265,13 +305,16 @@ export default function AskAuraScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   listContent: { paddingHorizontal: layout.screenPadding, paddingVertical: layout.screenPadding },
-  emptyContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: layout.screenPadding },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: layout.screenPadding, paddingTop: spacing.sm },
+  modelChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: layout.minTouchTarget - spacing.sm, maxWidth: '60%', paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1 },
+  emptyContent: { flexGrow: 1, justifyContent: 'center', gap: spacing.lg, paddingHorizontal: layout.screenPadding, paddingVertical: spacing.lg },
+  promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  promptCard: { flexGrow: 1, flexBasis: layout.minTouchTarget * 3, gap: spacing.md, padding: spacing.lg, borderRadius: radius.xl, borderWidth: 1 },
+  offline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.screenPadding, paddingBottom: spacing.xs },
   skeleton: { padding: layout.screenPadding, gap: layout.sectionGap },
   skeletonUser: { alignItems: 'flex-end' },
   skeletonModel: { flexDirection: 'row', gap: spacing.md },
   composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.xs },
-  suggestions: { gap: spacing.sm, paddingHorizontal: layout.screenPadding, alignItems: 'center' },
-  model: { paddingHorizontal: layout.screenPadding },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, paddingHorizontal: layout.screenPadding },
   inputWrap: { flex: 1 },
   sendButton: { marginBottom: 2 },

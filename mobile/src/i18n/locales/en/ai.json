@@ -100,7 +100,11 @@
     "conversations": "Conversations and model",
     "stopped": "Stopped.",
     "done": "Done.",
-    "genericError": "Something went wrong while talking to Aura."
+    "genericError": "Something went wrong while talking to Aura.",
+    "heroChip": "Your assistant",
+    "tryAsking": "Try asking",
+    "modelHint": "Opens conversations, where you can switch the model",
+    "offline": "You are offline. Messages cannot be sent until you reconnect."
   },
   "history": {
     "title": "Conversations",
@@ -124,7 +128,10 @@
     "deleteAllButton": "Delete all conversations",
     "emptyTitle": "No conversations yet",
     "emptyDescription": "Chats you have with Aura are stored on this phone.",
-    "startChat": "Start a chat"
+    "startChat": "Start a chat",
+    "search": "Search conversations",
+    "noMatchTitle": "No conversations match",
+    "noMatchDescription": "Nothing found for \"{{query}}\". Try another word."
   },
   "bubble": {
     "copied": "Copied",
