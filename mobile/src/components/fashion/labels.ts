@@ -1,4 +1,23 @@
+import type Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
+
 import { i18n } from '@/i18n';
+
+/** The picture stand-in for an item without a photo: one glyph per category. */
+export function categoryIcon(value?: string | null): ComponentProps<typeof Ionicons>['name'] {
+  switch ((value ?? '').toLowerCase()) {
+    case 'bottoms':
+      return 'layers-outline';
+    case 'shoes':
+      return 'footsteps-outline';
+    case 'outerwear':
+      return 'snow-outline';
+    case 'accessories':
+      return 'watch-outline';
+    default:
+      return 'shirt-outline';
+  }
+}
 
 /**
  * Names for the values the API stores in English ("Tops", "Summer", "needs_wash"). The stored value never changes;
@@ -113,6 +132,24 @@ export function fitLabel(value: string): string {
       return i18n.t('fashion:fits.relaxed');
     case 'Oversized':
       return i18n.t('fashion:fits.oversized');
+    default:
+      return value;
+  }
+}
+
+/** The looks' vibe suggestions. The stored value is the English word; only the drawing changes. */
+export const VIBES = ['Smart', 'Relaxed', 'Sharp', 'Minimal'] as const;
+
+export function vibeLabel(value: string): string {
+  switch (value.toLowerCase()) {
+    case 'smart':
+      return i18n.t('fashion:vibes.smart');
+    case 'relaxed':
+      return i18n.t('fashion:vibes.relaxed');
+    case 'sharp':
+      return i18n.t('fashion:vibes.sharp');
+    case 'minimal':
+      return i18n.t('fashion:vibes.minimal');
     default:
       return value;
   }

@@ -35,7 +35,7 @@ const SEGMENT_HEIGHT = layout.minTouchTarget - PAD;
  * Announced as a radio group: each segment is a radio with a checked state.
  */
 export function Segmented<T extends string>({ options, value, onChange, disabled, accessibilityLabel, style }: Props<T>) {
-  const { colors, reduceMotion, elevation } = useTheme();
+  const { colors, scheme, reduceMotion, elevation } = useTheme();
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const x = useSharedValue(0);
   const placed = useRef(false);
@@ -72,7 +72,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
       accessibilityRole="radiogroup"
       accessibilityLabel={accessibilityLabel}
       onLayout={onLayout}
-      style={[{ flexDirection: 'row', backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: PAD }, style]}>
+      style={[{ flexDirection: 'row', backgroundColor: colors.cardMuted, borderRadius: radius.lg, padding: PAD }, style]}>
       {size ? (
         <Animated.View
           pointerEvents="none"
@@ -83,11 +83,12 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
               start: PAD,
               width: segmentWidth,
               height: size.height - PAD * 2,
-              borderRadius: radius.sm,
-              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              // The web's active trigger: a raised surface with a ring (a lighter slate in dark mode, white in light).
+              backgroundColor: scheme === 'dark' ? colors.accent : colors.card,
               borderWidth: 1,
-              borderColor: colors.border,
-              ...elevation(1),
+              borderColor: scheme === 'dark' ? colors.border : colors.borderSubtle,
+              ...(scheme === 'dark' ? null : elevation(1)),
             },
             thumbStyle,
           ]}
@@ -104,7 +105,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
               accessibilityState={{ checked: selected, disabled: !!off }}
               disabled={off}
               scaleTo={1}
-              ringRadius={radius.sm}
+              ringRadius={radius.md}
               hitSlop={{ top: PAD, bottom: PAD }}
               onPress={() => {
                 if (selected) return;
@@ -119,8 +120,8 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
               }}>
               <Text
                 variant="label"
-                weight={selected ? 'semiBold' : 'medium'}
-                color={selected ? 'text' : 'textSecondary'}
+                weight={selected ? 'bold' : 'medium'}
+                color={selected ? 'text' : 'textMuted'}
                 numberOfLines={2}
                 style={{ textAlign: 'center' }}>
                 {option.label}

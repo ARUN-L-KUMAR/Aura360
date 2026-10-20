@@ -5,10 +5,8 @@ import { failureMessage } from '@/components/finance/failure-message';
 import { Badge } from '@/components/ui/badge';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ErrorState } from '@/components/ui/error-state';
-import { StatCard } from '@/components/ui/stat-card';
 import { Tag } from '@/components/ui/chip';
 import { Text } from '@/components/ui/text';
 import { useDeleteFashionItem, useLogItemWear, useUpdateItemStatus } from '@/features/fashion/hooks';
@@ -20,6 +18,7 @@ import { useNotify } from '@/providers/notify';
 import { layout, radius, spacing, useTheme } from '@/theme';
 import { conditionMeta } from './condition';
 import { categoryLabel, occasionLabel, seasonLabel, statusLabel } from './labels';
+import { Heading, RingCard } from './section-kit';
 import { FashionImage } from './shared';
 
 interface ItemDetailSheetProps {
@@ -32,6 +31,7 @@ interface ItemDetailSheetProps {
 /** Item details as a bottom sheet: peeks at 70%, drags up to 92%. */
 export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps) {
   const { t } = useTranslation('fashion');
+  const { accent } = useTheme();
   // Keep the last item on screen while the sheet slides away.
   const [shown, setShown] = useState<FashionItem | null>(item);
   if (item && item !== shown) setShown(item);
@@ -49,11 +49,14 @@ export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps)
       header={
         current ? (
           <View style={{ gap: spacing.xs }}>
-            <Text variant="title" accessibilityRole="header" numberOfLines={2}>
+            <Text variant="overline" numberOfLines={1} style={{ color: accent('fashion').text }}>
+              {categoryLabel(current.category)}
+            </Text>
+            <Text variant="title" weight="bold" accessibilityRole="header" numberOfLines={2}>
               {current.name}
             </Text>
             {subtitle ? (
-              <Text variant="caption" color="textSecondary" numberOfLines={1}>
+              <Text variant="caption" color="textMuted" numberOfLines={1}>
                 {subtitle}
               </Text>
             ) : null}
@@ -65,10 +68,24 @@ export function ItemDetailSheet({ item, onClose, onEdit }: ItemDetailSheetProps)
   );
 }
 
+/** One cell of the sheet's stat strip: tiny tracked label over a bold number, read as one phrase. */
+function DetailStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={{ flex: 1, gap: spacing.xs, paddingHorizontal: spacing.sm }}>
+      <Text variant="overline" color="textMuted" numberOfLines={1}>
+        {label}
+      </Text>
+      <Text variant="title" weight="bold" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 function SpecRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View accessible style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.lg }}>
-      <Text variant="body" color="textSecondary">
+      <Text variant="body" color="textMuted">
         {label}
       </Text>
       {typeof children === 'string' ? (
@@ -170,9 +187,8 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
     <View style={{ gap: spacing.lg, paddingTop: spacing.sm }}>
       {failure ? <ErrorState size="inline" title={t('errors.failTitle')} message={failure} /> : null}
 
-      {photos.length > 0 ? (
-        <View style={{ gap: spacing.sm }}>
-          <FashionImage uri={activePhoto} accessibilityLabel={t('detail.photo', { name: item.name })} style={{ width: '100%', aspectRatio: 3 / 2, borderRadius: radius.lg }} iconSize={48} />
+      <View style={{ gap: spacing.sm }}>
+          <FashionImage uri={activePhoto} category={item.category} accessibilityLabel={t('detail.photo', { name: item.name })} style={{ width: '100%', aspectRatio: photos.length > 0 ? 4 / 3 : 2, borderRadius: radius.xl }} iconSize={48} />
           {photos.length > 1 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {photos.map((uri, i) => {
@@ -199,27 +215,24 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
               })}
             </View>
           ) : null}
-        </View>
-      ) : null}
+      </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         <Tag label={statusLabel(item.status)} accent={isWardrobe ? 'fashion' : undefined} size="md" />
         {condition ? <Badge severity={condition.severity} icon={condition.icon} label={condition.label} /> : null}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <StatCard label={t('detail.price')} value={priceNum > 0 ? formatMoney(priceNum) : '—'} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <StatCard label={t('detail.worn')} value={t('detail.wornCount', { n: wearCount })} accent="fashion" />
-        </View>
+      <RingCard padding="sm" style={{ flexDirection: 'row', gap: 0 }}>
+        <DetailStat label={t('detail.price')} value={priceNum > 0 ? formatMoney(priceNum) : t('common.dash')} />
+        <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: colors.border }} />
+        <DetailStat label={t('detail.worn')} value={t('detail.wornCount', { n: wearCount })} />
         {costPerWear !== null ? (
-          <View style={{ flex: 1 }}>
-            <StatCard label={t('detail.perWear')} value={formatMoney(costPerWear)} />
-          </View>
+          <>
+            <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: colors.border }} />
+            <DetailStat label={t('detail.perWear')} value={formatMoney(Math.round(costPerWear))} />
+          </>
         ) : null}
-      </View>
+      </RingCard>
 
       <View style={{ gap: spacing.sm }}>
         {isWardrobe ? <Button title={t('detail.wearToday')} leftIcon="sparkles" loading={logWear.isPending} onPress={handleLogWear} accessibilityHint={t('detail.wearHint')} /> : null}
@@ -233,27 +246,23 @@ function DetailBody({ item, onClose, onEdit }: ItemDetailSheetProps & { item: Fa
         {buyingLink ? <Button title={t('detail.viewIn', { platform })} variant="tertiary" leftIcon="cart-outline" rightIcon="open-outline" onPress={handleOpenLink} /> : null}
       </View>
 
-      <Card padding="sm" style={{ gap: spacing.md }}>
-        <Text variant="title" accessibilityRole="header">
-          {t('detail.detailsTitle')}
-        </Text>
+      <RingCard padding="sm" style={{ gap: spacing.md }}>
+        <Heading overline={t('detail.detailsOverline')} title={t('detail.detailsTitle')} />
         <SpecRow label={t('detail.category')}>{item.subcategory ? `${categoryLabel(item.category)} · ${item.subcategory}` : categoryLabel(item.category)}</SpecRow>
         {item.color ? <SpecRow label={t('detail.colour')}>{item.color}</SpecRow> : null}
         {item.size ? <SpecRow label={t('detail.size')}>{item.size}</SpecRow> : null}
         {condition ? <SpecRow label={t('detail.condition')}>{condition.label}</SpecRow> : null}
         {item.season && item.season.length > 0 ? <SpecRow label={t('detail.season')}>{item.season.map(seasonLabel).join(', ')}</SpecRow> : null}
         {item.occasion && item.occasion.length > 0 ? <SpecRow label={t('detail.occasion')}>{item.occasion.map(occasionLabel).join(', ')}</SpecRow> : null}
-      </Card>
+      </RingCard>
 
       {item.notes || item.description ? (
-        <Card padding="sm" style={{ gap: spacing.sm }}>
-          <Text variant="title" accessibilityRole="header">
-            {t('detail.notesTitle')}
-          </Text>
+        <RingCard padding="sm" style={{ gap: spacing.md }}>
+          <Heading overline={t('detail.notesOverline')} title={t('detail.notesTitle')} />
           <Text variant="body" color="textSecondary">
             {item.notes || item.description}
           </Text>
-        </Card>
+        </RingCard>
       ) : null}
 
       <View style={{ flexDirection: 'row', gap: spacing.md }}>

@@ -1,17 +1,18 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Card } from '@/components/ui/card';
-import { Chip, Tag } from '@/components/ui/chip';
+import { Tag } from '@/components/ui/chip';
 import { IconButton } from '@/components/ui/icon-button';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { IconTile } from '@/components/ui/stat-parts';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { getDeviceLocale, useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
-import { radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 const QUICK_ADD = [
   { ml: 250, size: 'glass' },
@@ -23,7 +24,7 @@ const QUICK_ADD = [
 const UNDO_ML = 250;
 
 export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targetMl: number; onAdd: (ml: number) => void }) {
-  const { accent } = useTheme();
+  const { accent, colors } = useTheme();
   const { t } = useTranslation('food');
   const water = accent('skincare');
   const percent = targetMl > 0 ? Math.min(100, Math.round((waterMl / targetMl) * 100)) : 0;
@@ -44,21 +45,16 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
   };
 
   return (
-    <Card style={{ gap: spacing.md }}>
+    <Card rounded="xl" padding="md" style={{ gap: spacing.lg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 }}>
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: water.soft, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="water" size={22} color={water.text} />
-          </View>
-          <View style={{ flexShrink: 1 }}>
-            <Text variant="title" accessibilityRole="header">
+          <IconTile icon="water" accent="skincare" />
+          <View style={{ flexShrink: 1, gap: spacing.xs }}>
+            <Text variant="overline" numberOfLines={1} style={{ color: water.text }}>
               {t('water.title')}
             </Text>
-            <Text variant="caption" color="textSecondary">
-              {t('water.dailyTarget', { value: targetL })}
+            <Text variant="title" weight="bold" accessibilityRole="header" numberOfLines={1}>
+              {t('water.heading')}
             </Text>
           </View>
         </View>
@@ -72,27 +68,42 @@ export function WaterCard({ waterMl, targetMl, onAdd }: { waterMl: number; targe
         accessible
         accessibilityLabel={t('water.spoken', { ml: waterMl, target: targetMl, percent })}
         accessibilityLiveRegion="polite"
-        style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.xs }}>
-        <Text variant="display" numeric style={{ color: water.text }}>
-          {currentL}
-        </Text>
-        <Text variant="body" numeric color="textSecondary">
-          {t('water.progress', { target: targetL, ml: waterMl })}
-        </Text>
+        style={{ gap: spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.xs }}>
+          <Text variant="display" numeric>
+            {currentL}
+          </Text>
+          <Text variant="body" numeric color="textSecondary">
+            {t('water.progress', { target: targetL, ml: waterMl })}
+          </Text>
+        </View>
+        <ProgressBar percent={percent} color={water.solid} />
       </View>
 
-      <ProgressBar percent={percent} color={water.solid} />
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
         {QUICK_ADD.map((item) => (
-          <Chip
+          <PressableScale
             key={item.ml}
-            label={t('units.ml', { value: item.ml })}
-            icon="add"
-            selectable={false}
-            onPress={() => add(item.ml)}
+            accessibilityRole="button"
+            accessibilityLabel={t('water.add', { value: item.ml })}
             accessibilityHint={t(`water.quick.${item.size}`)}
-          />
+            haptic="tap"
+            ringRadius={radius.lg}
+            onPress={() => add(item.ml)}
+            style={{
+              flex: 1,
+              minHeight: layout.minTouchTarget,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.cardMuted,
+            }}>
+            <Text variant="label" weight="semiBold" numeric numberOfLines={1}>
+              {t('water.add', { value: item.ml })}
+            </Text>
+          </PressableScale>
         ))}
         <IconButton
           icon="remove"

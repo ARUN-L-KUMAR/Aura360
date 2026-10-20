@@ -1,15 +1,18 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { SlotPicker } from '@/components/nav/slot-picker';
 import { Reveal, SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
 import { Button } from '@/components/ui/button';
 import { ListItem } from '@/components/ui/list-item';
 import { Screen } from '@/components/ui/screen';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
+import type { SlotIndex } from '@/features/nav/slots';
+import { useTabSlots } from '@/features/nav/use-tab-slots';
 import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { runManualSync } from '@/lib/manual-sync';
@@ -49,6 +52,8 @@ export default function SettingsScreen() {
   const { mode, setMode } = useTheme();
   const { isAvailable, isEnabled, biometricLabel, biometricType, toggleBiometrics } = useBiometrics();
   const sync = useOfflineSnapshot();
+  const { slots, setSlot, reset: resetSlots } = useTabSlots();
+  const [editingSlot, setEditingSlot] = useState<SlotIndex>(0);
 
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIF_PREFERENCES);
   // Whether usage data and crash reports may be sent. Off until the user opts in; the stored choice is read first.
@@ -167,6 +172,25 @@ export default function SettingsScreen() {
         <View style={{ padding: layout.cardPadding, gap: spacing.lg }}>
           <Segmented options={themeOptions} value={mode} onChange={changeTheme} accessibilityLabel={t('appearance.themeLabel')} />
           <PalettePreview />
+        </View>
+      </Section>
+
+      <Section title={t('homeLayout.title')} footer={t('homeLayout.footer')}>
+        <ListItem
+          icon="options-outline"
+          title={t('homeLayout.row')}
+          subtitle={t('homeLayout.rowSubtitle')}
+          onPress={() => router.push('/home/customize' as never)}
+        />
+      </Section>
+
+      <Section title={t('navigation.title')} footer={t('navigation.footer')}>
+        <View style={{ padding: layout.cardPadding, gap: spacing.lg }}>
+          <Text variant="caption" color="textSecondary">
+            {t('navigation.hint', { slot: editingSlot + 1 })}
+          </Text>
+          <SlotPicker slots={slots} editing={editingSlot} onEditingChange={setEditingSlot} onAssign={setSlot} />
+          <Button title={t('navigation.reset')} variant="tertiary" onPress={resetSlots} />
         </View>
       </Section>
 

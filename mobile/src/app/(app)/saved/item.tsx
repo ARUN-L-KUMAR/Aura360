@@ -35,12 +35,12 @@ export default function SavedItemScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { t } = useTranslation('saved');
-  const params = useLocalSearchParams<{ item?: string }>();
+  const params = useLocalSearchParams<{ item?: string; url?: string }>();
   const existing = useMemo(() => parseItem(params.item), [params.item]);
 
   const [type, setType] = useState<SavedType>(existing?.type ?? 'article');
   const [title, setTitle] = useState(existing?.title ?? '');
-  const [url, setUrl] = useState(existing?.url ?? '');
+  const [url, setUrl] = useState(existing?.url ?? params.url ?? '');
   const [description, setDescription] = useState(existing?.description ?? '');
   const [tagsText, setTagsText] = useState((existing?.tags ?? []).join(', '));
   const [isFavorite, setIsFavorite] = useState(!!existing?.isFavorite);

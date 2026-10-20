@@ -57,6 +57,23 @@ export function withAlpha(color: string, alpha: number): string {
   return `${color}${a}`;
 }
 
+/**
+ * Splits a colour that carries its own alpha (`#rrggbbaa` as `withAlpha` returns, or `rgba(r, g, b, a)`) into a solid colour
+ * and an opacity. Anything else is returned as is, fully opaque. SVG gradient stops need this: on Android a stop's colour
+ * alpha is dropped, so a faint wash becomes a solid block, while `stopOpacity` is honoured everywhere.
+ */
+export function splitAlpha(color: string): { color: string; opacity: number } {
+  const trimmed = color.trim();
+  const hex = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(trimmed);
+  if (hex) return { color: `#${hex[1]}`, opacity: Math.round((parseInt(hex[2], 16) / 255) * 1000) / 1000 };
+  const rgba = /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]+)\s*\)$/i.exec(trimmed);
+  if (rgba) {
+    const hexOf = (value: string) => Math.max(0, Math.min(255, Number(value))).toString(16).padStart(2, '0');
+    return { color: `#${hexOf(rgba[1])}${hexOf(rgba[2])}${hexOf(rgba[3])}`, opacity: Math.max(0, Math.min(1, Number(rgba[4]))) };
+  }
+  return { color, opacity: 1 };
+}
+
 /** WCAG relative luminance (0-1) of a #rgb / #rrggbb colour, or null for anything else. */
 export function luminance(color: string): number | null {
   const hex = normalizeHex(color);
@@ -188,4 +205,60 @@ export function progressLevel(percent: number, automatic: boolean): ProgressLeve
 /** The bar is drawn between 0 and 100 whatever the real number is. */
 export function clampPercent(percent: number): number {
   return Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Style splitting for PressableScale
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Style keys that decide how a control is sized and placed by ITS PARENT. PressableScale wraps its content in an inner
+ * animated view, so these must go on the outer touchable, otherwise `flexBasis: '45%'` or `flex: 1` is resolved
+ * against a shrink-wrapped parent and the control collapses to its content width. (Physical left / right keys are
+ * deliberately absent: the app uses start / end.)
+ */
+const OUTER_LAYOUT_KEYS: ReadonlySet<string> = new Set([
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'width', 'minWidth', 'maxWidth', 'alignSelf', 'aspectRatio',
+  'position', 'top', 'bottom', 'start', 'end', 'zIndex',
+  'margin', 'marginTop', 'marginBottom', 'marginStart', 'marginEnd', 'marginHorizontal', 'marginVertical',
+]);
+
+function flattenStyle(style: unknown, into: Record<string, unknown>) {
+  if (!style) return;
+  if (Array.isArray(style)) {
+    for (const item of style) flattenStyle(item, into);
+    return;
+  }
+  if (typeof style === 'object') Object.assign(into, style);
+}
+
+/** Splits a style into what the parent lays out (`outer`) and everything else (`inner`). Later styles win, like StyleSheet.flatten. */
+export function splitLayoutStyle(style: unknown): { outer: Record<string, unknown>; inner: Record<string, unknown> } {
+  const flat: Record<string, unknown> = {};
+  flattenStyle(style, flat);
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(flat)) (OUTER_LAYOUT_KEYS.has(key) ? outer : inner)[key] = value;
+  return { outer, inner };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Colour blending (for gradient text)
+// ---------------------------------------------------------------------------------------------------------------
+
+function channels(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Blend two `#rrggbb` colours: `t` 0 gives `from`, 1 gives `to`. Anything that is not a 6-digit hex returns `from`. */
+export function lerpHex(from: string, to: string, t: number): string {
+  const a = channels(from);
+  const b = channels(to);
+  if (!a || !b) return from;
+  const k = Math.min(1, Math.max(0, Number.isFinite(t) ? t : 0));
+  const mix = (i: number) => Math.round(a[i] + (b[i] - a[i]) * k).toString(16).padStart(2, '0');
+  return `#${mix(0)}${mix(1)}${mix(2)}`;
 }

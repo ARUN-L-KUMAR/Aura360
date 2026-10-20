@@ -38,7 +38,7 @@ const encode = (v: number) => {
     .padStart(2, '0');
 };
 
-function oklchHex(L: number, C: number, h: number): string {
+export function oklchHex(L: number, C: number, h: number): string {
   let lo = 0;
   let hi = C;
   let rgb = oklchToLinearRgb(L, C, h);
@@ -137,6 +137,13 @@ function semantic(ramp: Ramp, scheme: 'light' | 'dark') {
     : { solid: ramp[400], on: neutral[950], container: ramp[900], onContainer: ramp[200], border: ramp[700], text: ramp[300] };
 }
 
+/**
+ * The web app's own tokens (app/globals.css, defined in OKLCH), reproduced here so the phone looks like the website:
+ * near-black slate surfaces in dark mode with a near-white primary, white surfaces and a deep slate primary in light mode.
+ * `web(L, C, hue)` is just oklchHex with the web's slate hue as default.
+ */
+const web = (L: number, C: number, h = 240) => oklchHex(L, C, h);
+
 function buildPalette(scheme: 'light' | 'dark') {
   const light = scheme === 'light';
   const ok = semantic(success, scheme);
@@ -146,37 +153,38 @@ function buildPalette(scheme: 'light' | 'dark') {
 
   return {
     // Surfaces
-    background: light ? neutral[50] : neutral[950],
+    background: light ? web(0.99, 0) : web(0.12, 0.015),
     /** Default card / sheet surface. */
-    card: light ? WHITE : '#111827',
+    card: light ? WHITE : web(0.14, 0.02),
     /** Quiet inset surface (inputs, chips, skeleton wells). */
-    cardMuted: light ? neutral[100] : '#1a2333',
-    surfaceRaised: light ? WHITE : '#18212f',
+    cardMuted: light ? web(0.96, 0.01) : web(0.18, 0.02),
+    surfaceRaised: light ? WHITE : web(0.17, 0.02),
     overlay: light ? 'rgba(15, 23, 42, 0.45)' : 'rgba(0, 0, 0, 0.65)',
 
     // Borders
-    border: light ? neutral[200] : '#1f293d',
-    borderSubtle: light ? neutral[100] : '#151e2e',
+    border: light ? web(0.9, 0.01) : web(0.25, 0.02),
+    borderSubtle: light ? web(0.94, 0.01) : web(0.2, 0.02),
     /** Boundary of interactive controls (inputs, checkboxes): >= 3:1 on card. */
-    borderStrong: neutral[500],
-    focusRing: light ? primary[600] : primary[300],
+    borderStrong: light ? web(0.62, 0.02) : web(0.55, 0.02),
+    focusRing: light ? web(0.3, 0.05) : web(0.98, 0.01),
 
     // Text
-    text: light ? neutral[900] : neutral[50],
-    textSecondary: light ? neutral[600] : neutral[300],
-    textMuted: light ? '#5b6a7f' : neutral[400],
-    textDisabled: light ? neutral[400] : neutral[600],
-    textInverse: light ? WHITE : neutral[950],
+    text: light ? web(0.2, 0.02) : web(0.95, 0.01, 200),
+    textSecondary: light ? web(0.35, 0.02) : web(0.83, 0.015, 210),
+    textMuted: light ? web(0.5, 0.02) : web(0.7, 0.02, 200),
+    textDisabled: light ? web(0.7, 0.01) : web(0.45, 0.02),
+    textInverse: light ? WHITE : web(0.12, 0.015),
 
-    // Brand: primary (filled controls use `primary` + `primaryText`; links and icons on surfaces use `primaryAccent`)
-    primary: light ? primary[600] : '#5a5df0',
-    primaryText: WHITE,
+    // Brand: primary is the web's monochrome primary (filled controls use `primary` + `primaryText`; links and icons on
+    // surfaces use `primaryAccent`). The indigo ramp stays as the AI module's accent.
+    primary: light ? web(0.3, 0.05) : web(0.98, 0.01),
+    primaryText: light ? WHITE : web(0.12, 0.015),
     /** Brand colour for text / icons on a surface. */
-    primaryAccent: light ? primary[700] : primary[300],
+    primaryAccent: light ? web(0.3, 0.05) : web(0.98, 0.01),
     primaryLight: light ? primary[50] : primary[400],
     primaryDark: light ? primary[800] : primary[700],
-    primaryContainer: light ? primary[100] : primary[900],
-    onPrimaryContainer: light ? primary[800] : primary[200],
+    primaryContainer: light ? web(0.94, 0.01) : web(0.25, 0.02),
+    onPrimaryContainer: light ? web(0.25, 0.03) : web(0.95, 0.01, 200),
 
     secondary: light ? secondary[700] : secondary[400],
     secondaryText: light ? WHITE : neutral[950],
@@ -188,8 +196,18 @@ function buildPalette(scheme: 'light' | 'dark') {
     tertiaryContainer: light ? tertiary[100] : tertiary[900],
     onTertiaryContainer: light ? tertiary[800] : tertiary[200],
 
-    accent: light ? primary[50] : neutral[800],
-    accentForeground: light ? primary[700] : primary[300],
+    accent: light ? web(0.92, 0.01) : web(0.25, 0.02),
+    accentForeground: light ? web(0.2, 0.02) : web(0.95, 0.01, 200),
+
+    // Hero cards (the web's slate-900 hero with white text, in both schemes) and their soft glow orbs.
+    heroSurface: neutral[900],
+    onHero: WHITE,
+    onHeroMuted: neutral[400],
+    /** Frosted chip / glass button fill on the hero (white at 10 percent). */
+    heroChip: 'rgba(255, 255, 255, 0.10)',
+    heroChipBorder: 'rgba(255, 255, 255, 0.20)',
+    heroGlowA: secondary[400],
+    heroGlowB: primary[400],
 
     // Semantic
     success: ok.solid, onSuccess: ok.on, successContainer: ok.container, onSuccessContainer: ok.onContainer, successBorder: ok.border, successText: ok.text,
@@ -201,13 +219,13 @@ function buildPalette(scheme: 'light' | 'dark') {
     onDanger: err.on,
 
     // Glass (overlays only: tab bar, sheets, floating widget, headers). `glassSolid` is the no-blur fallback.
-    glass: light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(15, 23, 42, 0.72)',
+    glass: light ? 'rgba(255, 255, 255, 0.72)' : 'rgba(10, 16, 24, 0.72)',
     glassBorder: light ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.10)',
-    glassSolid: light ? WHITE : neutral[900],
+    glassSolid: light ? WHITE : web(0.14, 0.02),
 
     // Loading
-    skeletonBase: light ? neutral[200] : '#1a2333',
-    skeletonHighlight: light ? neutral[100] : '#243049',
+    skeletonBase: light ? web(0.92, 0.01) : web(0.2, 0.02),
+    skeletonHighlight: light ? web(0.96, 0.01) : web(0.26, 0.02),
   };
 }
 

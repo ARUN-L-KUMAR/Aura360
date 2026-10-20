@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -204,7 +204,7 @@ export default function AddSavedScreen() {
         </>
       ) : null}
 
-      <Button title={t('add.manual')} variant="ghost" onPress={() => router.replace('/saved/item')} />
+      <Button title={t('add.manual')} variant="ghost" onPress={() => router.replace({ pathname: '/saved/item', params: url.trim() ? { url: extractUrl(url.trim()) ?? url.trim() } : {} })} />
     </Screen>
   );
 }

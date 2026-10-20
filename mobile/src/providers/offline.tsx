@@ -9,6 +9,7 @@ import { api, apiSession } from '@/lib/api';
 import { getNetInfo, isOnline } from '@/lib/offline/network';
 import * as queue from '@/lib/offline/queue';
 import { useOfflineSnapshot } from '@/lib/offline/use-offline';
+import { PREVIEW } from '@/preview/flag';
 import { useAuth } from '@/providers/auth';
 
 /**
@@ -112,6 +113,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
   // Keep a copy of each screen's data on the phone (per user), restored on the next launch even with no signal
   useEffect(() => {
+    if (PREVIEW) return; // preview builds keep nothing on disk
     if (!userId) {
       // signed out: remove the saved copy
       if (previousUser.current) void AsyncStorage.removeItem(CACHE_KEY(previousUser.current));

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
+import { accentTint } from '@/components/ui/accent-tint';
 import { instant } from '@/components/ui/motion';
 import { capCount } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -17,6 +18,8 @@ export type TabItem<T extends string = string> = {
   /** Count shown next to the label (unread, items...). Part of the accessibility label. */
   count?: number;
   disabled?: boolean;
+  /** Lucide or vector icon component rendered before the label. */
+  icon?: React.ComponentType<{ size?: number; color?: string }>;
 };
 
 type Props<T extends string> = {
@@ -32,7 +35,7 @@ type Props<T extends string> = {
 };
 
 type Box = { x: number; w: number };
-const INDICATOR_HEIGHT = 3;
+const INDICATOR_HEIGHT = 2;
 
 /**
  * In-screen tabs, underline style. The indicator slides with translateX / scaleX on the UI thread. Selected state is
@@ -40,10 +43,11 @@ const INDICATOR_HEIGHT = 3;
  * indicator follows. Labels wrap to two lines at large text sizes.
  */
 export function Tabs<T extends string>({ tabs, value, onChange, scrollable = false, accent, accessibilityLabel, style }: Props<T>) {
-  const { colors, accent: accentFor, reduceMotion } = useTheme();
+  const { colors, scheme, accent: accentFor, reduceMotion } = useTheme();
   const { t } = useTranslation('common');
   const palette = accent ? accentFor(accent) : null;
-  const selectedText = palette?.text ?? colors.primaryAccent;
+  // Quiet, like the web: the selected label is full-strength text; the accent lives in the underline.
+  const selectedText = colors.text;
   const indicatorColor = palette?.solid ?? colors.primary;
 
   const [width, setWidth] = useState(0);
@@ -123,11 +127,12 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
             onChange(tab.value);
           }}
           style={styles.item}>
-          <Text variant="label" weight={selected ? 'semiBold' : 'medium'} color={selected ? selectedText : 'textSecondary'} numberOfLines={2} style={styles.label}>
+          {tab.icon ? <tab.icon size={15} color={selected ? indicatorColor : colors.textMuted} /> : null}
+          <Text variant="label" weight={selected ? 'bold' : 'medium'} color={selected ? selectedText : 'textMuted'} numberOfLines={2} style={styles.label}>
             {tab.label}
           </Text>
           {hasCount ? (
-            <View style={[styles.count, { backgroundColor: selected ? (palette?.soft ?? colors.primaryContainer) : colors.cardMuted }]}>
+            <View style={[styles.count, { backgroundColor: selected ? (palette ? accentTint(palette, scheme) : colors.primaryContainer) : colors.cardMuted }]}>
               <Text
                 variant="caption"
                 weight="semiBold"
@@ -157,7 +162,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={[styles.root, { borderBottomColor: colors.border }, style]}>
       {scrollable ? (
-        <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.row} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
             {items}
             {indicator}

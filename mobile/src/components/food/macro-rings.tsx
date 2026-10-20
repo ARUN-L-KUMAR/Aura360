@@ -1,116 +1,89 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { View } from 'react-native';
-import Svg, { Circle, G } from 'react-native-svg';
 
-import { withAlpha } from '@/components/ui/card';
-import { Tag } from '@/components/ui/chip';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Text } from '@/components/ui/text';
+import { AnimatedNumber } from '@/components/viz/animated-number';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import type { MacroTargets, MealTotals } from '@/features/food/types';
 import { getDeviceLocale, useTranslation } from '@/i18n';
-import { radius, spacing, useTheme } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
-const SIZE = 208;
-const STROKE = 10;
-const GAP = 4;
+const RING_SIZE = spacing.xxxl * 2 + spacing.lg; // 112, the same ring as the Fitness weekly goal
+const RING_THICKNESS = spacing.md;
 
-type Ring = { key: string; label: string; color: string; current: number; target: number; unit: string };
+const percentOf = (current: number, target: number) => (target > 0 ? Math.round((current / target) * 100) : 0);
 
-/** Four concentric rings (calories outermost) plus a tile per macro. Colours come from the theme, never literals. */
+/**
+ * Calorie ring with the day's status beside it, and a quiet bar per macro. Everything is one Food amber: the labels
+ * name each macro, so colour never has to. The ring and the rows read as one spoken summary.
+ */
 export function MacroRings({ totals, targets }: { totals: MealTotals; targets: MacroTargets }) {
   const { colors, accent } = useTheme();
   const { t } = useTranslation('food');
+  const food = accent('food');
   const number = (value: number) => value.toLocaleString(getDeviceLocale());
 
-  const rings: Ring[] = [
-    { key: 'calories', label: t('rings.calories'), color: accent('food').solid, current: totals.calories, target: targets.calories, unit: 'kcal' as const },
-    { key: 'protein', label: t('rings.protein'), color: colors.secondary, current: totals.protein, target: targets.protein, unit: 'g' },
-    { key: 'carbs', label: t('rings.carbs'), color: colors.success, current: totals.carbs, target: targets.carbs, unit: 'g' },
-    { key: 'fats', label: t('rings.fats'), color: colors.tertiary, current: totals.fats, target: targets.fats, unit: 'g' },
-  ];
+  const macros = [
+    { key: 'protein', label: t('rings.protein'), current: totals.protein, target: targets.protein },
+    { key: 'carbs', label: t('rings.carbs'), current: totals.carbs, target: targets.carbs },
+    { key: 'fats', label: t('rings.fats'), current: totals.fats, target: targets.fats },
+  ] as const;
 
+  const eaten = Math.round(totals.calories);
   const remaining = Math.round(targets.calories - totals.calories);
   const over = remaining < 0;
-  const calPercent = targets.calories > 0 ? Math.round((totals.calories / targets.calories) * 100) : 0;
+  const calPercent = percentOf(totals.calories, targets.calories);
+
+  const spoken = [
+    over ? t('rings.overSpoken', { count: Math.abs(remaining) }) : t('rings.remainingSpoken', { count: remaining }),
+    t('rings.ofKcalSpoken', { label: t('rings.calories'), current: eaten, target: targets.calories }),
+    ...macros.map((m) => t('rings.ofGramsSpoken', { label: m.label, current: Math.round(m.current), target: targets[m.key] })),
+  ].join('. ');
 
   return (
-    <View style={{ gap: spacing.lg }}>
-      <View
-        style={{ alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}
-        accessible
-        accessibilityLabel={[
-          over ? t('rings.overSpoken', { count: Math.abs(remaining) }) : t('rings.remainingSpoken', { count: remaining }),
-          ...rings.map((r) => t(r.unit === 'g' ? 'rings.ofGramsSpoken' : 'rings.ofKcalSpoken', { label: r.label, current: Math.round(r.current), target: r.target })),
-        ].join('. ')}>
-        <View style={{ transform: [{ rotate: '-90deg' }] }}>
-          <Svg width={SIZE} height={SIZE}>
-            {rings.map((ring, index) => {
-              const ringRadius = SIZE / 2 - STROKE / 2 - index * (STROKE + GAP);
-              const circumference = 2 * Math.PI * ringRadius;
-              const progress = ring.target > 0 ? Math.min(1, ring.current / ring.target) : 0;
-              return (
-                <G key={ring.key}>
-                  <Circle cx={SIZE / 2} cy={SIZE / 2} r={ringRadius} stroke={withAlpha(ring.color, 0.2)} strokeWidth={STROKE} fill="none" />
-                  <Circle
-                    cx={SIZE / 2}
-                    cy={SIZE / 2}
-                    r={ringRadius}
-                    stroke={ring.color}
-                    strokeWidth={STROKE}
-                    strokeLinecap="round"
-                    fill="none"
-                    strokeDasharray={`${circumference} ${circumference}`}
-                    strokeDashoffset={circumference * (1 - progress)}
-                  />
-                </G>
-              );
-            })}
-          </Svg>
-        </View>
-
-        {/* Centre text sits inside the innermost ring (about 100pt across). */}
-        <View style={{ position: 'absolute', alignItems: 'center', maxWidth: 96 }}>
-          <Text variant="headline" numeric color={over ? 'errorText' : 'text'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-            {number(Math.abs(remaining))}
+    <View accessible accessibilityLabel={spoken} style={{ gap: spacing.xl }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg }}>
+        <ProgressRing
+          value={totals.calories}
+          max={targets.calories > 0 ? targets.calories : 1}
+          size={RING_SIZE}
+          thickness={RING_THICKNESS}
+          accent="food"
+          label={t('rings.calories')}
+          valueText={t('rings.ofKcalSpoken', { label: t('rings.calories'), current: eaten, target: targets.calories })}>
+          <AnimatedNumber value={calPercent} format={(n) => t('rings.percent', { value: n })} variant="title" weight="bold" />
+        </ProgressRing>
+        <View style={{ flex: 1, flexBasis: 140, gap: spacing.xs }}>
+          <Text variant="overline" color="textMuted">
+            {t('rings.calories')}
           </Text>
-          <Text variant="caption" color="textSecondary" numberOfLines={2} style={{ textAlign: 'center' }}>
-            {over ? t('rings.kcalOver') : t('rings.kcalLeft')}
+          <Text variant="body" weight="bold" numeric>
+            {t('rings.kcalOfTarget', { eaten: number(eaten), target: number(targets.calories) })}
           </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <Ionicons name={over ? 'alert-circle' : 'flag-outline'} size={spacing.lg} color={over ? colors.errorText : food.text} />
+            <Text variant="caption" weight="semiBold" numeric style={{ flexShrink: 1, color: over ? colors.errorText : food.text }}>
+              {over ? t('rings.kcalOverBy', { value: number(Math.abs(remaining)) }) : t('rings.kcalLeftOf', { value: number(remaining) })}
+            </Text>
+          </View>
         </View>
       </View>
 
-      <View style={{ alignSelf: 'center' }}>
-        <Tag label={t('rings.percentOfGoal', { value: calPercent })} accent="food" size="md" />
-      </View>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-        {rings.map((ring) => {
-          const pct = ring.target > 0 ? Math.min(100, Math.round((ring.current / ring.target) * 100)) : 0;
+      <View style={{ gap: spacing.lg }}>
+        {macros.map((macro) => {
+          const pct = percentOf(macro.current, macro.target);
           return (
-            <View
-              key={ring.key}
-              accessible
-              accessibilityLabel={t(ring.unit === 'g' ? 'rings.tileGramsSpoken' : 'rings.tileKcalSpoken', { label: ring.label, current: Math.round(ring.current), target: ring.target, pct })}
-              style={{
-                flexGrow: 1,
-                flexBasis: 72,
-                gap: spacing.xs,
-                padding: spacing.sm,
-                borderRadius: radius.md,
-                backgroundColor: colors.cardMuted,
-              }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                <View style={{ width: spacing.sm, height: spacing.sm, borderRadius: radius.pill, backgroundColor: ring.color }} />
-                <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1} style={{ flexShrink: 1 }}>
-                  {ring.label}
+            <View key={macro.key} style={{ gap: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm }}>
+                <Text variant="overline" color="textMuted" numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {macro.label}
+                </Text>
+                <Text variant="label" weight="semiBold" numeric numberOfLines={1}>
+                  {t('rings.gramsOfTarget', { current: Math.round(macro.current), target: macro.target })}
                 </Text>
               </View>
-              <Text variant="label" weight="semiBold" numeric numberOfLines={1}>
-                {ring.unit === 'g' ? t('units.grams', { value: Math.round(ring.current) }) : Math.round(ring.current)}
-              </Text>
-              <ProgressBar percent={pct} color={ring.color} height={4} />
-              <Text variant="caption" numeric color="textSecondary" numberOfLines={1}>
-                {t('rings.ofTarget', { value: ring.unit === 'g' ? t('units.grams', { value: ring.target }) : ring.target })}
-              </Text>
+              <ProgressBar percent={Math.min(100, pct)} accent="food" height={spacing.sm - 2} />
             </View>
           );
         })}

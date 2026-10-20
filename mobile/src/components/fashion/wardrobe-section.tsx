@@ -6,10 +6,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { SearchBar } from '@/components/ui/search-bar';
 import { Text } from '@/components/ui/text';
-import { CATEGORIES, type FashionItem } from '@/features/fashion/types';
+import type { FashionItem } from '@/features/fashion/types';
+import { categoryCountsOf } from './categories';
 import { useTranslation } from '@/i18n';
-import { spacing } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 import { FashionCard } from './fashion-card';
+import { Heading, WarnChip } from './section-kit';
 import { categoryLabel } from './labels';
 import {
   GRID_COLUMNS,
@@ -32,22 +34,29 @@ interface WardrobeSectionProps {
   header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
+  /** Category the list starts filtered to (opened from an Overview category card). */
+  initialCategory?: string;
 }
 
 type LaundryFilter = 'all' | 'clean' | 'needs_wash';
 
 const keyExtractor = (entry: GridEntry) => entry.id;
 
-export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }: WardrobeSectionProps) {
+export function WardrobeSection({ items, state, header, onSelectItem, onAddNew, initialCategory }: WardrobeSectionProps) {
   const { t } = useTranslation('fashion');
   const padding = useListPadding();
+  const { accent } = useTheme();
   const refreshControl = useRefreshControl({ onRefresh: state.refetch, refreshing: state.refreshing });
 
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [laundryFilter, setLaundryFilter] = useState<LaundryFilter>('all');
 
   const wardrobeItems = useMemo(() => items.filter((i) => i.status === 'wardrobe'), [items]);
+
+  // The usual five always show; any other category the pieces carry (from a pasted link, say) shows too.
+  const categoryList = useMemo(() => categoryCountsOf(wardrobeItems, true), [wardrobeItems]);
+  // `initialCategory` only ever comes from tapping a category card on the Overview, so it is one the wardrobe has.
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory || 'All');
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -80,6 +89,8 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
     setSelectedCategory('All');
     setLaundryFilter('all');
   }, []);
+
+  const countSpoken = filtersActive ? t('wardrobe.countFiltered', { count: filteredItems.length }) : t('wardrobe.count', { count: filteredItems.length });
 
   const gate = itemsGate(state);
   const hasWardrobe = wardrobeItems.length > 0;
@@ -125,30 +136,36 @@ export function WardrobeSection({ items, state, header, onSelectItem, onAddNew }
           <StaleNotice state={state} />
           {!gate && hasWardrobe ? (
             <View style={{ gap: spacing.md }}>
+              <Heading
+                title={t('sections.wardrobe')}
+                trailing={
+                  <Text variant="overline" weight="semiBold" numeric style={{ color: accent('fashion').text }} accessibilityLiveRegion="polite" accessibilityLabel={countSpoken}>
+                    {t('wardrobe.pieces', { count: filteredItems.length })}
+                  </Text>
+                }
+              />
               <SearchBar value={search} onChangeText={setSearch} debounceMs={200} placeholder={t('wardrobe.search')} accessibilityLabel={t('wardrobe.searchA11y')} returnKeyType="search" autoCorrect={false} />
 
               <ChipRow>
-                {CATEGORIES.map((cat) => (
+                {['All', ...categoryList.map((entry) => entry.category)].map((cat) => (
                   <Chip
                     key={cat}
                     label={categoryLabel(cat)}
                     accent="fashion"
-                    selected={selectedCategory === cat}
+                    selected={selectedCategory.toLowerCase() === cat.toLowerCase()}
                     count={cat === 'All' ? wardrobeItems.length : (categoryCounts.get(cat.toLowerCase()) ?? 0)}
                     onPress={() => setSelectedCategory(cat)}
                   />
                 ))}
+                <WarnChip label={t('wardrobe.filterWash')} count={needsWashCount} selected={laundryFilter === 'needs_wash'} onPress={() => setLaundryFilter(laundryFilter === 'needs_wash' ? 'all' : 'needs_wash')} />
+                <Chip
+                  label={t('wardrobe.filterClean')}
+                  accent="fashion"
+                  selected={laundryFilter === 'clean'}
+                  count={wardrobeItems.length - needsWashCount}
+                  onPress={() => setLaundryFilter(laundryFilter === 'clean' ? 'all' : 'clean')}
+                />
               </ChipRow>
-
-              <ChipRow>
-                <Chip label={t('wardrobe.filterAll')} accent="fashion" selected={laundryFilter === 'all'} onPress={() => setLaundryFilter('all')} />
-                <Chip label={t('wardrobe.filterClean')} accent="fashion" selected={laundryFilter === 'clean'} count={wardrobeItems.length - needsWashCount} onPress={() => setLaundryFilter('clean')} />
-                <Chip label={t('wardrobe.filterWash')} accent="fashion" selected={laundryFilter === 'needs_wash'} count={needsWashCount} onPress={() => setLaundryFilter('needs_wash')} />
-              </ChipRow>
-
-              <Text variant="caption" weight="medium" color="textSecondary" accessibilityLiveRegion="polite">
-                {filtersActive ? t('wardrobe.countFiltered', { count: filteredItems.length }) : t('wardrobe.count', { count: filteredItems.length })}
-              </Text>
             </View>
           ) : null}
         </HeaderStack>

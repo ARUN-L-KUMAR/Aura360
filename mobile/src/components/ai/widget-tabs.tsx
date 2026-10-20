@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useCallback, type ReactNode } from 'react';
 import { FlatList, StyleSheet, TextInput, View, type ListRenderItemInfo } from 'react-native';
 

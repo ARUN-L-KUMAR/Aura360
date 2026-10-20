@@ -136,5 +136,13 @@
       "title": "Delete this item?",
       "confirm": "Delete"
     }
+  },
+  "summary": {
+    "saved": "Saved",
+    "favourites": "Favourites",
+    "thisWeek": "Added this week"
+  },
+  "offline": {
+    "description": "Connect to the internet to load your saved items."
   }
 }

@@ -46,3 +46,9 @@ example
 # generated native folders
 /ios
 /android
+
+# illustration previews (npm run render:art)
+.art-preview/
+
+# visual preview output (npm run preview:web)
+.preview/

@@ -1,18 +1,20 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { View } from 'react-native';
 
+import { RingCard } from '@/components/fitness/section-kit';
+import { FoodHeading } from '@/components/food/food-kit';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { Text } from '@/components/ui/text';
+import { IconTile } from '@/components/ui/stat-parts';
 import { useTargets } from '@/features/food/prefs';
 import { DEFAULT_TARGETS, type MacroTargets } from '@/features/food/types';
 import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
-import { spacing, useTheme } from '@/theme';
+import { spacing } from '@/theme';
 
 const FIELDS: { key: keyof MacroTargets; unit: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'calories', unit: 'kcal', icon: 'flame-outline' },
@@ -26,7 +28,6 @@ export default function TargetsScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { t } = useTranslation('food');
-  const { accent } = useTheme();
   const { targets, setTargets } = useTargets();
   const [draft, setDraft] = useState<Partial<Record<keyof MacroTargets, string>>>({});
   const [errors, setErrors] = useState<Partial<Record<keyof MacroTargets, string>>>({});
@@ -71,19 +72,16 @@ export default function TargetsScreen() {
     <Screen topInset={false}>
       <Stack.Screen options={{ title: t('targets.title') }} />
 
-      <Card variant="tinted" accent="food" style={{ gap: spacing.xs }}>
-        <Text variant="caption" weight="semiBold" style={{ color: accent('food').text, textTransform: 'uppercase' }}>
-          {t('targets.eyebrow')}
-        </Text>
-        <Text variant="title" accessibilityRole="header">
-          {t('targets.heading')}
-        </Text>
-        <Text variant="caption" color="textSecondary">
-          {t('targets.description')}
-        </Text>
-      </Card>
+      <RingCard style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <IconTile icon="flag-outline" accent="food" />
+          <View style={{ flex: 1 }}>
+            <FoodHeading overline={t('targets.eyebrow')} title={t('targets.heading')} subtitle={t('targets.description')} />
+          </View>
+        </View>
+      </RingCard>
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard style={{ gap: spacing.md }}>
         {FIELDS.map((field, index) => (
           <Input
             key={field.key}
@@ -99,7 +97,7 @@ export default function TargetsScreen() {
             error={errors[field.key]}
           />
         ))}
-      </Card>
+      </RingCard>
 
       <Button title={t('targets.save')} leftIcon="checkmark" onPress={submit} loading={saving} />
       <Button title={t('targets.reset')} variant="ghost" onPress={reset} disabled={saving} />

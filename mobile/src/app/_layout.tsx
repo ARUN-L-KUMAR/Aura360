@@ -7,12 +7,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
+// One import per weight: the package's top-level entry would bundle every weight (about 3 MB of unused fonts).
+import { Geist_400Regular } from '@expo-google-fonts/geist/400Regular';
+import { Geist_500Medium } from '@expo-google-fonts/geist/500Medium';
+import { Geist_600SemiBold } from '@expo-google-fonts/geist/600SemiBold';
+import { Geist_700Bold } from '@expo-google-fonts/geist/700Bold';
+import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono/400Regular';
 
 import { AnimatedSplash } from '@/components/animated-splash';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -21,6 +21,8 @@ import { addNotificationResponseListener, notificationService } from '@/lib/noti
 import { installGlobalErrorHandler } from '@/lib/global-errors';
 import { isNotificationPermissionGranted } from '@/lib/notification-permission';
 import { registerForServerPush } from '@/lib/push';
+import { ShareIntake } from '@/features/share-import/share-intake';
+import { PREVIEW } from '@/preview/flag';
 import { analytics } from '@/lib/telemetry';
 import { AuthProvider, useAuth } from '@/providers/auth';
 import { NotifyProvider } from '@/providers/notify';
@@ -31,6 +33,12 @@ import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 installGlobalErrorHandler();
+// Preview builds (npm run preview:web) answer the API with sample data. PREVIEW is a build-time constant, so this
+// branch and the preview code are dropped from real builds.
+if (PREVIEW) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  (require('@/preview/install') as typeof import('@/preview/install')).installPreview();
+}
 
 function RootStack() {
   const { status } = useAuth();
@@ -67,14 +75,15 @@ function RootContent() {
   const { status } = useAuth();
   const { isLocked } = useBiometrics();
   const signedIn = status === 'signedIn';
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(PREVIEW); // preview builds skip the animated splash
   const finishSplash = useCallback(() => setSplashDone(true), []);
 
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+    GeistMono_400Regular,
   });
 
   const [fontTimeout, setFontTimeout] = useState(false);
@@ -120,6 +129,7 @@ function RootContent() {
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <RootStack />
+      <ShareIntake />
       {!splashDone && <AnimatedSplash ready={status !== 'loading' && fontsReady} onFinish={finishSplash} />}
       {signedIn && isLocked ? <BiometricLockScreen /> : null}
     </>

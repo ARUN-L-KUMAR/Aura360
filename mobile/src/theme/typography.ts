@@ -1,16 +1,18 @@
 import { Platform, type TextStyle } from 'react-native';
 
 /**
- * One family (Inter) in four weights. The OS font is the fallback while Inter loads or if it fails to load.
+ * One family (Geist, the same as the web app) in four weights. The OS font is the fallback while Geist loads or if it fails to load.
  * Weights are limited to 400 / 500 / 600 / 700; never use fontWeight directly, pick a `weight` on <Text>.
  */
 export const fontFamily = {
-  regular: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  semiBold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
-  mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) as string,
-  /** Used before Inter is available. */
+  regular: 'Geist_400Regular',
+  medium: 'Geist_500Medium',
+  semiBold: 'Geist_600SemiBold',
+  bold: 'Geist_700Bold',
+  /** Geist Mono, as on the web. Falls back to the platform monospace while it loads. */
+  mono: 'GeistMono_400Regular',
+  monoFallback: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }) as string,
+  /** Used before Geist is available. */
   fallback: Platform.select({
     ios: 'System',
     android: 'sans-serif',
@@ -53,12 +55,16 @@ export type TypeStyle = { fontSize: number; lineHeight: number; letterSpacing: n
 
 /** Type scale. Sizes scale with the system font-size setting, capped at MAX_FONT_SCALE. */
 export const typeScale = {
+  /** Hero headline: the web's text-4xl bold tracking-tight. */
+  hero: { fontSize: 36, lineHeight: 40, letterSpacing: -0.9, weight: 'bold' },
   display: { fontSize: 32, lineHeight: 38, letterSpacing: -0.6, weight: 'bold' },
   headline: { fontSize: 26, lineHeight: 32, letterSpacing: -0.4, weight: 'bold' },
   title: { fontSize: 18, lineHeight: 24, letterSpacing: -0.2, weight: 'semiBold' },
   body: { fontSize: 15, lineHeight: 22, letterSpacing: 0, weight: 'regular' },
   label: { fontSize: 14, lineHeight: 20, letterSpacing: 0.1, weight: 'medium' },
   caption: { fontSize: 12, lineHeight: 16, letterSpacing: 0.2, weight: 'regular' },
+  /** Tiny uppercase tracked label (the web's text-[10px] font-bold uppercase tracking-widest). Rendered upper-cased by <Text>. */
+  overline: { fontSize: 10, lineHeight: 14, letterSpacing: 1.6, weight: 'bold' },
 } as const satisfies Record<string, TypeStyle>;
 
 export type TextVariant = keyof typeof typeScale;
@@ -73,10 +79,6 @@ export const tabularNums: TextStyle['fontVariant'] = ['tabular-nums'];
 export const typography = {
   fontFamily: {
     ...fontFamily,
-    interRegular: fontFamily.regular,
-    interMedium: fontFamily.medium,
-    interSemiBold: fontFamily.semiBold,
-    interBold: fontFamily.bold,
   },
   fallback: { sans: fontFamily.fallback },
   scale: typeScale,

@@ -1,8 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, type ComponentProps, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { accentTint } from '@/components/ui/accent-tint';
 import { readableOn } from '@/components/ui/card';
 import { withAlpha } from '@/components/ui/logic';
 import { usePop } from '@/components/ui/motion';
@@ -46,16 +47,17 @@ const HEIGHT: Record<ChipSize, number> = { sm: 28, md: 36 };
 const ICON: Record<ChipSize, number> = { sm: 14, md: 16 };
 
 function useChipColors({ accent, color }: Pick<ChipBase, 'accent' | 'color'>, selected: boolean) {
-  const { colors, accent: accentFor } = useTheme();
+  const { colors, scheme, accent: accentFor } = useTheme();
   if (selected) {
     if (accent) {
+      // Quiet, like the web: a tinted wash with accent text and a visible accent ring (the check mark carries state too).
       const a = accentFor(accent);
-      return { bg: a.solid, fg: a.onSolid, border: a.solid };
+      return { bg: accentTint(a, scheme, 0.18), fg: a.text, border: scheme === 'dark' ? withAlpha(a.solid, 0.55) : a.solid };
     }
     if (color) return { bg: color, fg: readableOn(color, colors.primaryText), border: color };
     return { bg: colors.primary, fg: colors.primaryText, border: colors.primary };
   }
-  return { bg: colors.card, fg: colors.text, border: colors.border };
+  return { bg: colors.card, fg: colors.textSecondary, border: colors.border };
 }
 
 /**
@@ -102,7 +104,7 @@ function ChipView({
   const body: ReactNode = (
     <>
       {lead ? <Ionicons name={lead} size={iconSize} color={c.fg} /> : null}
-      <Text variant={text} weight="medium" style={{ color: c.fg, flexShrink: 1 }} numberOfLines={1}>
+      <Text variant={text} weight="semiBold" style={{ color: c.fg, flexShrink: 1 }} numberOfLines={1}>
         {label}
       </Text>
       {typeof count === 'number' ? (
@@ -202,12 +204,12 @@ export type TagProps = ChipBase & {
 
 /** Non-interactive label pill (category, status text). Has no press, selected or remove behaviour. */
 function TagImpl({ label, icon, accent, color, size = 'sm', tone }: TagProps) {
-  const { colors, accent: accentFor } = useTheme();
+  const { colors, scheme, accent: accentFor } = useTheme();
   const resolved = tone ?? (accent || color ? 'accent' : 'neutral');
   const a = accent ? accentFor(accent) : null;
   const fg = resolved === 'neutral' ? colors.textSecondary : a ? a.text : colors.text;
-  const bg = resolved === 'neutral' ? colors.cardMuted : a ? a.soft : color ? withAlpha(color, 0.14) : colors.cardMuted;
-  const border = resolved === 'neutral' ? colors.borderSubtle : a ? a.border : color ? withAlpha(color, 0.3) : colors.border;
+  const bg = resolved === 'neutral' ? colors.cardMuted : a ? accentTint(a, scheme) : color ? withAlpha(color, 0.14) : colors.cardMuted;
+  const border = resolved === 'neutral' ? colors.borderSubtle : a ? (scheme === 'dark' ? withAlpha(a.solid, 0.3) : a.border) : color ? withAlpha(color, 0.3) : colors.border;
   return (
     <View
       accessible
@@ -243,7 +245,8 @@ export function ChipGroup({ children }: { children: ReactNode }) {
 /** Single horizontally-scrolling row of chips (filters). */
 export function ChipRow({ children }: { children: ReactNode }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
+    /* flexGrow 0: a horizontal scroller must not stretch to the height of its parent on Android. */
+    <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
       {children}
     </ScrollView>
   );

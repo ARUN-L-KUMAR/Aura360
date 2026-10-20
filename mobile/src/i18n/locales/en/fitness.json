@@ -1,7 +1,17 @@
 {
-  "header": { "eyebrow": "Strength and recovery" },
-  "sections": { "home": "Home", "train": "Train", "coach": "Coach", "stats": "Stats", "log": "Log" },
-  "fab": { "logWorkout": "Log a workout" },
+  "header": {
+    "eyebrow": "Strength and recovery"
+  },
+  "sections": {
+    "home": "Home",
+    "train": "Train",
+    "coach": "Coach",
+    "stats": "Stats",
+    "log": "Log"
+  },
+  "fab": {
+    "logWorkout": "Log a workout"
+  },
   "actions": {
     "cancel": "Cancel",
     "delete": "Delete",
@@ -49,7 +59,12 @@
     "extreme": "Extreme",
     "extremeShort": "Max"
   },
-  "moods": { "great": "Great", "good": "Good", "okay": "Okay", "tired": "Tired" },
+  "moods": {
+    "great": "Great",
+    "good": "Good",
+    "okay": "Okay",
+    "tired": "Tired"
+  },
   "measurements": {
     "weight": "Weight",
     "body_fat": "Body fat",
@@ -77,7 +92,45 @@
     "recent": "Recent workouts",
     "emptyTitle": "No workouts logged yet",
     "emptyDescription": "Start a live workout, or log one you already did.",
-    "startLive": "Start a live workout"
+    "startLive": "Start a live workout",
+    "heroStartLead": "Let's get your week",
+    "heroStartAccent": "moving",
+    "heroKeepGoingLead": "Keep the momentum",
+    "heroKeepGoingAccent": "going",
+    "heroDoneLead": "Nice work",
+    "heroDoneAccent": "today",
+    "heroSubtitle": "Small sessions add up. Pick one and begin.",
+    "heroSummary": "{{workouts}} and {{minutes}} so far this week. Keep it steady.",
+    "logEntry": "Log entry",
+    "statsOverline": "Performance",
+    "statsTitle": "Last 7 days",
+    "statsSubtitle": "Compared with the 7 days before.",
+    "minutesByDay": "Active minutes by day",
+    "readinessOverline": "Recovery",
+    "recentOverline": "History",
+    "chipWorkouts": "Workouts",
+    "chipMinutes": "Minutes",
+    "chipStreak": "Streak",
+    "spokenWorkouts_one": "{{count}} workout this week",
+    "spokenWorkouts_other": "{{count}} workouts this week",
+    "spokenMinutes_one": "{{count}} active minute this week",
+    "spokenMinutes_other": "{{count}} active minutes this week",
+    "spokenStreak_one": "{{count}} day streak",
+    "spokenStreak_other": "{{count}} day streak",
+    "loadingWeek": "Loading your week",
+    "ctaSubtitle": "Log sets and rest as you go",
+    "barsSummary": "Active minutes by day this week, {{total}} in total",
+    "goalTitle": "Weekly goal",
+    "goalProgress": "{{done}} of {{goal}} active minutes",
+    "percent": "{{value}}%",
+    "goalReached": "Goal reached. Great week!",
+    "goalLeft_one": "{{count}} minute to go",
+    "goalLeft_other": "{{count}} minutes to go",
+    "streakTitle": "Streak",
+    "streakDays_one": "{{count}} day in a row",
+    "streakDays_other": "{{count}} days in a row",
+    "streakNone": "Train today to start a streak",
+    "streakSummary": "{{done}} of the last {{total}} days had a workout"
   },
   "summary": {
     "title": "Totals",
@@ -87,17 +140,26 @@
     "burned": "Burned",
     "averageSession": "Average session",
     "hoursMinutes": "{{hours}}h {{minutes}}m",
-    "minutesOnly": "{{minutes}}m"
+    "minutesOnly": "{{minutes}}m",
+    "sessionsLabel": "Sessions",
+    "burnedKcal": "kcal burned"
   },
   "log": {
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
     "emptyTitle": "Nothing logged in {{month}}",
     "emptyDescription": "Track your strength, cardio and exercises to see your progress.",
+    "overline": "History",
+    "overlineBody": "Body",
     "workouts": "Workouts",
     "measurementsAndGoals": "Measurements and goals",
     "logMeasurement": "Log a measurement or goal",
-    "latestEntry": "Latest entry {{date}}"
+    "latestEntry": "Latest entry {{date}}",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "dayHeading": "{{weekday}}, {{date}}",
+    "dayCount_one": "{{count}} workout",
+    "dayCount_other": "{{count}} workouts"
   },
   "card": {
     "deleteTitle": "Delete this workout?",
@@ -114,7 +176,12 @@
     "reps_one": "{{count}} rep",
     "reps_other": "{{count}} reps",
     "atWeight": " @ {{value}} kg",
-    "notes": "\"{{notes}}\""
+    "notes": "\"{{notes}}\"",
+    "exercisesList_one": "{{count}} exercise: {{names}}",
+    "exercisesList_other": "{{count}} exercises: {{names}}",
+    "headline": "{{title}}, {{date}}",
+    "volumeByExercise": "Volume by exercise",
+    "loading": "Loading workout"
   },
   "entry": {
     "typeWorkout": "Workout",
@@ -172,9 +239,16 @@
     "notesPlaceholder": "How did the session feel? Any personal bests?",
     "logged": "Workout logged",
     "updated": "Workout updated",
-    "saveFailed": "Couldn't save the workout. Try again."
+    "saveFailed": "Couldn't save the workout. Try again.",
+    "summarySpoken_one": "{{count}} exercise, {{volume}} kilograms of volume",
+    "summarySpoken_other": "{{count}} exercises, {{volume}} kilograms of volume",
+    "summaryExercises_one": "{{count}} exercise",
+    "summaryExercises_other": "{{count}} exercises",
+    "summaryVolume": "kg volume"
   },
   "train": {
+    "overline": "Live session",
+    "setsLabel": "Sets",
     "defaultTitle": "Workout",
     "startTitle": "Start a workout",
     "startSubtitle": "Name it, then add exercises as you go.",
@@ -231,7 +305,11 @@
     "addExercise": "Add exercise",
     "searchExercise": "Search or type a name",
     "exerciseName": "Exercise name",
-    "addCustom": "Add “{{name}}”"
+    "addCustom": "Add “{{name}}”",
+    "elapsedLabel": "Elapsed",
+    "setsProgress": "Sets completed",
+    "setsProgressSpoken": "{{done}} of {{total}} sets done",
+    "setsDone": "{{done}}/{{total}} sets"
   },
   "rest": {
     "label": "rest",
@@ -246,6 +324,7 @@
     "nextSet": "Next set when you are ready."
   },
   "restTimer": {
+    "overline": "Recovery",
     "title": "Rest timer",
     "complete": "Rest complete",
     "resting": "Resting",
@@ -260,6 +339,9 @@
     "presetHint_other": "Sets the timer to {{count}} seconds"
   },
   "coach": {
+    "overline": "AI coach",
+    "subtitle": "Tell the coach about your goal and kit, and get a weekly plan you can start in one tap.",
+    "dayOverline": "Day {{n}}",
     "title": "Build my plan",
     "buildNew": "Build a new plan",
     "goal": "Goal",
@@ -272,8 +354,17 @@
       "fatLoss": "Fat loss and conditioning",
       "general": "General fitness"
     },
-    "equipment": { "gym": "Full commercial gym", "dumbbells": "Home dumbbells", "bodyweight": "Bodyweight only", "bands": "Resistance bands" },
-    "levels": { "beginner": "Beginner", "intermediate": "Intermediate", "advanced": "Advanced" },
+    "equipment": {
+      "gym": "Full commercial gym",
+      "dumbbells": "Home dumbbells",
+      "bodyweight": "Bodyweight only",
+      "bands": "Resistance bands"
+    },
+    "levels": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced"
+    },
     "designing": "Designing your week. This can take up to half a minute.",
     "ready": "Your plan is ready",
     "buildFailed": "Couldn't build a plan. Try again.",
@@ -290,11 +381,16 @@
     "replaceTitle": "Replace current workout?",
     "replaceMessage": "\"{{title}}\" is still in progress. Starting this day will discard it.",
     "replace": "Replace",
-    "keepCurrent": "Keep current"
+    "keepCurrent": "Keep current",
+    "planEyebrow": "Your plan",
+    "startSubtitle_one": "{{count}} exercise, one step at a time",
+    "startSubtitle_other": "{{count}} exercises, one step at a time",
+    "stepOf": "Step {{step}} of {{total}}",
+    "setsByReps": "{{sets}} × {{reps}}"
   },
   "stats": {
-    "volumeTitle": "Volume per workout",
-    "volumeSubtitle": "Your last 10 workouts",
+    "volumeTitle": "Volume by week",
+    "volumeSubtitle": "Last {{weeks}} weeks, this week highlighted",
     "volumeEmptyTitle": "No volume to chart yet",
     "volumeEmptyDescription": "Finish a workout with logged sets to see your volume trend.",
     "noWeights": "No weights logged",
@@ -326,6 +422,27 @@
     "justTheBar": "Just the bar.",
     "platesSpoken": "Plates on each side: {{plates}} kilograms",
     "eachSide": "On each side",
-    "eachSideShort": "On each side · {{value}} short of the target with these plates"
+    "eachSideShort": "On each side · {{value}} short of the target with these plates",
+    "tileVolume": "Volume (kg)",
+    "tileWorkouts": "Workouts",
+    "tileMinutes": "Active minutes",
+    "tileWeight": "Weight (kg)",
+    "deltaPercent": "{{value}}%",
+    "overlineTrends": "Trends",
+    "overlineRecords": "Strength",
+    "overlineBody": "Body",
+    "overlineTools": "Tools",
+    "trendWeeks": "Compared with the 7 days before. Trend over the last {{weeks}} weeks.",
+    "volumeChartSummary": "Volume by week for the last {{weeks}} weeks. Latest week {{latest}}, best week {{best}}.",
+    "bestSession": "Best session: {{value}} on {{date}}",
+    "perWorkout": "Volume per workout",
+    "perWorkoutSummary": "Volume across your last {{n}} workouts, from {{first}} to {{last}}",
+    "recordsTitle": "Personal records",
+    "recordsSubtitle": "Heaviest lift for each exercise",
+    "recordDetail": "{{weight}} × {{reps}} · {{date}}",
+    "newRecord": "New record",
+    "recordTrend": "Weight across {{n}} sessions, from {{first}} to {{last}} kilograms",
+    "weightTrendSummary": "Body weight across your last {{n}} weigh-ins, from {{first}} to {{last}}",
+    "latestWeightSpoken": "Body weight {{value}}"
   }
 }

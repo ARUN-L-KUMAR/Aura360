@@ -1,12 +1,13 @@
 import { BottomTabBarHeightContext } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useContext, type ReactNode } from 'react';
-import { KeyboardAvoidingView, View, type ScrollViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, View, type ScrollViewProps } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { APP_BAR_HEIGHT, LargeTitle, TopAppBar, useCollapsingHeader, type TopAppBarProps } from '@/components/ui/app-bar';
+import { useHasHeader } from '@/components/ui/chrome';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
-import { layout, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 
 /**
  * Standard page padding (safe areas + gutters), shared by scroll screens and FlatList screens.
@@ -16,8 +17,10 @@ export function useScreenPadding(topInset = true, extraTop = 0) {
   const insets = useSafeAreaInsets();
   // Inside the tab navigator the tab bar already sits on the bottom safe area, so don't pad it twice.
   const inTabs = !!useContext(BottomTabBarHeightContext);
+  // A persistent header (PremiumHeader) has already taken the status-bar space.
+  const hasHeader = useHasHeader();
   return {
-    paddingTop: (topInset ? insets.top : 0) + extraTop + layout.screenPadding,
+    paddingTop: (topInset && !hasHeader ? insets.top : 0) + extraTop + layout.screenPadding,
     paddingHorizontal: layout.screenPadding,
     paddingBottom: (inTabs ? 0 : insets.bottom) + spacing.xxl,
     gap: layout.sectionGap,
@@ -56,7 +59,6 @@ export function Screen({
   contentContainerStyle,
   ...rest
 }: Props) {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const hasHeader = title !== undefined;
   const headerHeight = hasHeader ? (topInset ? insets.top : 0) + APP_BAR_HEIGHT : 0;
@@ -69,9 +71,9 @@ export function Screen({
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* 'padding' works on iOS and on Android edge-to-edge (the window no longer resizes); it measures the overlap. */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+    <View style={{ flex: 1 }}>
+      {/* 'padding' is used on iOS; Android natively resizes via windowSoftInputMode="adjustResize". */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Animated.ScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -95,7 +95,7 @@ export function IconButton({
         onBlur?.(e);
       }}
       style={style}>
-      <View style={[styles.box, { width: box, height: box, backgroundColor: bg }]}>
+      <View style={[styles.box, { width: box, height: box, backgroundColor: bg, opacity: disabled ? DISABLED_OPACITY : 1 }]}>
         <Ionicons name={icon} size={GLYPH[size]} color={fg} />
         {badge ? <View style={[styles.badge, { backgroundColor: colors.error, borderColor: colors.card }]} /> : null}
         {focused ? <View pointerEvents="none" style={[styles.ring, { borderColor: colors.focusRing }]} /> : null}
@@ -105,9 +105,11 @@ export function IconButton({
 }
 
 const DOT = spacing.sm + spacing.xs; // 12
+/** A disabled button dims itself: the press animation of `PressableScale` overrides the dimming that component would apply. */
+const DISABLED_OPACITY = 0.45;
 
 const styles = StyleSheet.create({
-  box: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  box: { borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: spacing.xs, end: spacing.xs, width: DOT, height: DOT, borderRadius: radius.pill, borderWidth: 2 },
-  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.pill, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.lg, borderWidth: 2 },
 });

@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { ListItem } from '@/components/ui/list-item';
 import { useScreenPadding } from '@/components/ui/screen';
+import { SearchBar } from '@/components/ui/search-bar';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { aiActions, useAiStore } from '@/features/ai/threads';
@@ -56,7 +57,14 @@ export default function AiHistoryScreen() {
   const store = useAiStore();
   const padding = useScreenPadding(false);
 
-  const threads = useMemo(() => store.threads.filter((thread) => thread.messages.length > 0), [store.threads]);
+  const [query, setQuery] = useState('');
+  const all = useMemo(() => store.threads.filter((thread) => thread.messages.length > 0), [store.threads]);
+  // Search looks at the title and at what was said, so an old chat can be found by a word from it.
+  const threads = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter((thread) => thread.title.toLowerCase().includes(needle) || thread.messages.some((message) => message.content.toLowerCase().includes(needle)));
+  }, [all, query]);
 
   const open = useCallback(
     (threadId: string) => {
@@ -112,12 +120,15 @@ export default function AiHistoryScreen() {
           ))}
         </Card>
       </View>
-      <SectionHeader title={t('history.onThisPhone')} count={store.hydrated ? threads.length : undefined} />
+      <SectionHeader title={t('history.onThisPhone')} count={store.hydrated ? all.length : undefined} />
+      {all.length > 3 ? (
+        <SearchBar value={query} onChangeText={setQuery} debounceMs={150} placeholder={t('history.search')} accessibilityLabel={t('history.search')} />
+      ) : null}
     </View>
   );
 
   const footer =
-    threads.length > 0 ? (
+    all.length > 0 ? (
       <Button title={t('history.deleteAllButton')} variant="ghost" leftIcon="trash-outline" onPress={() => void confirmClearAll()} style={styles.clearAll} />
     ) : null;
 
@@ -131,7 +142,9 @@ export default function AiHistoryScreen() {
         renderItem={({ item }) => <ThreadRow thread={item} active={item.id === store.activeId} onOpen={open} onDelete={confirmDelete} />}
         ListHeaderComponent={header}
         ListEmptyComponent={
-          store.hydrated ? (
+          store.hydrated && all.length > 0 ? (
+            <EmptyState variant="noResults" accent="ai" title={t('history.noMatchTitle')} description={t('history.noMatchDescription', { query: query.trim() })} onClearFilters={() => setQuery('')} />
+          ) : store.hydrated ? (
             <EmptyState
               accent="ai"
               icon="chatbubble-ellipses-outline"

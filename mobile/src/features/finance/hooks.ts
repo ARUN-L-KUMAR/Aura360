@@ -7,6 +7,10 @@ import type {
   BalancesResponse,
   BudgetsResponse,
   GoalsResponse,
+  ScannedReceipt,
+  Subscription,
+  SubscriptionInput,
+  SubscriptionsResponse,
   Transaction,
   TransactionInput,
   TransactionType,
@@ -19,11 +23,14 @@ export const financeKeys = {
   balances: ['finance', 'balances'] as const,
   budgets: (month: string) => ['finance', 'budgets', month] as const,
   goals: ['finance', 'goals'] as const,
+  subscriptions: ['finance', 'subscriptions'] as const,
 };
 
 export type TransactionFilters = {
   type: TransactionType | 'all';
   search: string;
+  /** Exact category (the Analytics tab opens the ledger on one). Omit for all. */
+  category?: string;
   /** YYYY-MM, or 'all' */
   month: string;
 };
@@ -41,6 +48,7 @@ export function useTransactions(filters: TransactionFilters) {
           limit: PAGE_SIZE,
           type: filters.type === 'all' ? undefined : filters.type,
           search: filters.search.trim() || undefined,
+          category: filters.category || undefined,
           month: filters.month === 'all' ? undefined : filters.month,
         },
       }),
@@ -160,4 +168,73 @@ export function useDeleteGoal() {
     mutationFn: (id: string) => api('/api/finance/goals', { method: 'DELETE', query: { id } }),
     onSuccess: invalidate,
   });
+}
+
+export function useSubscriptions() {
+  return useQuery({
+    queryKey: financeKeys.subscriptions,
+    queryFn: () => api<SubscriptionsResponse>('/api/finance/subscriptions'),
+  });
+}
+
+export function useSaveSubscription() {
+  const invalidate = useInvalidateFinance();
+  return useMutation({
+    mutationFn: ({ id, input }: { id?: string; input: SubscriptionInput }) =>
+      id
+        ? api<{ data: Subscription }>('/api/finance/subscriptions', { method: 'PUT', body: { id, ...input } })
+        : api<{ data: Subscription }>('/api/finance/subscriptions', { method: 'POST', body: input }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Moves the next billing date forward by one cycle and makes the subscription active again. */
+export function useRenewSubscription() {
+  const invalidate = useInvalidateFinance();
+  return useMutation({
+    mutationFn: (id: string) => api<{ data: Subscription }>('/api/finance/subscriptions', { method: 'PUT', body: { id, markRenewed: true } }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSubscription() {
+  const invalidate = useInvalidateFinance();
+  return useMutation({
+    mutationFn: (id: string) => api('/api/finance/subscriptions', { method: 'DELETE', query: { id } }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Reads a receipt photo (base64) with the server's vision model; the result prefills the transaction form. */
+export function useScanReceipt() {
+  return useMutation({
+    mutationFn: ({ base64, mimeType }: { base64: string; mimeType: string }) =>
+      api<{ success: boolean; data: ScannedReceipt }>('/api/finance/receipt-scan', { method: 'POST', body: { base64, mimeType } }),
+  });
+}
+
+/**
+ * Reads a shared payment screenshot (Google Pay, PhonePe, Paytm...) with the same endpoint and vision model as the
+ * receipt scan, asked for the payment reading: anything the screen does not show comes back null. `data` is checked by
+ * features/share-import/draft.ts (`normalizeScan`) because an older server answers with the receipt shape instead.
+ * Not queued when offline (see lib/offline/queue.ts): a screenshot read cannot be replayed later.
+ */
+export function scanPayment({ base64, mimeType, signal }: { base64: string; mimeType: string; signal?: AbortSignal }) {
+  return api<{ success: boolean; data: unknown }>('/api/finance/receipt-scan', {
+    method: 'POST',
+    body: { base64, mimeType, kind: 'payment' },
+    signal,
+  });
+}
+
+/** More than a person logs in a month; the duplicate check compares against these. */
+const LEDGER_CHECK_LIMIT = 500;
+
+/**
+ * One month of one kind of ledger entry (YYYY-MM), newest first, for the duplicate check of an imported payment. A plain
+ * call rather than a query on purpose: it is used once and should not be cached or saved on the phone.
+ */
+export async function fetchLedgerMonth(month: string, type: 'expense' | 'income', signal?: AbortSignal): Promise<Transaction[]> {
+  const page = await api<TransactionsPage>('/api/finance/transactions', { query: { month, type, page: 1, limit: LEDGER_CHECK_LIMIT }, signal });
+  return page.data;
 }

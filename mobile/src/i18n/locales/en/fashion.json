@@ -103,20 +103,18 @@
     "worn": "Worn {{n}}x",
     "wornSpoken_one": "Worn {{count}} time",
     "wornSpoken_other": "Worn {{count}} times",
-    "tagWishlist": "Wishlist"
+    "tagWishlist": "Wishlist",
+    "wears_one": "{{count}} wear",
+    "wears_other": "{{count}} wears",
+    "idle_one": "Idle {{count}} day",
+    "idle_other": "Idle {{count}} days",
+    "idleSpoken_one": "Not worn in {{count}} day",
+    "idleSpoken_other": "Not worn in {{count}} days"
   },
   "overview": {
     "emptyTitle": "Start your wardrobe",
     "emptyBody": "Add the pieces you own to see their value, how often you wear them and what needs washing.",
     "emptyAction": "Add your first item",
-    "valueTitle": "Wardrobe value",
-    "valueA11y": "Wardrobe value {{amount}}",
-    "itemCount_one": "{{count}} item",
-    "itemCount_other": "{{count}} items",
-    "valueHint": "Estimated total of the pieces you own.",
-    "wardrobe": "Wardrobe",
-    "wishlist": "Wishlist",
-    "totalWears": "Total wears",
     "categories": "Categories",
     "laundry": "Laundry",
     "laundryCount_one": "{{count}} piece needs washing",
@@ -125,7 +123,37 @@
     "mostWorn": "Most worn",
     "viewAll": "View all",
     "viewAllA11y": "View all wardrobe items",
-    "recent": "Recent additions"
+    "recent": "Recent additions",
+    "heroChip": "Wardrobe catalog",
+    "heroSubtitle_one": "Estimated value of the {{count}} piece you own.",
+    "heroSubtitle_other": "Estimated value of the {{count}} pieces you own.",
+    "heroNoPieces": "Your wishlist is ready. Add what you own to see its value.",
+    "addItem": "Add item",
+    "planOutfit": "New look",
+    "chipItems": "Items",
+    "chipWishlist": "Wishlist",
+    "chipWears": "Wears",
+    "spokenItems_one": "{{count}} item in your wardrobe",
+    "spokenItems_other": "{{count}} items in your wardrobe",
+    "spokenWishlist_one": "{{count}} item on your wishlist",
+    "spokenWishlist_other": "{{count}} items on your wishlist",
+    "spokenWears_one": "{{count}} wear in total",
+    "spokenWears_other": "{{count}} wears in total",
+    "statsOverline": "At a glance",
+    "statsTitle": "Your wardrobe",
+    "statsSubtitle": "Worked out from the pieces you own.",
+    "costPerWear": "Cost per wear",
+    "costPerWearHint": "Worn pieces only",
+    "wearsPerPiece": "Wears per piece",
+    "wearsPerPieceHint": "Average across your wardrobe",
+    "careOverline": "Laundry",
+    "rotationOverline": "Heavy rotation",
+    "recentOverline": "Latest",
+    "wishlistBudget": "Wishlist budget",
+    "wishlistBudgetHint": "To buy everything saved",
+    "pieces_one": "{{count}} piece",
+    "pieces_other": "{{count}} pieces",
+    "categoryHint": "Opens your wardrobe filtered to {{category}}"
   },
   "wardrobe": {
     "search": "Search by name, brand or colour",
@@ -140,7 +168,11 @@
     "noMatch": "Nothing in your wardrobe matches. Try another search or clear the filters.",
     "emptyTitle": "Your wardrobe is empty",
     "emptyBody": "Add shirts, jeans, sneakers and accessories to track what you own and how often you wear it.",
-    "emptyAction": "Add an item"
+    "emptyAction": "Add an item",
+    "overline": "Catalog",
+    "subtitle": "Everything you own, ready to search and filter.",
+    "pieces_one": "{{count}} piece",
+    "pieces_other": "{{count}} pieces"
   },
   "wishlist": {
     "bought": "I bought this",
@@ -154,7 +186,8 @@
     "saved": "Saved pieces",
     "emptyTitle": "Your wishlist is empty",
     "emptyBody": "Save pieces you plan to buy. Add a price and a store link to keep track of them.",
-    "emptyAction": "Add to wishlist"
+    "emptyAction": "Add to wishlist",
+    "overline": "Wish list"
   },
   "outfits": {
     "worn_one": "Worn {{count}} time",
@@ -172,7 +205,8 @@
     "listHint": "Complete looks you have put together.",
     "emptyTitle": "No outfits yet",
     "emptyBody": "Combine tops, bottoms, shoes and outerwear into a complete look, then log it when you wear it.",
-    "emptyAction": "Create your first look"
+    "emptyAction": "Create your first look",
+    "overline": "Looks"
   },
   "planner": {
     "noColour": "No colour",
@@ -191,7 +225,9 @@
     "emptyAction": "Add an item",
     "noSeasonTitle": "Nothing tagged for {{season}}",
     "noSeasonBody": "Edit your items to give them seasonal tags.",
-    "showAll": "Show all seasons"
+    "showAll": "Show all seasons",
+    "careOverline": "Care",
+    "seasonalOverline": "Plan ahead"
   },
   "profile": {
     "sizesTitle": "Standard sizes",
@@ -226,7 +262,10 @@
     "styleTitle": "Style",
     "styleHint": "Pick the looks you gravitate towards.",
     "save": "Save fit profile",
-    "saved": "Fit profile saved"
+    "saved": "Fit profile saved",
+    "sizesOverline": "Fit",
+    "measuresOverline": "Body",
+    "styleOverline": "Taste"
   },
   "detail": {
     "sheetLabel": "{{name}}, item details",
@@ -260,7 +299,9 @@
     "deleteTitle": "Delete this item?",
     "deleteWardrobe": "\"{{name}}\" will be removed from your wardrobe. This cannot be undone.",
     "deleteList": "\"{{name}}\" will be removed from your list. This cannot be undone.",
-    "deleted": "Deleted \"{{name}}\""
+    "deleted": "Deleted \"{{name}}\"",
+    "detailsOverline": "Specs",
+    "notesOverline": "Remember"
   },
   "add": {
     "titleEdit": "Edit item",
@@ -303,7 +344,15 @@
     "addedWishlist": "Added to your wishlist",
     "saveChanges": "Save changes",
     "saveWardrobe": "Add to wardrobe",
-    "saveWishlist": "Add to wishlist"
+    "saveWishlist": "Add to wishlist",
+    "photoOverline": "Picture",
+    "basicsOverline": "Basics",
+    "basicsTitle": "The piece",
+    "conditionOverline": "Care",
+    "usageOverline": "Wear",
+    "usageTitle": "When you wear it",
+    "extrasOverline": "Extras",
+    "extrasTitle": "Link and notes"
   },
   "look": {
     "title": "New look",
@@ -324,6 +373,29 @@
     "saveCount_other": "Save look · {{count}} pieces",
     "emptyTitle": "No pieces to pick from",
     "emptyBody": "Add clothing to your wardrobe first, then come back to put a look together.",
-    "emptyAction": "Add an item"
+    "emptyAction": "Add an item",
+    "overline": "Outfit",
+    "detailsTitle": "About this look",
+    "pickOverline": "Wardrobe",
+    "slotsTitle": "Your look",
+    "slotTop": "Top",
+    "slotBottom": "Bottom",
+    "slotShoes": "Shoes",
+    "slotAccessory": "Accessory",
+    "slotAdd": "Add",
+    "slotEmpty": "{{slot}} slot is empty. Choose a piece.",
+    "slotFilled": "{{slot}}: {{name}}",
+    "slotRemoveHint": "Takes this piece out of the look",
+    "layers": "Layers and extras",
+    "layerRemove": "{{name}}. Takes this piece out of the look.",
+    "colours": "Colours",
+    "coloursSpoken": "Colours in this look: {{names}}",
+    "pickNone": "No pieces in this category yet."
+  },
+  "vibes": {
+    "smart": "Smart",
+    "relaxed": "Relaxed",
+    "sharp": "Sharp",
+    "minimal": "Minimal"
   }
 }

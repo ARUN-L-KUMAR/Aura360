@@ -11,6 +11,7 @@ import {
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { storage } from '@/lib/storage';
+import { PREVIEW } from '@/preview/flag';
 
 export type BiometricType = 'face' | 'fingerprint' | 'iris' | 'none';
 
@@ -20,6 +21,11 @@ export type BiometricsContextValue = {
   biometricLabel: string;
   isEnabled: boolean;
   isLocked: boolean;
+  /**
+   * True once the first lock decision has been made at launch. Until then `isLocked` is still its initial `false`, so
+   * work that must not start behind a lock (reading a shared payment screenshot) waits for this.
+   */
+  isReady: boolean;
   toggleBiometrics: (enable: boolean) => Promise<boolean>;
   authenticate: () => Promise<boolean>;
 };
@@ -32,6 +38,7 @@ export function BiometricsProvider({ children }: { children: ReactNode }) {
   const [biometricLabel, setBiometricLabel] = useState('Biometrics');
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [isReady, setIsReady] = useState(PREVIEW); // preview builds have no lock to wait for
 
   const authenticate = useCallback(async (): Promise<boolean> => {
     try {
@@ -57,6 +64,7 @@ export function BiometricsProvider({ children }: { children: ReactNode }) {
 
   // Check hardware and enrollment on mount
   useEffect(() => {
+    if (PREVIEW) return; // preview builds have no biometric lock
     let mounted = true;
 
     async function init() {
@@ -108,6 +116,8 @@ export function BiometricsProvider({ children }: { children: ReactNode }) {
         setIsAvailable(false);
         setIsEnabled(false);
       }
+      // After the lock state above, so both land in the same render.
+      if (mounted) setIsReady(true);
     }
 
     void init();
@@ -157,6 +167,7 @@ export function BiometricsProvider({ children }: { children: ReactNode }) {
         biometricLabel,
         isEnabled,
         isLocked,
+        isReady,
         toggleBiometrics,
         authenticate,
       }}>
@@ -174,6 +185,7 @@ export function useBiometrics(): BiometricsContextValue {
       biometricLabel: 'Biometrics',
       isEnabled: false,
       isLocked: false,
+      isReady: true,
       toggleBiometrics: async () => false,
       authenticate: async () => false,
     };

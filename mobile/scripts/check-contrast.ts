@@ -58,6 +58,8 @@ for (const scheme of ['light', 'dark'] as const) {
     [c.onTertiaryContainer, c.tertiaryContainer, 4.5, 'onTertiaryContainer on tertiaryContainer'],
     [c.accentForeground, c.accent, 4.5, 'accentForeground on accent'],
     [c.textInverse, c.text, 4.5, 'textInverse on text'],
+    [c.onHero, c.heroSurface, 4.5, 'onHero on heroSurface'],
+    [c.onHeroMuted, c.heroSurface, 4.5, 'onHeroMuted on heroSurface'],
   );
   for (const k of ['success', 'warning', 'error', 'info'] as const) {
     const cap = k[0].toUpperCase() + k.slice(1);

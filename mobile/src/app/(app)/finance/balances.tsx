@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import { View, type TextInput } from 'react-native';
 
 import { failureMessage } from '@/components/finance/failure-message';
 import { FormCard, cleanAmount, parseAmount } from '@/components/finance/form-parts';
@@ -11,13 +12,18 @@ import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { DonutChart } from '@/components/viz/donut-chart';
+import { useDonutColors } from '@/components/viz/tones';
 import { useBalances, useSaveBalances } from '@/features/finance/hooks';
 import { useTranslation } from '@/i18n';
 import { CURRENCY_SYMBOL } from '@/lib/config';
 import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { useNotify } from '@/providers/notify';
-import { spacing, tabularNums } from '@/theme';
+import { radius, spacing, tabularNums, useTheme } from '@/theme';
+
+const SPLIT_SIZE = spacing.xxxl * 2 + spacing.sm;
+const SPLIT_THICKNESS = spacing.md;
 
 export default function BalancesScreen() {
   const router = useRouter();
@@ -25,6 +31,8 @@ export default function BalancesScreen() {
   const { t } = useTranslation('finance');
   const { data, isPending, fetchStatus, isError, error, refetch, isRefetching } = useBalances();
   const save = useSaveBalances();
+  const { colors } = useTheme();
+  const splitColors = useDonutColors(2, 'finance');
 
   const [cash, setCash] = useState<string | null>(null);
   const [account, setAccount] = useState<string | null>(null);
@@ -84,16 +92,46 @@ export default function BalancesScreen() {
         <>
           {isError ? <RefreshError error={error} onRetry={() => void refetch()} retrying={isRefetching} /> : null}
 
-          <Card variant="tinted" accent="finance" style={{ alignItems: 'center', gap: spacing.xs }}>
-            <Text variant="caption" weight="semiBold" color="textSecondary">
-              {t('balances.total')}
-            </Text>
-            <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {formatMoney(totalLiquid)}
-            </Text>
-            <Text variant="caption" color="textSecondary">
-              {t('balances.totalHint')}
-            </Text>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+            {/* Cash against bank and UPI, redrawn as the fields change. */}
+            <DonutChart
+              segments={[
+                { label: t('balances.cash'), value: Math.max(0, Number.isFinite(cashValue) ? cashValue : 0) },
+                { label: t('balances.account'), value: Math.max(0, Number.isFinite(accountValue) ? accountValue : 0) },
+              ]}
+              size={SPLIT_SIZE}
+              thickness={SPLIT_THICKNESS}
+              accent="finance"
+              label={t('balances.splitChart')}>
+              <Ionicons name="wallet-outline" size={26} color={colors.textSecondary} />
+            </DonutChart>
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text variant="overline" color="textMuted">
+                {t('balances.total')}
+              </Text>
+              <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {formatMoney(totalLiquid)}
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                {t('balances.totalHint')}
+              </Text>
+              <View style={{ gap: spacing.xs, paddingTop: spacing.xs }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: spacing.sm + 2, height: spacing.sm + 2, borderRadius: radius.pill, backgroundColor: splitColors[0] }} />
+                  <Ionicons name="wallet-outline" size={16} color={colors.textSecondary} />
+                  <Text variant="caption" numeric style={{ flex: 1 }} numberOfLines={1}>
+                    {t('balances.splitCash', { amount: formatMoney(Number.isFinite(cashValue) ? cashValue : 0) })}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <View style={{ width: spacing.sm + 2, height: spacing.sm + 2, borderRadius: radius.pill, backgroundColor: splitColors[1] }} />
+                  <Ionicons name="card-outline" size={16} color={colors.textSecondary} />
+                  <Text variant="caption" numeric style={{ flex: 1 }} numberOfLines={1}>
+                    {t('balances.splitAccount', { amount: formatMoney(Number.isFinite(accountValue) ? accountValue : 0) })}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </Card>
 
           <FormCard>

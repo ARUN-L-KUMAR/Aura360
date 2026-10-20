@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { AiLogSection } from '@/components/food/ai-log-section';
@@ -11,10 +11,14 @@ import { useTranslation } from '@/i18n';
 
 type Section = 'today' | 'ai' | 'history';
 
+const SECTIONS: readonly Section[] = ['today', 'ai', 'history'];
+
 export default function FoodScreen() {
   const router = useRouter();
   const { t } = useTranslation('food');
-  const [section, setSection] = useState<Section>('today');
+  // `/food?section=history` opens a section directly (deep links, previews).
+  const params = useLocalSearchParams<{ section?: string }>();
+  const [section, setSection] = useState<Section>(() => SECTIONS.find((value) => value === params.section) ?? 'today');
 
   const sections: CategorySection<Section>[] = [
     { value: 'today', label: t('sections.today') },

@@ -1,8 +1,12 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { RingCardSkeleton } from '@/components/finance/finance-skeletons';
+import { SectionHead } from '@/components/finance/finance-ui';
+import { goalAccent } from '@/components/finance/goal-accent';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Badge } from '@/components/ui/badge';
@@ -12,25 +16,42 @@ import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useBlockMotion, useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
-import { SkeletonCard } from '@/components/ui/skeleton';
+import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { useGoals } from '@/features/finance/hooks';
 import type { Goal } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 import { categoryLabel } from './labels';
 
 export function openGoal(router: ReturnType<typeof useRouter>, goal?: Goal) {
   router.push({ pathname: '/finance/goal', params: goal ? { goal: JSON.stringify(goal) } : {} });
 }
 
+const CARD_RING = spacing.xxxl + spacing.xxl;
+const CARD_RING_THICKNESS = spacing.sm;
+const SUMMARY_RING = spacing.xxxl * 2 + spacing.sm;
+const SUMMARY_RING_THICKNESS = spacing.md - 2;
+const CHECK = spacing.xxl + spacing.xs;
+
 const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: number }) {
   const router = useRouter();
+  const { accent: accentFor } = useTheme();
   const motion = useListMotion(index);
   const { t } = useTranslation('finance');
+  const accent = goalAccent(goal.color);
+
+  // The check pops only when the goal becomes complete while this card is on screen (for example after a deposit).
+  // A goal that was already complete just shows a still check.
+  const wasComplete = useRef(goal.isCompleted);
+  const [justReached, setJustReached] = useState(false);
+  useEffect(() => {
+    if (goal.isCompleted && !wasComplete.current) setJustReached(true);
+    wasComplete.current = goal.isCompleted;
+  }, [goal.isCompleted]);
 
   const deadline = goal.isCompleted
     ? t('goals.reached')
@@ -57,35 +78,51 @@ const GoalCard = memo(function GoalCard({ goal, index }: { goal: Goal; index: nu
           accessibilityHint={t('goals.cardHint')}
           onPress={() => openGoal(router, goal)}
           ringRadius={radius.md}
-          style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="body" weight="semiBold" numberOfLines={1}>
-                {goal.title}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+          <ProgressRing
+            value={goal.percentage}
+            size={CARD_RING}
+            thickness={CARD_RING_THICKNESS}
+            accent={accent}
+            label={goal.title}
+            valueText={t('goals.ringValue', { percent: goal.percentage, progress })}>
+            {goal.isCompleted ? (
+              justReached ? (
+                <SuccessCheck size={CHECK} accent={accent} accessibilityLabel={null} />
+              ) : (
+                <Ionicons name="checkmark-circle" size={CHECK} color={accentFor(accent).text} />
+              )
+            ) : (
+              <Text variant="label" weight="bold" numeric>
+                {goal.percentage}%
               </Text>
-              <Text variant="caption" color={overdue ? 'errorText' : 'textSecondary'} numberOfLines={1}>
-                {deadline ? t('goals.categoryDeadline', { category, deadline }) : category}
-              </Text>
-            </View>
-            <Text variant="title" numeric>
-              {goal.percentage}%
+            )}
+          </ProgressRing>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text variant="body" weight="bold" numberOfLines={2}>
+              {goal.title}
             </Text>
+            <Text variant="caption" color={overdue ? 'errorText' : 'textSecondary'} numberOfLines={2}>
+              {deadline ? t('goals.categoryDeadline', { category, deadline }) : category}
+            </Text>
+            <Text variant="label" weight="bold" numeric>
+              {progress}
+            </Text>
+            {!goal.isCompleted ? (
+              <Text variant="caption" numeric color="textSecondary">
+                {t('goals.toGo', { amount: formatMoney(Math.max(0, goal.remaining)) })}
+              </Text>
+            ) : null}
           </View>
-          <ProgressBar percent={goal.percentage} color={goal.color} />
-          <Text variant="caption" numeric color="textSecondary">
-            {progress}
-          </Text>
         </PressableScale>
         {goal.isCompleted ? (
           <Badge severity="success" label={t('goals.reached')} size="sm" />
         ) : (
           <Button
             title={t('goals.addMoney')}
-            size="sm"
             variant="secondary"
+            size="md"
             leftIcon="add"
-            fullWidth={false}
-            style={{ alignSelf: 'flex-start' }}
             accessibilityLabel={t('goals.addMoneyTo', { title: goal.title })}
             onPress={() => router.push({ pathname: '/finance/contribute', params: { goal: JSON.stringify(goal) } })}
           />
@@ -110,9 +147,9 @@ export function GoalsSection({ header }: { header: ReactNode }) {
 
       {isPending && !offline ? (
         <View style={{ gap: spacing.md }}>
-          <SkeletonCard lines={2} />
-          <SkeletonCard lines={1} />
-          <SkeletonCard lines={1} />
+          <RingCardSkeleton summary />
+          <RingCardSkeleton />
+          <RingCardSkeleton />
         </View>
       ) : offline ? (
         <OfflineState description={t('offline.goals')} onRetry={() => void refetch()} />
@@ -124,26 +161,37 @@ export function GoalsSection({ header }: { header: ReactNode }) {
 
           {summary && summary.totalGoals > 0 ? (
             <Animated.View {...blockMotion}>
-              <Card variant="tinted" accent="finance" gradient="finance" style={{ gap: spacing.sm }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-                  <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}>
+                <ProgressRing
+                  value={summary.overallProgress}
+                  size={SUMMARY_RING}
+                  thickness={SUMMARY_RING_THICKNESS}
+                  accent="finance"
+                  label={t('goals.overallProgress')}
+                  valueText={t('goals.summaryValue', { percent: Math.round(summary.overallProgress), saved: formatMoney(summary.totalSaved), target: formatMoney(summary.totalTarget) })}>
+                  <Text variant="title" weight="bold" numeric>
+                    {Math.round(summary.overallProgress)}%
+                  </Text>
+                </ProgressRing>
+                <View style={{ flex: 1, gap: spacing.xs }}>
+                  <Text variant="overline" color="textMuted" accessibilityRole="header">
                     {t('goals.savingsTitle')}
+                  </Text>
+                  <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {formatMoney(summary.totalSaved)}
+                  </Text>
+                  <Text variant="caption" numeric color="textSecondary">
+                    {t('goals.savedToward', { target: formatMoney(summary.totalTarget) })}
                   </Text>
                   <Tag label={t('goals.reachedCount', { done: summary.completedCount, total: summary.totalGoals })} icon="flag" accent="finance" />
                 </View>
-                <Text variant="display" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                  {formatMoney(summary.totalSaved)}
-                </Text>
-                <ProgressBar percent={summary.overallProgress} accent="finance" showLabel label={t('goals.overallProgress')} />
-                <Text variant="caption" numeric color="textSecondary">
-                  {t('goals.savedToward', { target: formatMoney(summary.totalTarget) })}
-                </Text>
               </Card>
             </Animated.View>
           ) : null}
 
           {goals.length > 0 ? (
             <View style={{ gap: spacing.md }}>
+              <SectionHead overline={t('goals.listOverline')} title={t('goals.listTitle')} />
               {goals.map((goal, i) => (
                 <GoalCard key={goal.id} goal={goal} index={i} />
               ))}

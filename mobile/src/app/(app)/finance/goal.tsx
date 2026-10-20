@@ -1,20 +1,23 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 
+import { CategoryPicker } from '@/components/finance/category-picker';
+import { categoryIcon } from '@/components/finance/category-icons';
 import { failureMessage } from '@/components/finance/failure-message';
+import { goalAccent } from '@/components/finance/goal-accent';
 import { FormCard, cleanAmount, parseAmount } from '@/components/finance/form-parts';
 import { categoryLabel } from '@/components/finance/labels';
 import { Button } from '@/components/ui/button';
 import { Card, readableOn } from '@/components/ui/card';
-import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
+import { Tag } from '@/components/ui/chip';
 import { DateField } from '@/components/ui/date-field';
 import { Input } from '@/components/ui/input';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { useDeleteGoal, useSaveGoal } from '@/features/finance/hooks';
 import { GOAL_CATEGORIES, GOAL_COLORS, type Goal } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
@@ -24,6 +27,9 @@ import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { layout, neutral, radius, spacing, tabularNums, useTheme } from '@/theme';
+
+const PREVIEW_RING = spacing.xxxl * 2;
+const PREVIEW_RING_THICKNESS = spacing.sm + 2;
 
 /** Catalog keys for the spoken names of the swatches in GOAL_COLORS, in the same order. */
 const COLOR_NAME_KEYS = ['indigo', 'green', 'purple', 'amber', 'red', 'pink', 'teal'] as const;
@@ -126,18 +132,17 @@ export default function GoalScreen() {
       <Stack.Screen options={{ title: existing ? t('goal.titleEdit') : t('goal.titleNew') }} />
 
       {/* Live preview of the goal card. It repeats what the fields below already say, so screen readers skip it. */}
-      <Card tintColor={color} style={{ gap: spacing.sm }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-          <Tag label={categoryLabel(category)} color={color} tone="accent" />
-          <Text variant="title" numeric>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <ProgressRing value={progressPercent} size={PREVIEW_RING} thickness={PREVIEW_RING_THICKNESS} accent={goalAccent(color)}>
+          <Text variant="title" weight="bold" numeric>
             {progressPercent}%
           </Text>
-        </View>
-        <Text variant="title" numberOfLines={1}>
-          {title.trim() || t('goal.namePlaceholder')}
-        </Text>
-        <ProgressBar percent={progressPercent} color={color} />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
+        </ProgressRing>
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Tag label={categoryLabel(category)} color={color} tone="accent" />
+          <Text variant="title" weight="bold" numberOfLines={2}>
+            {title.trim() || t('goal.namePlaceholder')}
+          </Text>
           <Text variant="caption" numeric color="textSecondary">
             {t('goal.saved', { amount: formatMoney(savedVal) })}
           </Text>
@@ -195,11 +200,12 @@ export default function GoalScreen() {
       </FormCard>
 
       <FormCard title={t('goal.category')} icon="pricetags-outline">
-        <ChipGroup>
-          {GOAL_CATEGORIES.map((name) => (
-            <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
-          ))}
-        </ChipGroup>
+        <CategoryPicker
+          accessibilityLabel={t('goal.category')}
+          value={category}
+          onChange={setCategory}
+          options={GOAL_CATEGORIES.map((name) => ({ value: name, label: categoryLabel(name), icon: categoryIcon(name) }))}
+        />
       </FormCard>
 
       <FormCard title={t('goal.colour')} icon="color-palette-outline">

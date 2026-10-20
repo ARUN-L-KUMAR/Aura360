@@ -5,21 +5,20 @@ import Animated from 'react-native-reanimated';
 import { failureMessage } from '@/components/finance/failure-message';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteOutfit, useLogOutfitWorn, useOutfits } from '@/features/fashion/hooks';
 import type { FashionItem, FashionOutfit } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
 import { useNotify } from '@/providers/notify';
-import { layout, radius, spacing } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 import { occasionLabel } from './labels';
+import { Heading, RingCard } from './section-kit';
 import { FashionImage, HeaderStack, RowSeparator, StaleNotice, useListPadding, type ItemsState } from './shared';
 
 interface OutfitsSectionProps {
@@ -49,18 +48,23 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
   const pieces = outfit.itemIds.map((id) => itemsMap.get(id)).filter((i): i is FashionItem => !!i);
   const wears = outfit.wearCount ?? 0;
 
+  const { accent, colors } = useTheme();
   return (
     <Animated.View {...motion}>
-      <Card accessible={false} style={{ gap: spacing.md }}>
+      <RingCard accessible={false} style={{ gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
-          <View style={{ flex: 1, gap: spacing.sm }}>
-            <Text variant="title" numberOfLines={2}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            {outfit.occasion ? (
+              <Text variant="overline" numberOfLines={1} style={{ color: accent('fashion').text }}>
+                {occasionLabel(outfit.occasion)}
+              </Text>
+            ) : null}
+            <Text variant="title" weight="bold" numberOfLines={2}>
               {outfit.name}
             </Text>
-            {outfit.occasion || outfit.vibe ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                {outfit.occasion ? <Tag label={occasionLabel(outfit.occasion)} accent="fashion" /> : null}
-                {outfit.vibe ? <Tag label={outfit.vibe} /> : null}
+            {outfit.vibe ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs }}>
+                <Tag label={outfit.vibe} />
               </View>
             ) : null}
           </View>
@@ -68,11 +72,11 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
         </View>
 
         {pieces.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+          <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {pieces.map((piece) => (
               <View key={piece.id} accessible accessibilityLabel={piece.name} style={{ width: THUMB, gap: spacing.xs }}>
-                <FashionImage uri={piece.imageUrl} iconSize={24} style={{ width: THUMB, height: THUMB, borderRadius: radius.md }} />
-                <Text variant="caption" numberOfLines={1} style={{ textAlign: 'center' }}>
+                <FashionImage uri={piece.imageUrl} category={piece.category} iconSize={24} style={{ width: THUMB, height: THUMB, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }} />
+                <Text variant="caption" color="textSecondary" numberOfLines={1}>
                   {piece.name}
                 </Text>
               </View>
@@ -85,7 +89,7 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
         )}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: layout.minTouchTarget }}>
-          <Text variant="caption" weight="medium" color="textSecondary" style={{ flex: 1 }}>
+          <Text variant="caption" weight="medium" color="textMuted" style={{ flex: 1 }}>
             {t('outfits.worn', { count: wears })}
           </Text>
           <Button
@@ -99,7 +103,7 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
             onPress={() => onLogWorn(outfit)}
           />
         </View>
-      </Card>
+      </RingCard>
     </Animated.View>
   );
 });
@@ -195,7 +199,7 @@ export function OutfitsSection({ items, state, header, onCreateOutfit }: Outfits
           {header}
           <StaleNotice state={state} />
           {staleError ? <RefreshError error={staleError} onRetry={() => void refetchOutfits()} retrying={outfitsQuery.isRefetching} /> : null}
-          {!gate && list.length > 0 ? <SectionHeader title={t('outfits.listTitle')} count={list.length} subtitle={t('outfits.listHint')} /> : null}
+          {!gate && list.length > 0 ? <Heading overline={t('outfits.overline')} title={t('outfits.listTitle')} count={list.length} subtitle={t('outfits.listHint')} /> : null}
         </HeaderStack>
       }
       ListEmptyComponent={

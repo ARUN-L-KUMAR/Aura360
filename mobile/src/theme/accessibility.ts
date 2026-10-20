@@ -8,17 +8,24 @@ function useAccessibilityFlag(read: () => Promise<boolean>, event: 'reduceMotion
     read()
       .then((v) => alive && setValue(v))
       .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener(event, setValue);
+    let sub: { remove: () => void } | undefined;
+    try {
+      sub = AccessibilityInfo.addEventListener(event, setValue);
+    } catch {
+      // The platform does not emit this event: the initial value is all there is.
+    }
     return () => {
       alive = false;
-      sub.remove();
+      sub?.remove();
     };
   }, [read, event]);
   return value;
 }
 
 const readReduceMotion = () => AccessibilityInfo.isReduceMotionEnabled();
-const readReduceTransparency = () => AccessibilityInfo.isReduceTransparencyEnabled();
+// Not every platform implements this (it is iOS-only; the web layer lacks it): treat a missing API as "off".
+const readReduceTransparency = () =>
+  typeof AccessibilityInfo.isReduceTransparencyEnabled === 'function' ? AccessibilityInfo.isReduceTransparencyEnabled() : Promise.resolve(false);
 
 /** True when the OS "reduce motion" setting is on. Skip or simplify animations when it is. */
 export const useReducedMotion = () => useAccessibilityFlag(readReduceMotion, 'reduceMotionChanged');

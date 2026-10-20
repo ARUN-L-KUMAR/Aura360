@@ -51,7 +51,7 @@ Status is never colour alone: pair it with an icon or label.
 
 ## Typography
 
-One family, Inter, weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/theme/typography.ts)). Always use
+One family, Geist (with Geist Mono for code-like text), weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/theme/typography.ts)). Always use
 `<Text variant weight>`; never set `fontSize`, `fontFamily` or `fontWeight` in a style.
 
 | Variant | Size / line | Default weight | Use |
@@ -65,6 +65,48 @@ One family, Inter, weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/the
 
 `<Text numeric>` turns on tabular digits for amounts and timers. Text follows the system font size up to 1.4x
 (`MAX_FONT_SCALE`); lay out with `minHeight` and flexible containers, not fixed heights.
+
+## Navigation
+
+The bottom bar has five fixed slots: **Home**, two pinned modules (Finance and Fashion until the user changes them), the raised
+**+** and **More**. All ten tab routes still exist, so deep links are unchanged.
+
+| Piece | File | What it does |
+|---|---|---|
+| `AppTabs` | `components/app-tabs.tsx` | The bar. A module that is not pinned shows in the More slot (name and icon) while it is open. Long press a pinned tab to swap it. |
+| `QuickLogSheet` | `components/nav/quick-log-sheet.tsx` | The **+**: every "create" flow (transaction, meal, workout, activity, note, time entry, link, wardrobe item). |
+| `MoreHubSheet` | `components/nav/more-hub-sheet.tsx` | Every module with its item count, shortcuts to Search, Notifications and Settings, and "Customize bar". |
+| `SlotPicker` | `components/nav/slot-picker.tsx` | Chooses the pinned modules; used by the More sheet and by Settings. |
+| `useTabSlots` | `features/nav/use-tab-slots.ts` | The choice, stored on the device (AsyncStorage `aura.nav.slots`); pure rules in `features/nav/slots.ts`. |
+
+## Home
+
+Home is a dashboard built from a layout the person chooses (**Customize Home**: the options icon in the Home header, or
+Settings, Home). The layout is `modules` (the modules they follow, in order) plus four switchable sections: day score, Up next,
+shortcut tiles and the activity chart. Home draws the sections they kept, then one card for each module they follow. People who
+only use Finance and Fashion, only Notes, Saved and Skincare, or only Food and Fitness get a Home about just that. The server
+keeps no per-person dashboard setting, so the choice is stored on the phone (AsyncStorage `aura.home.layout.v1`) and the
+customize screen says so. A new install starts with everything on and offers the choice once (`FocusPrompt`).
+
+| Piece | File | What it does |
+|---|---|---|
+| Layout rules | `features/home/layout.ts` | Pure: the default, the quick picks, toggling and ordering modules, which goals the day score uses, which Up next suggestions fit. Tested in `tests/home-layout.test.ts`. |
+| `useHomeLayout` | `features/home/use-home-layout.ts` | The shared store; `ready` is false until the saved choice has been read, so Home waits instead of flashing the default. |
+| `HomeWidgets` | `components/home/home-widgets.tsx` | Composes Home from the layout. Focus and Workouts are half cards and share a row. |
+| Module cards | `components/home/*.tsx`, `components/home/widgets/*.tsx` | One glass card per module: money, focus, workouts, food, pinned notes, saved, skincare, fashion. Each has its own loading, empty and offline state. |
+| Customize screen | `app/(app)/home/customize.tsx` | Quick picks, a reorderable list (arrows plus a switch, so it works without dragging and with a screen reader), the sections and a reset. Changes apply and save at once. |
+
+The day score only counts goals whose module is on Home (calories need Food, active minutes need Fitness, the budget needs
+Finance); with none of them on, the gauge is left out. Up next only suggests actions from modules on Home.
+
+## Shared kit for module screens
+
+`components/ui/section-kit.tsx` (`RingCard`, `Heading`, `MetricCard`, `MetricGrid`, `MetricCell`, `HeroFigure`),
+`components/ui/summary-strip.tsx` (ring plus counted figures above a list) and `components/ui/load-states.tsx` (`LoadError`,
+`RefreshError`, `OfflineState`, `isWaitingForNetwork`). Fitness, Food, Skincare and Fashion keep their own older copies of
+the card kit; new screens should use these. `CategoryHeader` / `CategoryFab` accept every module including Notes, Saved and AI.
+`DonutChart` takes `selectedIndex` and `MiniBars` takes `onSelect` / `selectedIndex` for tappable charts (a donut is driven by
+its legend rows).
 
 ## Spacing, shape, elevation
 
@@ -196,6 +238,52 @@ logic in `src/features/search/match.ts`.
 
 **Session expiry.** When the server ends the session, `useAuth().sessionExpired` is true and the sign-in screen shows
 a banner until the user signs in again.
+
+## Illustrations and data visuals
+
+**Illustrations** are drawn in code so they follow the palette, the module accent and light / dark mode. A scene is a pure
+`react-native-svg` component in `src/illustrations/scenes/` (layers back to front; colours only from the `ScenePalette`, no
+literals, no text), registered in `registry.heroes.ts` (wide banners, e.g. `home-hero` with morning / day / evening / night
+variants, `finance-hero`, `fitness-hero`) or `registry.spot.ts` (small scenes for empty states, errors, onboarding). Scene names are
+`<moduleKey>-<what>` so the module accent is picked from the prefix. Draw them in the app with `<Illustration scene="..." />`
+(idle drift per layer, scroll parallax via `scrollY`, hidden from screen readers unless given a label) or `<HeroBanner>` (art on
+top, text below on a solid surface so contrast is guaranteed). `EmptyState` and `ErrorState` choose a scene automatically from
+their variant or icon (`ui/empty-scenes.ts`).
+
+**Previewing art:** `npm run render:art -- <name>` renders scenes to `mobile/.art-preview/<name>.png` (light left, dark right, one
+row per variant) with no phone needed. Look at the PNG after every change.
+
+**Data visuals** (`components/viz`): `ProgressRing`, `Sparkline`, `MiniBars`, `DonutChart`, `AnimatedNumber`, `StreakDots` and
+`StatTile`. Never invent data to fill a chart. Every chart has a spoken summary, and status is never colour-only (icons, markers,
+percentages). Geometry lives in `features/viz/geometry.ts` and is unit-tested. Charts draw their final state at once under
+reduce-motion. They do not mirror in right-to-left layouts yet.
+
+## Previewing screens
+
+`npm run preview:web` renders the real screens with sample data through react-native-web in headless Chrome and writes
+phone-sized PNGs (390 x 844 CSS px at 2x) to `.preview/screens/<screen>-<scheme>.png` (git-ignored). Needs Google Chrome
+(`CHROME_PATH` if it is somewhere unusual); installs nothing.
+
+```
+npm run preview:web                                  every default screen, dark
+npm run preview:web -- home finance --scheme light   some screens (names or route fragments), light
+npm run preview:web -- fitness --scheme both --height 1800   both schemes, a long screen
+npm run preview:web -- /finance/budget               any route path
+npm run preview:web -- "/?home=health" --height 2800   Home as if Health was chosen (also moneyStyle, notesCare, everything, empty)
+```
+
+Options: `--scheme light|dark|both`, `--height` / `--width` (CSS px), `--wait 15000`, `--skip-export` (reuse the last export in
+`.preview/web`), `--logs` (print page console output when a screen is blank).
+
+How it works: the script runs `expo export --platform web` with `EXPO_PUBLIC_PREVIEW=1`. That flag (`src/preview/flag.ts`) is
+inlined at build time, so a normal build contains none of the preview behaviour. In a preview build the app starts signed in as
+"Arun", skips onboarding, the permissions screen, the biometric lock and the animated splash, takes the scheme from `?scheme=`,
+and answers every `/api/...` call from sample data (`src/preview/seed*.ts`, dates relative to today) by wrapping `fetch`
+(`src/preview/mock-api.ts`). Writes succeed but change nothing; a route the sample data does not cover shows its normal error
+state. Chrome runs with reduced motion on, so count-ups, rings and charts are drawn in their final state (headless Chrome does not
+finish animation-frame animations under its virtual clock); light/dark and layout are otherwise the real thing. Add or change
+sample data in `src/preview/seed-*.ts`, keeping the same shapes as the feature `types.ts`. Photos are not available offline, so
+fashion, saved and note thumbnails show their placeholders.
 
 ## Rules of thumb
 

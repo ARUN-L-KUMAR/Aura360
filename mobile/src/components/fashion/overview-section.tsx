@@ -1,23 +1,25 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { LoadError, OfflineState } from '@/components/finance/load-error';
 import { Card } from '@/components/ui/card';
-import { Tag } from '@/components/ui/chip';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ListItem } from '@/components/ui/list-item';
 import { useBlockMotion } from '@/components/ui/motion';
+import { PremiumHero } from '@/components/ui/premium-hero';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
-import { StatCard } from '@/components/ui/stat-card';
+import { IconTile } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import type { FashionItem } from '@/features/fashion/types';
-import { useTranslation } from '@/i18n';
+import { getDeviceLocale, useTranslation } from '@/i18n';
+import { directional } from '@/i18n/rtl';
 import { formatMoney } from '@/lib/format';
-import { layout, spacing } from '@/theme';
-import { FashionCard } from './fashion-card';
+import { layout, radius, spacing, useTheme } from '@/theme';
+import { FashionCard, FashionTile } from './fashion-card';
+import { categoryCountsOf } from './categories';
+import { categoryIcon, categoryLabel } from './labels';
+import { Heading, HeroChip, LinkAction, MetricCard, MetricCell, MetricGrid } from './section-kit';
 import { GRID_COLUMNS, GRID_GAP, SkeletonGrid, StaleNotice, useListPadding, type ItemsState } from './shared';
 
 interface OverviewSectionProps {
@@ -26,7 +28,9 @@ interface OverviewSectionProps {
   header?: ReactNode;
   onSelectItem: (item: FashionItem) => void;
   onAddNew: () => void;
-  onGoToWardrobe: () => void;
+  onPlanOutfit: () => void;
+  /** Opens the Wardrobe section, optionally already filtered to one category. */
+  onGoToWardrobe: (category?: string) => void;
   onGoToWishlist: () => void;
   onGoToLaundry: () => void;
 }
@@ -49,18 +53,64 @@ function CardRows({ items, onSelectItem }: { items: FashionItem[]; onSelectItem:
   );
 }
 
+/** Width a category card never goes below, so short names ("Tops") still make a comfortable target. */
+const CATEGORY_CARD_MIN_WIDTH = 104;
+
+/** One card per category you own pieces in: icon, name and count. Tapping opens the Wardrobe filtered to it. */
+function CategoryCards({ counts, onOpen }: { counts: { category: string; count: number }[]; onOpen: (category: string) => void }) {
+  const { t } = useTranslation('fashion');
+  const { accent } = useTheme();
+  const fashion = accent('fashion');
+  return (
+    <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
+      {counts.map(({ category, count }) => (
+        <Card
+          key={category}
+          padding="none"
+          rounded="xl"
+          onPress={() => onOpen(category)}
+          accessibilityLabel={`${categoryLabel(category)}, ${t('overview.pieces', { count })}`}
+          accessibilityHint={t('overview.categoryHint', { category: categoryLabel(category) })}
+          style={{ minWidth: CATEGORY_CARD_MIN_WIDTH, padding: spacing.md, gap: spacing.sm }}>
+          <Ionicons name={categoryIcon(category)} size={24} color={fashion.text} />
+          <View style={{ gap: 2 }}>
+            <Text variant="label" weight="bold" numberOfLines={1}>
+              {categoryLabel(category)}
+            </Text>
+            <Text variant="caption" color="textMuted" numberOfLines={1}>
+              {t('overview.pieces', { count })}
+            </Text>
+          </View>
+        </Card>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** Photo-first strip of the pieces worn most. */
+function MostWornStrip({ items, onSelectItem }: { items: FashionItem[]; onSelectItem: (item: FashionItem) => void }) {
+  return (
+    <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md }}>
+      {items.map((item) => (
+        <FashionTile key={item.id} item={item} onPress={onSelectItem} />
+      ))}
+    </ScrollView>
+  );
+}
+
 function OverviewSkeleton() {
   const { t } = useTranslation('fashion');
+  const { colors } = useTheme();
   return (
     <>
       <SkeletonGroup label={t('loading.summary')} style={{ gap: spacing.md }}>
-        <Skeleton height={layout.minTouchTarget * 2.5} rounded="lg" />
+        <View style={{ height: layout.minTouchTarget * 4, borderRadius: radius.xl, backgroundColor: colors.heroSurface }} />
         <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
           <View style={{ flex: 1 }}>
-            <Skeleton height={layout.minTouchTarget * 2} rounded="lg" />
+            <Skeleton height={layout.minTouchTarget * 2.5} rounded="xl" />
           </View>
           <View style={{ flex: 1 }}>
-            <Skeleton height={layout.minTouchTarget * 2} rounded="lg" />
+            <Skeleton height={layout.minTouchTarget * 2.5} rounded="xl" />
           </View>
         </View>
       </SkeletonGroup>
@@ -69,8 +119,9 @@ function OverviewSkeleton() {
   );
 }
 
-export function OverviewSection({ items, state, header, onSelectItem, onAddNew, onGoToWardrobe, onGoToWishlist, onGoToLaundry }: OverviewSectionProps) {
+export function OverviewSection({ items, state, header, onSelectItem, onAddNew, onPlanOutfit, onGoToWardrobe, onGoToWishlist, onGoToLaundry }: OverviewSectionProps) {
   const { t } = useTranslation('fashion');
+  const { colors, accent } = useTheme();
   const blockMotion = useBlockMotion();
   const { paddingBottom } = useListPadding();
 
@@ -80,9 +131,30 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
 
   const wardrobeValuation = useMemo(() => wardrobeItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0), [wardrobeItems]);
   const totalWears = useMemo(() => wardrobeItems.reduce((sum, item) => sum + (item.wearCount || 0), 0), [wardrobeItems]);
-  const categoryCount = useMemo(() => new Set(wardrobeItems.map((i) => i.category)).size, [wardrobeItems]);
-  const mostWornItems = useMemo(() => [...wardrobeItems].sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0)).slice(0, 4), [wardrobeItems]);
+  // Counted from what the wardrobe really holds: a piece saved from a link can arrive with a category outside the usual five.
+  const categoryCounts = useMemo(() => categoryCountsOf(wardrobeItems), [wardrobeItems]);
+  // Cost per wear only counts pieces that have been worn, so a brand new piece does not skew it.
+  const wornCost = useMemo(() => wardrobeItems.reduce((sum, item) => sum + ((item.wearCount || 0) > 0 ? Number(item.price) || 0 : 0), 0), [wardrobeItems]);
+  const costPerWear = totalWears > 0 && wornCost > 0 ? wornCost / totalWears : null;
+  const wearsPerPiece = wardrobeItems.length > 0 ? totalWears / wardrobeItems.length : 0;
+  const wishlistBudget = useMemo(
+    () => wishlistItems.reduce((sum, item) => sum + (Number(item.price) || Number(item.metadata?.expectedBudget) || 0), 0),
+    [wishlistItems],
+  );
+  const mostWornItems = useMemo(
+    () =>
+      wardrobeItems
+        .filter((i) => (i.wearCount || 0) > 0)
+        .sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0))
+        .slice(0, 6),
+    [wardrobeItems],
+  );
   const recentItems = useMemo(() => items.slice(0, 4), [items]);
+
+  const wardrobeCount = wardrobeItems.length;
+  const metricCount = (wishlistItems.length > 0 ? 1 : 0) + (costPerWear !== null ? 1 : 0) + (totalWears > 0 ? 1 : 0);
+  const hasStats = metricCount > 0;
+  const empty = items.length === 0;
 
   let body: ReactNode;
   if (state.loading) {
@@ -91,80 +163,106 @@ export function OverviewSection({ items, state, header, onSelectItem, onAddNew, 
     body = <LoadError error={state.error} title={t('errors.loadItems')} onRetry={state.refetch} retrying={state.refreshing} />;
   } else if (state.offline) {
     body = <OfflineState description={t('offline.wardrobe')} onRetry={state.refetch} />;
-  } else if (items.length === 0) {
-    body = (
-      <EmptyState
-        icon="shirt-outline"
-        accent="fashion"
-        title={t('overview.emptyTitle')}
-        description={t('overview.emptyBody')}
-        actionTitle={t('overview.emptyAction')}
-        onAction={onAddNew}
-      />
-    );
   } else {
     body = (
       <Animated.View {...blockMotion} style={{ gap: layout.sectionGap }}>
-        <Card variant="tinted" accent="fashion" gradient="fashion" padding="md" style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-            <Text variant="caption" weight="semiBold" color="textSecondary" style={{ flex: 1 }}>
-              {t('overview.valueTitle')}
-            </Text>
-            <Tag label={t('overview.itemCount', { count: wardrobeItems.length })} accent="fashion" />
-          </View>
-          <Text variant="display" numeric adjustsFontSizeToFit numberOfLines={1} accessibilityLabel={t('overview.valueA11y', { amount: formatMoney(wardrobeValuation) })}>
-            {formatMoney(wardrobeValuation)}
-          </Text>
-          <Text variant="caption" color="textSecondary">
-            {t('overview.valueHint')}
-          </Text>
-        </Card>
-
-        <View style={{ gap: GRID_GAP }}>
-          <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
-            <View style={{ flex: 1 }}>
-              <StatCard label={t('overview.wardrobe')} value={wardrobeItems.length} icon="shirt-outline" accent="fashion" onPress={onGoToWardrobe} />
+        <PremiumHero accent="fashion"
+          chip={{ icon: 'shirt', label: t('overview.heroChip') }}
+          title={empty ? t('overview.emptyTitle') : formatMoney(wardrobeValuation)}
+          subtitle={empty ? t('overview.emptyBody') : wardrobeCount > 0 ? t('overview.heroSubtitle', { count: wardrobeCount }) : t('overview.heroNoPieces')}
+          actions={[
+            { label: empty ? t('overview.emptyAction') : t('overview.addItem'), icon: 'add', variant: 'solid', onPress: onAddNew },
+            ...(empty ? [] : [{ label: t('overview.planOutfit'), icon: 'sparkles-outline' as const, variant: 'glass' as const, onPress: onPlanOutfit }]),
+          ]}>
+          {empty ? null : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              <HeroChip icon="shirt-outline" value={wardrobeCount} label={t('overview.chipItems')} spoken={t('overview.spokenItems', { count: wardrobeCount })} />
+              <HeroChip icon="heart-outline" value={wishlistItems.length} label={t('overview.chipWishlist')} spoken={t('overview.spokenWishlist', { count: wishlistItems.length })} />
+              <HeroChip icon="sparkles-outline" value={totalWears} label={t('overview.chipWears')} spoken={t('overview.spokenWears', { count: totalWears })} />
             </View>
-            <View style={{ flex: 1 }}>
-              <StatCard label={t('overview.wishlist')} value={wishlistItems.length} icon="heart-outline" accent="fashion" onPress={onGoToWishlist} />
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: GRID_GAP }}>
-            <View style={{ flex: 1 }}>
-              <StatCard label={t('overview.totalWears')} value={totalWears} icon="sparkles-outline" accent="fashion" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <StatCard label={t('overview.categories')} value={categoryCount} icon="grid-outline" accent="fashion" />
-            </View>
-          </View>
-        </View>
+          )}
+        </PremiumHero>
 
-        {laundryItems.length > 0 ? (
-          <Card padding="none" variant="outlined">
-            <ListItem
-              title={t('overview.laundry')}
-              subtitle={t('overview.laundryCount', { count: laundryItems.length })}
-              icon="water-outline"
-              accent="fashion"
-              onPress={onGoToLaundry}
-              accessibilityHint={t('overview.laundryHint')}
-            />
-          </Card>
-        ) : null}
+        {empty ? null : (
+          <>
+            {categoryCounts.length > 0 ? <CategoryCards counts={categoryCounts} onOpen={onGoToWardrobe} /> : null}
 
-        {mostWornItems.length > 0 ? (
-          <View style={{ gap: spacing.md }}>
-            <SectionHeader title={t('overview.mostWorn')} actionLabel={t('overview.viewAll')} actionAccessibilityLabel={t('overview.viewAllA11y')} onActionPress={onGoToWardrobe} />
-            <CardRows items={mostWornItems} onSelectItem={onSelectItem} />
-          </View>
-        ) : null}
+            {mostWornItems.length > 0 ? (
+              <View style={{ gap: spacing.md }}>
+                <Heading
+                  overline={t('overview.rotationOverline')}
+                  title={t('overview.mostWorn')}
+                  trailing={<LinkAction label={t('overview.viewAll')} accessibilityLabel={t('overview.viewAllA11y')} onPress={() => onGoToWardrobe()} />}
+                />
+                <MostWornStrip items={mostWornItems} onSelectItem={onSelectItem} />
+              </View>
+            ) : null}
 
-        {recentItems.length > 0 ? (
-          <View style={{ gap: spacing.md }}>
-            <SectionHeader title={t('overview.recent')} />
-            <CardRows items={recentItems} onSelectItem={onSelectItem} />
-          </View>
-        ) : null}
+            {hasStats ? (
+              <View style={{ gap: spacing.md }}>
+                <Heading overline={t('overview.statsOverline')} title={t('overview.statsTitle')} subtitle={t('overview.statsSubtitle')} />
+                <MetricGrid>
+                  {wishlistItems.length > 0 ? (
+                    <MetricCell>
+                      <MetricCard
+                        label={t('overview.wishlistBudget')}
+                        icon="wallet-outline"
+                        value={wishlistBudget}
+                        format={(n) => formatMoney(Math.round(n))}
+                        caption={t('overview.wishlistBudgetHint')}
+                        onPress={onGoToWishlist}
+                      />
+                    </MetricCell>
+                  ) : null}
+                  {costPerWear !== null ? (
+                    <MetricCell>
+                      <MetricCard label={t('overview.costPerWear')} icon="pricetag-outline" value={costPerWear} format={(n) => formatMoney(Math.round(n))} caption={t('overview.costPerWearHint')} />
+                    </MetricCell>
+                  ) : null}
+                  {totalWears > 0 ? (
+                    <MetricCell>
+                      <MetricCard
+                        label={t('overview.wearsPerPiece')}
+                        icon="repeat-outline"
+                        value={wearsPerPiece}
+                        format={(n) => (Math.round(n * 10) / 10).toLocaleString(getDeviceLocale())}
+                        caption={t('overview.wearsPerPieceHint')}
+                      />
+                    </MetricCell>
+                  ) : null}
+                </MetricGrid>
+              </View>
+            ) : null}
+
+            {laundryItems.length > 0 ? (
+              <Card
+                rounded="xl"
+                padding="md"
+                onPress={onGoToLaundry}
+                accessibilityLabel={`${t('overview.laundry')}: ${t('overview.laundryCount', { count: laundryItems.length })}`}
+                accessibilityHint={t('overview.laundryHint')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <IconTile icon="water-outline" accent="fashion" />
+                <View style={{ flex: 1, gap: spacing.xs }}>
+                  <Text variant="overline" style={{ color: accent('fashion').text }}>
+                    {t('overview.careOverline')}
+                  </Text>
+                  <Text variant="label" weight="bold">
+                    {t('overview.laundryCount', { count: laundryItems.length })}
+                  </Text>
+                </View>
+                <Ionicons name={directional('chevron-forward', 'chevron-back')} size={20} color={colors.textMuted} />
+              </Card>
+            ) : null}
+
+            {recentItems.length > 0 ? (
+              <View style={{ gap: spacing.md }}>
+                <Heading overline={t('overview.recentOverline')} title={t('overview.recent')} />
+                <CardRows items={recentItems} onSelectItem={onSelectItem} />
+              </View>
+            ) : null}
+          </>
+        )}
       </Animated.View>
     );
   }

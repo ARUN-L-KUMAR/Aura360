@@ -13,8 +13,8 @@ const LOGO = require('../../assets/images/splash-logo.png');
 
 /** Widest the auth forms grow, so they stay readable on tablets. */
 export const AUTH_FORM_MAX_WIDTH = 440;
-/** Keeps the form in the middle of the screen when it is short, and scrollable when the keyboard is up. */
-export const authContentStyle: StyleProp<ViewStyle> = { flexGrow: 1, justifyContent: 'center' };
+/** Form content style: expands to fill available height and ensures clean top alignment without clipping overflow. */
+export const authContentStyle: StyleProp<ViewStyle> = { flexGrow: 1 };
 
 const LOGO_TILE = spacing.xxxl + spacing.xl; // 72
 const LOGO_SIZE = spacing.xxxl;

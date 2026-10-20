@@ -3,15 +3,16 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Heading, IconTile, RingCard } from '@/components/fitness/section-kit';
 import { DateField } from '@/components/ui/date-field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
+import { AnimatedNumber } from '@/components/viz/animated-number';
 import { useCreateFitnessEntry, useUpdateFitnessEntry } from '@/features/fitness/hooks';
+import { volumeOf } from '@/features/fitness/stats';
 import type { Exercise, FitnessEntry, WorkoutIntensity } from '@/features/fitness/types';
 import { useErrorMessage } from '@/features/fitness/use-error-message';
 import { useTranslation } from '@/i18n';
@@ -79,6 +80,9 @@ export default function WorkoutModalScreen() {
   const createMutation = useCreateFitnessEntry();
   const updateMutation = useUpdateFitnessEntry();
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const namedExercises = exercises.filter((e) => e.name.trim().length > 0).length;
+  const totalVolume = Math.round(volumeOf(exercises.filter((e) => e.name.trim().length > 0)));
 
   const addExercise = () => {
     haptics.tap();
@@ -155,7 +159,28 @@ export default function WorkoutModalScreen() {
     <Screen topInset={false}>
       <Stack.Screen options={{ title: isEditing ? t('workout.editTitle') : t('workout.newTitle') }} />
 
-      <Card style={{ gap: spacing.md }}>
+      <RingCard
+        accessible
+        accessibilityLabel={t('workout.summarySpoken', { count: namedExercises, volume: totalVolume })}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <IconTile icon="barbell-outline" />
+        <View style={{ flex: 1, gap: spacing.xs / 2 }}>
+          <Text variant="title" weight="bold" numberOfLines={2}>
+            {workoutName.trim() || (isEditing ? t('workout.editTitle') : t('workout.newTitle'))}
+          </Text>
+          <Text variant="caption" color="textMuted">
+            {t('workout.summaryExercises', { count: namedExercises })}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <AnimatedNumber value={totalVolume} variant="headline" />
+          <Text variant="overline" color="textMuted">
+            {t('workout.summaryVolume')}
+          </Text>
+        </View>
+      </RingCard>
+
+      <RingCard style={{ gap: spacing.md }}>
         <DateField label={t('entry.date')} value={date} onChange={setDate} />
         <Input
           label={t('train.workoutName')}
@@ -165,18 +190,18 @@ export default function WorkoutModalScreen() {
           autoCapitalize="sentences"
           returnKeyType="next"
         />
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.lg }}>
+      <RingCard style={{ gap: spacing.lg }}>
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label" color="textSecondary">
+          <Text variant="overline" color="textMuted">
             {t('workout.type')}
           </Text>
           <Segmented options={typeOptions} value={type} onChange={setType} accessibilityLabel={t('workout.typeLabel')} />
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="label" color="textSecondary">
+          <Text variant="overline" color="textMuted">
             {t('entry.intensity')}
           </Text>
           <Segmented options={intensityOptions} value={intensity} onChange={setIntensity} accessibilityLabel={t('entry.intensity')} />
@@ -208,10 +233,10 @@ export default function WorkoutModalScreen() {
             error={errors.calories}
           />
         </View>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.lg }}>
-        <SectionHeader title={t('entry.exercises')} count={exercises.length} />
+      <RingCard style={{ gap: spacing.lg }}>
+        <Heading title={t('entry.exercises')} count={exercises.length} />
 
         {exercises.map((ex, index) => (
           <View key={index} style={{ gap: spacing.sm }}>
@@ -260,7 +285,7 @@ export default function WorkoutModalScreen() {
         ))}
 
         <Button title={t('train.addExercise')} variant="secondary" leftIcon="add" haptic={false} onPress={addExercise} />
-      </Card>
+      </RingCard>
 
       <Input
         label={t('workout.notes')}

@@ -1,7 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, type ComponentProps, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { accentTint } from '@/components/ui/accent-tint';
 import { Avatar, type AvatarProps } from '@/components/ui/avatar';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
@@ -64,7 +65,7 @@ function ListItemImpl({
   accessible = true,
   style,
 }: ListItemProps) {
-  const { colors, accent: accentFor } = useTheme();
+  const { colors, scheme, accent: accentFor } = useTheme();
   const pressable = !!(onPress || onLongPress);
   const showChevron = chevron ?? pressable;
   const a = accent ? accentFor(accent) : null;
@@ -81,7 +82,7 @@ function ListItemImpl({
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: a ? a.soft : colors.cardMuted,
+          backgroundColor: a ? accentTint(a, scheme) : colors.cardMuted,
         }}>
         <Ionicons name={icon} size={22} color={a ? a.text : colors.textSecondary} />
       </View>
@@ -95,14 +96,14 @@ function ListItemImpl({
       style={[
         styles.row,
         {
-          backgroundColor: selected ? (a ? a.soft : colors.primaryContainer) : pressed ? colors.cardMuted : 'transparent',
+          backgroundColor: selected ? (a ? accentTint(a, scheme) : colors.primaryContainer) : pressed ? colors.cardMuted : 'transparent',
           opacity: disabled ? 0.45 : 1,
         },
         style,
       ]}>
       {lead}
       <View style={styles.text}>
-        <Text variant="body" weight="medium" numberOfLines={titleLines} color={disabled ? 'textDisabled' : 'text'}>
+        <Text variant="body" weight="semiBold" numberOfLines={titleLines} color={disabled ? 'textDisabled' : 'text'}>
           {title}
         </Text>
         {subtitle ? (

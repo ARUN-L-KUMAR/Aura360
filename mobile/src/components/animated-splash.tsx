@@ -1,7 +1,7 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -24,7 +24,7 @@ import { palettes, spacing, useReducedMotion } from '@/theme';
  * hand-off is invisible. From there the glow breathes, the name and tagline fade in, and once the app is ready the
  * whole thing fades away into it.
  *
- * It follows the phone's system dark/light setting (like the native splash does), not the in-app theme, which is
+ * It is always dark (dark is the default theme and the native splash is dark too), because the saved in-app theme is
  * loaded later.
  */
 
@@ -53,7 +53,8 @@ type Props = {
 
 export function AnimatedSplash({ ready, onFinish }: Props) {
   const { t } = useTranslation('auth');
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  // Dark is the app's default theme, so the splash is always dark: no light flash before a dark app.
+  const scheme = 'dark';
   const palette = palettes[scheme];
 
   const reduceMotion = useReducedMotion();

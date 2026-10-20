@@ -54,6 +54,16 @@ export type RunningTimer = { activity: string; category: string | null; startedA
 
 const TIMER_KEY = 'aura.time.runningTimer';
 
+/** The stored timer, read once (Home uses it to show a running timer without owning it). */
+export async function readRunningTimer(): Promise<RunningTimer | null> {
+  try {
+    const raw = await AsyncStorage.getItem(TIMER_KEY);
+    return raw ? (JSON.parse(raw) as RunningTimer) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * A stopwatch that keeps running when the app is closed: only the start time is stored,
  * the elapsed time is always worked out from it.

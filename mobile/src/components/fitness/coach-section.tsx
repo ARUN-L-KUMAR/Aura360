@@ -1,17 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { Heading, IconTile, RingCard } from '@/components/fitness/section-kit';
+import { StartCta } from '@/components/fitness/start-cta';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Chip, ChipGroup, ChipRow } from '@/components/ui/chip';
+import { Chip, ChipGroup, ChipRow, Tag } from '@/components/ui/chip';
 import { useBlockMotion, useListMotion } from '@/components/ui/motion';
+import { PremiumHero } from '@/components/ui/premium-hero';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
-import { SkeletonCard } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useGenerateSplit, useRecentFitness } from '@/features/fitness/hooks';
 import { buildExercise, sessionActions, useLiveSession } from '@/features/fitness/session-store';
@@ -24,6 +26,7 @@ import {
   coachGoalLabel,
   coachLevelLabel,
   type CoachDay,
+  type CoachExercise,
   type CoachProgram,
 } from '@/features/fitness/types';
 import { useErrorMessage } from '@/features/fitness/use-error-message';
@@ -31,13 +34,13 @@ import { useTranslation } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
-import { layout, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, useTheme } from '@/theme';
 
 const PROGRAM_KEY = 'aura.fitness.program';
 const DAY_OPTIONS = [2, 3, 4, 5, 6].map((value) => ({ value: String(value), label: String(value) }));
 
 export function CoachSection({ header, onStarted }: { header: ReactNode; onStarted: () => void }) {
-  const { accent, colors } = useTheme();
+  const { colors } = useTheme();
   const notify = useNotify();
   const { t } = useTranslation('fitness');
   const errorMessage = useErrorMessage();
@@ -129,12 +132,12 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
       {header}
 
       <Animated.View {...builderMotion}>
-        <Card style={{ gap: spacing.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Ionicons name="sparkles" size={20} color={accent('ai').text} />
-            <Text variant="title" accessibilityRole="header">
-              {t('coach.title')}
-            </Text>
+        <RingCard>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <IconTile icon="sparkles" />
+            <View style={{ flex: 1 }}>
+              <Heading overline={t('coach.overline')} title={t('coach.title')} subtitle={t('coach.subtitle')} />
+            </View>
           </View>
 
           <Field label={t('coach.goal')}>
@@ -163,7 +166,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
           </Field>
 
           <Button title={program ? t('coach.buildNew') : t('coach.title')} leftIcon="sparkles" onPress={build} loading={generate.isPending} />
-        </Card>
+        </RingCard>
       </Animated.View>
 
       {generate.isPending ? (
@@ -171,7 +174,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
           <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
             {t('coach.designing')}
           </Text>
-          <SkeletonCard lines={3} />
+          <PlanSkeleton label={t('coach.designing')} />
         </View>
       ) : null}
 
@@ -179,25 +182,19 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
         <Animated.View {...planMotion} style={{ gap: layout.sectionGap }}>
           {day ? (
             <>
-              <Card variant="tinted" accent="fitness" style={{ gap: spacing.sm }}>
-                <Text variant="title" accessibilityRole="header">
-                  {program.programName}
-                </Text>
-                <Text variant="caption" color="textSecondary">
-                  {[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ')}
-                </Text>
-                {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
-                {program.progressiveOverloadTip ? (
-                  <Text variant="caption" color="textSecondary">
-                    {t('coach.progression', { tip: program.progressiveOverloadTip })}
-                  </Text>
-                ) : null}
-                {program.recoveryStrategy ? (
-                  <Text variant="caption" color="textSecondary">
-                    {t('coach.recovery', { tip: program.recoveryStrategy })}
-                  </Text>
-                ) : null}
-              </Card>
+              <PremiumHero accent="fitness"
+                chip={{ icon: 'sparkles', label: t('coach.planEyebrow') }}
+                title={program.programName}
+                subtitle={[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ') || undefined}
+              />
+
+              {program.weeklyOverview || program.progressiveOverloadTip || program.recoveryStrategy ? (
+                <RingCard style={{ gap: spacing.md }}>
+                  {program.weeklyOverview ? <Text variant="body">{program.weeklyOverview}</Text> : null}
+                  {program.progressiveOverloadTip ? <Tip icon="trending-up-outline" text={t('coach.progression', { tip: program.progressiveOverloadTip })} /> : null}
+                  {program.recoveryStrategy ? <Tip icon="bed-outline" text={t('coach.recovery', { tip: program.recoveryStrategy })} /> : null}
+                </RingCard>
+              ) : null}
 
               <ChipRow>
                 {program.days.map((item, index) => (
@@ -211,47 +208,35 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
                 ))}
               </ChipRow>
 
-              <Card style={{ gap: spacing.md }}>
-                <SectionHeader
+              <View key={dayIndex} style={{ gap: spacing.md }}>
+                <Heading
+                  overline={t('coach.dayOverline', { n: day.dayNumber })}
                   title={day.name}
                   subtitle={day.targetDurationMinutes ? t('coach.focusAndDuration', { focus: day.focus, minutes: day.targetDurationMinutes }) : day.focus}
                 />
 
                 {day.isRestDay || day.exercises.length === 0 ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                    <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
+                  <Card variant="flat" rounded="xl" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                    <Ionicons name="moon-outline" size={spacing.xl} color={colors.textSecondary} />
                     <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
                       {t('coach.restDay')}
                     </Text>
-                  </View>
+                  </Card>
                 ) : (
                   <>
-                    {day.exercises.map((exercise) => (
-                      <View key={exercise.name} accessible style={{ gap: 2 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
-                          <Text variant="body" weight="semiBold" style={{ flex: 1 }}>
-                            {exercise.name}
-                          </Text>
-                          <Text variant="body" numeric color="textSecondary">
-                            {exercise.sets ?? 3} × {exercise.reps ?? 10}
-                          </Text>
-                        </View>
-                        <Text variant="caption" color="textSecondary">
-                          {[exercise.category, exercise.restSeconds ? t('units.secondsRest', { value: exercise.restSeconds }) : null, exercise.rpe ? t('coach.rpe', { value: exercise.rpe }) : null]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                        {exercise.notes ? (
-                          <Text variant="caption" color="textMuted">
-                            {exercise.notes}
-                          </Text>
-                        ) : null}
-                      </View>
+                    {day.exercises.map((exercise, index) => (
+                      <StepCard key={`${index}-${exercise.name}`} step={index + 1} total={day.exercises.length} exercise={exercise} />
                     ))}
-                    <Button title={t('coach.startWorkout')} leftIcon="play" haptic={false} onPress={() => startDay(day)} />
+                    <StartCta
+                      title={t('coach.startWorkout')}
+                      subtitle={t('coach.startSubtitle', { count: day.exercises.length })}
+                      icon="play"
+                      haptic={false}
+                      onPress={() => startDay(day)}
+                    />
                   </>
                 )}
-              </Card>
+              </View>
             </>
           ) : null}
           <Button title={t('coach.clear')} variant="ghost" size="sm" fullWidth={false} onPress={clearPlan} style={{ alignSelf: 'center' }} />
@@ -264,10 +249,79 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View style={{ gap: spacing.sm }}>
-      <Text variant="label" color="textSecondary">
+      <Text variant="overline" color="textMuted">
         {label}
       </Text>
       {children}
     </View>
+  );
+}
+
+/** A tip with a small accent icon. */
+function Tip({ icon, text }: { icon: 'trending-up-outline' | 'bed-outline'; text: string }) {
+  const { accent } = useTheme();
+  const fitness = accent('fitness');
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+      <View style={{ width: spacing.xl + spacing.sm, height: spacing.xl + spacing.sm, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
+        <Ionicons name={icon} size={spacing.lg} color={fitness.text} />
+      </View>
+      <Text variant="caption" color="textSecondary" style={{ flex: 1, paddingTop: spacing.xs }}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/** One exercise of a training day as a numbered step: what to lift, how many, how long to rest. */
+function StepCard({ step, total, exercise }: { step: number; total: number; exercise: CoachExercise }) {
+  const { t } = useTranslation('fitness');
+  const { accent } = useTheme();
+  const fitness = accent('fitness');
+  const motion = useListMotion(step - 1);
+  const sets = exercise.sets ?? 3;
+  const reps = exercise.reps ?? 10;
+  const rest = exercise.restSeconds ? t('units.secondsRest', { value: exercise.restSeconds }) : null;
+  const rpe = exercise.rpe ? t('coach.rpe', { value: exercise.rpe }) : null;
+  const spoken = [t('coach.stepOf', { step, total }), exercise.name, t('coach.setsByReps', { sets, reps }), exercise.category, rest, rpe, exercise.notes].filter(Boolean).join(', ');
+
+  return (
+    <Animated.View {...motion}>
+      <Card rounded="xl" accessible accessibilityLabel={spoken} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+        <View style={{ width: spacing.xxl + spacing.sm, height: spacing.xxl + spacing.sm, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: fitness.soft }}>
+          <Text variant="label" weight="bold" numeric style={{ color: fitness.text }}>
+            {step}
+          </Text>
+        </View>
+        <View style={{ flex: 1, gap: spacing.sm }}>
+          <Text variant="title" weight="bold" numberOfLines={3}>
+            {exercise.name}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            <Tag label={t('coach.setsByReps', { sets, reps })} icon="repeat" size="md" accent="fitness" />
+            {rest ? <Tag label={rest} icon="timer-outline" size="md" /> : null}
+            {rpe ? <Tag label={rpe} icon="speedometer-outline" size="md" /> : null}
+            {exercise.category ? <Tag label={exercise.category} size="md" /> : null}
+          </View>
+          {exercise.notes ? (
+            <Text variant="caption" color="textMuted">
+              {exercise.notes}
+            </Text>
+          ) : null}
+        </View>
+      </Card>
+    </Animated.View>
+  );
+}
+
+/** Placeholder with the shape of a plan: a coloured header block and three exercise steps. */
+function PlanSkeleton({ label }: { label: string }) {
+  return (
+    <SkeletonGroup label={label} style={{ gap: spacing.md }}>
+      <Skeleton shape="box" height={spacing.xxxl + spacing.xl} rounded="lg" />
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} shape="box" height={spacing.xxxl + spacing.md} rounded="lg" />
+      ))}
+    </SkeletonGroup>
   );
 }

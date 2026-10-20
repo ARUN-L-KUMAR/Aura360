@@ -1,7 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { IconTile } from '@/components/ui/stat-parts';
 import { FloatingAction } from '@/components/ui/floating-action';
 import { Segmented } from '@/components/ui/segmented';
 import { Tabs } from '@/components/ui/tabs';
@@ -11,9 +12,14 @@ import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /** The categories that share this template; each gets its own accent from the tertiary-derived ramps. */
-export type CategoryKey = Extract<ModuleKey, 'fashion' | 'fitness' | 'food' | 'skincare' | 'finance' | 'time'>;
+export type CategoryKey = Extract<ModuleKey, 'fashion' | 'fitness' | 'food' | 'skincare' | 'finance' | 'time' | 'notes' | 'saved' | 'ai'>;
 
-export type CategorySection<T extends string = string> = { value: T; label: string; count?: number };
+export type CategorySection<T extends string = string> = {
+  value: T;
+  label: string;
+  count?: number;
+  icon?: React.ComponentType<{ size?: number; color?: string }>;
+};
 
 type HeaderProps<T extends string> = {
   module: CategoryKey;
@@ -25,6 +31,8 @@ type HeaderProps<T extends string> = {
   sections?: CategorySection<T>[];
   section?: T;
   onSectionChange?: (section: T) => void;
+  /** Force scrollable tabs regardless of section count. */
+  scrollableTabs?: boolean;
   /** Optional control shown at the trailing edge of the title row (e.g. an IconButton). */
   action?: ReactNode;
 };
@@ -33,7 +41,7 @@ type HeaderProps<T extends string> = {
  * The header block every category screen puts at the top of its scroll content (sections accept it as a `header`
  * prop): accent eyebrow, headline, icon tile in the category accent, and the section switcher.
  */
-export function CategoryHeader<T extends string>({ module, title, eyebrow, sections, section, onSectionChange, action }: HeaderProps<T>) {
+export function CategoryHeader<T extends string>({ module, title, eyebrow, sections, section, onSectionChange, scrollableTabs, action }: HeaderProps<T>) {
   const { accent } = useTheme();
   const { t } = useTranslation('common');
   const info = modules[module];
@@ -42,13 +50,13 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
   const showSwitcher = sections && sections.length > 1 && section !== undefined && onSectionChange;
 
   return (
-    <View style={{ gap: spacing.md }}>
+    <View style={{ gap: spacing.lg }}>
       <View accessibilityRole="header" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <View style={{ flex: 1, gap: spacing.xs }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: spacing.sm, height: spacing.sm, borderRadius: radius.pill, backgroundColor: a.solid }} />
-            <Text variant="caption" weight="semiBold" color="textSecondary" numberOfLines={1}>
-              {(eyebrow ?? info.description).toLocaleUpperCase()}
+            <View style={{ width: spacing.sm - 2, height: spacing.sm - 2, borderRadius: radius.pill, backgroundColor: a.solid }} />
+            <Text variant="overline" color="textMuted" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {eyebrow ?? info.description}
             </Text>
           </View>
           <Text variant="headline" numberOfLines={2}>
@@ -56,24 +64,10 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
           </Text>
         </View>
         {action}
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{
-            width: layout.minTouchTarget,
-            height: layout.minTouchTarget,
-            borderRadius: radius.lg,
-            backgroundColor: a.soft,
-            borderWidth: 1,
-            borderColor: a.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Ionicons name={info.icon} size={22} color={a.text} />
-        </View>
+        <IconTile icon={info.icon} accent={module} size={layout.minTouchTarget + spacing.xs} />
       </View>
       {showSwitcher ? (
-        sections.length > 4 ? (
+        scrollableTabs || sections.length > 4 ? (
           <Tabs scrollable accent={module} tabs={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
         ) : (
           <Segmented options={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
@@ -92,6 +86,5 @@ export function CategoryFab({ module, label, icon = 'add', onPress, extended }: 
 
 /** Full-height background frame for a category screen. */
 export function CategoryFrame({ children }: { children: ReactNode }) {
-  const { colors } = useTheme();
-  return <View style={{ flex: 1, backgroundColor: colors.background }}>{children}</View>;
+  return <View style={{ flex: 1 }}>{children}</View>;
 }

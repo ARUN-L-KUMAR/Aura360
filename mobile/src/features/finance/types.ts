@@ -103,6 +103,76 @@ export type GoalsResponse = {
   };
 };
 
+export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'semi_annually' | 'yearly';
+/** Values of the `subscription_status` enum: `pending` is shown as "paused" and `expired` as "ended". */
+export type SubscriptionStatus = 'active' | 'pending' | 'cancelled' | 'expired';
+
+export const BILLING_CYCLES: BillingCycle[] = ['weekly', 'monthly', 'quarterly', 'semi_annually', 'yearly'];
+export const EDITABLE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = ['active', 'pending', 'cancelled'];
+
+/** One row of `GET /api/finance/subscriptions` (the server adds the renewal figures). */
+export type Subscription = {
+  id: string;
+  name: string;
+  description?: string | null;
+  amount: number;
+  currency?: string;
+  billingCycle: BillingCycle;
+  startDate?: string;
+  nextBillingDate: string | null;
+  status: SubscriptionStatus;
+  paymentMethod?: PaymentMethod | null;
+  category?: string;
+  reminderDays?: number;
+  autoRenew?: boolean;
+  /** Whole days until the next billing date; negative when it is overdue, null without a date. */
+  daysUntilRenewal?: number | null;
+  isDueSoon?: boolean;
+  isOverdue?: boolean;
+  /** What the subscription costs per month whatever its cycle. */
+  monthlyEquivalent?: number;
+};
+
+export type SubscriptionSummary = {
+  totalSubscriptions: number;
+  activeCount: number;
+  pausedCount: number;
+  cancelledCount: number;
+  monthlyBurnRate: number;
+  yearlyBurnRate: number;
+  dueIn7DaysCount: number;
+  overdueCount: number;
+};
+
+/** What the create and update calls accept. */
+export type SubscriptionInput = {
+  name: string;
+  amount: number;
+  billingCycle: BillingCycle;
+  nextBillingDate?: string;
+  status?: SubscriptionStatus;
+  paymentMethod?: PaymentMethod | null;
+  category?: string;
+  autoRenew?: boolean;
+};
+
+/** What `POST /api/finance/receipt-scan` extracts from a photo of a receipt. */
+export type ScannedReceipt = {
+  merchant: string;
+  amount: number;
+  date: string;
+  category: string;
+  paymentMethod: PaymentMethod;
+  notes?: string | null;
+  confidence: number;
+};
+
+export type SubscriptionsResponse = {
+  success: boolean;
+  data: Subscription[];
+  summary: SubscriptionSummary;
+};
+
 // Category names, payment methods and goal categories below are stored values (the API keeps them in English).
 // Screens draw them through components/finance/labels.ts; the `label` on PAYMENT_METHODS is an English fallback only.
 export const CATEGORY_OPTIONS: Record<EditableTransactionType, string[]> = {

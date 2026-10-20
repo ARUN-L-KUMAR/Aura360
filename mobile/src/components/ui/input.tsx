@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   forwardRef,
   useCallback,
@@ -132,6 +132,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         // The TextInput carries the label for assistive tech, so hide this copy to avoid reading it twice.
         <Text
           variant="label"
+          weight="semiBold"
           color="textSecondary"
           accessibilityElementsHidden
           importantForAccessibility="no">
@@ -256,13 +257,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
   },
   input: { flex: 1, paddingVertical: spacing.md },
   adornment: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   adornmentTop: { alignSelf: 'flex-start', paddingTop: spacing.md },
   clear: { borderRadius: radius.pill, padding: spacing.xs },
-  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.md, borderWidth: 2 },
+  ring: { ...StyleSheet.absoluteFill, borderRadius: radius.lg, borderWidth: 2 },
   footer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
   message: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   messageIcon: { marginTop: 1 },

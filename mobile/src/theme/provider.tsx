@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useColorScheme, type ViewStyle } from 'react-native';
 
 import { storage } from '@/lib/storage';
+import { PREVIEW } from '@/preview/flag';
+import { previewScheme } from '@/preview/scheme';
 
 import { useReducedMotion, useReducedTransparency } from './accessibility';
 import { categoryAccent, colorShades, palettes, type Accent, type ColorScheme, type ModuleKey, type ThemeColors } from './colors';
@@ -55,9 +57,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReducedTransparency();
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  // Dark is the default, like the web app; a saved choice (system, light or dark) replaces it once loaded.
+  // Preview builds (npm run preview:web) take the scheme from the page address (?scheme=light|dark) instead.
+  const [mode, setModeState] = useState<ThemeMode>(PREVIEW ? previewScheme() : 'dark');
 
   useEffect(() => {
+    if (PREVIEW) return;
     storage.getTheme().then((saved) => {
       if (saved === 'system' || saved === 'light' || saved === 'dark') setModeState(saved);
     });

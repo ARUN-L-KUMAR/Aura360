@@ -1,55 +1,40 @@
 import { View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { RingCard } from '@/components/fitness/section-kit';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { sessionActions } from '@/features/fitness/session-store';
 import { formatDuration } from '@/features/fitness/stats';
 import { useTranslation } from '@/i18n';
-import { spacing, useTheme } from '@/theme';
+import { spacing } from '@/theme';
 
-const SIZE = 120;
-const STROKE = 10;
+const SIZE = spacing.xxxl * 3; // 144
+const THICKNESS = spacing.sm;
 /** The only point, besides starting and ending, where the live region changes its message. */
 const HEADS_UP_SECONDS = 10;
 
-/** Countdown ring shown during a live workout; driven by the session store (see session-store.ts). */
+/**
+ * Countdown ring shown during a live workout; driven by the session store (see session-store.ts). The ring only draws
+ * the time that `remaining` / `total` already describe: it never decides when the rest is over.
+ */
 export function LiveRestTimer({ remaining, total }: { remaining: number; total: number }) {
-  const { accent } = useTheme();
   const { t } = useTranslation('fitness');
-  const fitness = accent('fitness');
-  const radiusPx = (SIZE - STROKE) / 2;
-  const circumference = 2 * Math.PI * radiusPx;
-  const progress = total > 0 ? Math.min(1, remaining / total) : 0;
   const almostDone = remaining <= HEADS_UP_SECONDS;
 
   return (
-    <Card variant="tinted" accent="fitness" style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg }}>
-      <View style={{ alignItems: 'center', justifyContent: 'center' }} accessible accessibilityLabel={t('rest.secondsLeft', { count: remaining })}>
-        <View style={{ transform: [{ rotate: '-90deg' }] }}>
-          <Svg width={SIZE} height={SIZE}>
-            <Circle cx={SIZE / 2} cy={SIZE / 2} r={radiusPx} stroke={fitness.border} strokeWidth={STROKE} fill="none" />
-            <Circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={radiusPx}
-              stroke={fitness.solid}
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-              fill="none"
-              strokeDasharray={`${circumference} ${circumference}`}
-              strokeDashoffset={circumference * (1 - progress)}
-            />
-          </Svg>
-        </View>
-        <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text variant="title" numeric>
-            {formatDuration(remaining)}
-          </Text>
-          <Text variant="caption" color="textSecondary">
-            {t('rest.label')}
-          </Text>
+    <RingCard style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+      {/* One element that reads the time left when focused. It is not a live region: a ring that spoke every second would be noise. */}
+      <View accessible accessibilityLabel={t('rest.secondsLeft', { count: remaining })}>
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <ProgressRing value={remaining} max={Math.max(1, total)} size={SIZE} thickness={THICKNESS} accent="fitness">
+            <Text variant="hero" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {formatDuration(remaining)}
+            </Text>
+            <Text variant="overline" color="textMuted">
+              {t('rest.label')}
+            </Text>
+          </ProgressRing>
         </View>
       </View>
 
@@ -64,6 +49,6 @@ export function LiveRestTimer({ remaining, total }: { remaining: number; total: 
           {almostDone ? t('rest.almostDone') : t('rest.nextSet')}
         </Text>
       </View>
-    </Card>
+    </RingCard>
   );
 }

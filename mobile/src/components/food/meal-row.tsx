@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { memo } from 'react';
 
 import { ListItem } from '@/components/ui/list-item';
+import { Text } from '@/components/ui/text';
 import type { Meal, MealType } from '@/features/food/types';
 import { useTranslation } from '@/i18n';
 
@@ -51,7 +52,11 @@ export const MealRow = memo(function MealRow({ meal, divider }: { meal: Meal; di
     <ListItem
       title={meal.foodName}
       subtitle={detail || undefined}
-      meta={t('units.kcal', { value: calories })}
+      meta={
+        <Text variant="label" weight="bold" numeric numberOfLines={1}>
+          {t('units.kcal', { value: calories })}
+        </Text>
+      }
       divider={divider}
       accessibilityLabel={[meal.foodName, t('row.caloriesSpoken', { count: calories }), serving, macrosSpoken].filter(Boolean).join(', ')}
       accessibilityHint={t('row.openHint')}

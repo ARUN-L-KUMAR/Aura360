@@ -1,7 +1,11 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
+import { View } from 'react-native';
 
 import { AmountField } from '@/components/finance/amount-field';
+import { budgetRingAccent } from '@/components/finance/budget-ring';
+import { CUSTOM_CATEGORY_ICON, categoryIcon } from '@/components/finance/category-icons';
+import { CategoryPicker } from '@/components/finance/category-picker';
 import { failureMessage } from '@/components/finance/failure-message';
 import { FormCard, parseAmount } from '@/components/finance/form-parts';
 import { categoryLabel } from '@/components/finance/labels';
@@ -10,17 +14,21 @@ import { Chip, ChipGroup, Tag } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
 import { Text } from '@/components/ui/text';
+import { ProgressRing } from '@/components/viz/progress-ring';
 import { useDeleteBudget, useSaveBudget } from '@/features/finance/hooks';
 import { BUDGET_CATEGORIES, OVERALL_BUDGET, type Budget } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
-import { monthKey, monthLabel } from '@/lib/format';
+import { formatMoney, monthKey, monthLabel } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
+import { spacing } from '@/theme';
 
 const CUSTOM = '__custom__';
 const THRESHOLDS = [50, 70, 80, 90];
 const PRESET_LIMITS = [5000, 10000, 20000, 50000];
+const ALERT_RING = spacing.xxxl + spacing.xl;
+const ALERT_RING_THICKNESS = spacing.sm;
 
 function parseBudget(raw?: string): Budget | null {
   try {
@@ -97,17 +105,20 @@ export default function BudgetScreen() {
 
       {existing ? (
         <FormCard title={t('budget.category')} icon="pie-chart-outline">
-          <Text variant="title">{isOverallExisting ? t('budgets.overallTitle') : categoryLabel(existing.category)}</Text>
+          <Text variant="title" weight="bold">{isOverallExisting ? t('budgets.overallTitle') : categoryLabel(existing.category)}</Text>
         </FormCard>
       ) : (
         <FormCard title={t('budget.category')} icon="pie-chart-outline" error={submitted ? categoryError : null}>
-          <ChipGroup>
-            <Chip label={t('categories.overall')} accent="finance" selected={category === OVERALL_BUDGET} onPress={() => setCategory(OVERALL_BUDGET)} />
-            {BUDGET_CATEGORIES.map((name) => (
-              <Chip key={name} label={categoryLabel(name)} accent="finance" selected={category === name} onPress={() => setCategory(name)} />
-            ))}
-            <Chip label={t('categories.custom')} icon="create-outline" accent="finance" selected={category === CUSTOM} onPress={() => setCategory(CUSTOM)} />
-          </ChipGroup>
+          <CategoryPicker
+            accessibilityLabel={t('budget.category')}
+            value={category}
+            onChange={setCategory}
+            options={[
+              { value: OVERALL_BUDGET, label: t('categories.overall'), icon: categoryIcon(OVERALL_BUDGET) },
+              ...BUDGET_CATEGORIES.map((name) => ({ value: name, label: categoryLabel(name), icon: categoryIcon(name) })),
+              { value: CUSTOM, label: t('categories.custom'), icon: CUSTOM_CATEGORY_ICON },
+            ]}
+          />
           {category === CUSTOM ? (
             <Input
               label={t('budget.customName')}
@@ -136,6 +147,22 @@ export default function BudgetScreen() {
         <Text variant="caption" color="textSecondary">
           {t('budget.thresholdHelp')}
         </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <ProgressRing
+            value={threshold}
+            size={ALERT_RING}
+            thickness={ALERT_RING_THICKNESS}
+            accent={budgetRingAccent('near')}
+            label={t('budget.alertRingLabel')}
+            valueText={t('budget.alertRingValue', { percent: threshold })}>
+            <Text variant="label" weight="bold" numeric>
+              {threshold}%
+            </Text>
+          </ProgressRing>
+          <Text variant="body" numeric style={{ flex: 1 }}>
+            {amountValue > 0 ? t('budget.alertPreview', { amount: formatMoney((amountValue * threshold) / 100), percent: threshold, limit: formatMoney(amountValue) }) : t('budget.alertPreviewEmpty')}
+          </Text>
+        </View>
         <ChipGroup>
           {THRESHOLDS.map((value) => (
             <Chip key={value} label={`${value}%`} accent="finance" selected={threshold === value} onPress={() => setThreshold(value)} />

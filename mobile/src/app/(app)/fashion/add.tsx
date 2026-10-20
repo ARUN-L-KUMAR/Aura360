@@ -7,16 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FashionImage, parseAmount } from '@/components/fashion/shared';
 import { conditionLabel } from '@/components/fashion/condition';
 import { categoryLabel, occasionLabel, seasonLabel } from '@/components/fashion/labels';
+import { Heading, RingCard } from '@/components/fashion/section-kit';
 import { failureMessage } from '@/components/finance/failure-message';
 import { LoadError, OfflineState } from '@/components/finance/load-error';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Chip, ChipGroup } from '@/components/ui/chip';
 import { ErrorState } from '@/components/ui/error-state';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { SectionHeader } from '@/components/ui/section-header';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -199,8 +198,8 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
 
       <Segmented options={statusOptions} value={status === 'wishlist' ? 'wishlist' : 'wardrobe'} onChange={setStatus} accessibilityLabel={t('add.where')} />
 
-      <Card style={{ gap: spacing.md }}>
-        <SectionHeader title={t('add.photoTitle')} />
+      <RingCard style={{ gap: spacing.md }}>
+        <Heading overline={t('add.photoOverline')} title={t('add.photoTitle')} />
         {imageUrl ? (
           <View style={{ alignSelf: 'center', width: '60%', aspectRatio: 1 }}>
             <FashionImage uri={imageUrl} accessibilityLabel={t('add.photoSelected')} style={{ flex: 1, borderRadius: radius.md }} iconSize={48} />
@@ -209,14 +208,17 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
             </View>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Button title={t('add.choosePhoto')} variant="secondary" leftIcon="images-outline" onPress={() => pickImage(false)} />
+          <>
+            <FashionImage uri={null} category={category} iconSize={44} style={{ width: '100%', aspectRatio: 2, borderRadius: radius.lg }} />
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <View style={{ flex: 1 }}>
+                <Button title={t('add.choosePhoto')} variant="secondary" leftIcon="images-outline" onPress={() => pickImage(false)} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button title={t('add.takePhoto')} variant="secondary" leftIcon="camera-outline" onPress={() => pickImage(true)} />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Button title={t('add.takePhoto')} variant="secondary" leftIcon="camera-outline" onPress={() => pickImage(true)} />
-            </View>
-          </View>
+          </>
         )}
         <Input
           label={t('add.pasteLink')}
@@ -235,9 +237,10 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
           returnKeyType="done"
           clearable
         />
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.lg }}>
+      <RingCard>
+        <Heading overline={t('add.basicsOverline')} title={t('add.basicsTitle')} />
         <Input
           label={t('add.nameLabel')}
           placeholder={t('add.namePlaceholder')}
@@ -316,20 +319,21 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
             onSubmitEditing={() => linkRef.current?.focus()}
           />
         </View>
-      </Card>
+      </RingCard>
 
       {status === 'wardrobe' ? (
-        <Card style={{ gap: spacing.md }}>
-          <SectionHeader title={t('add.conditionTitle')} subtitle={t('add.conditionHint')} />
+        <RingCard>
+          <Heading overline={t('add.conditionOverline')} title={t('add.conditionTitle')} subtitle={t('add.conditionHint')} />
           <ChipGroup>
             {CONDITIONS.map((cond) => (
               <Chip key={cond.value} label={conditionLabel(cond.value)} accent="fashion" selected={condition === cond.value} onPress={() => setCondition(cond.value)} />
             ))}
           </ChipGroup>
-        </Card>
+        </RingCard>
       ) : null}
 
-      <Card style={{ gap: spacing.lg }}>
+      <RingCard>
+        <Heading overline={t('add.usageOverline')} title={t('add.usageTitle')} />
         <View style={{ gap: spacing.sm }}>
           <Text variant="label" accessibilityRole="header">
             {t('add.seasons')}
@@ -350,9 +354,10 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
             ))}
           </ChipGroup>
         </View>
-      </Card>
+      </RingCard>
 
-      <Card style={{ gap: spacing.lg }}>
+      <RingCard>
+        <Heading overline={t('add.extrasOverline')} title={t('add.extrasTitle')} />
         <Input
           ref={linkRef}
           label={t('add.linkLabel')}
@@ -378,7 +383,7 @@ function AddForm({ existingItem, defaultStatus }: { existingItem: FashionItem | 
           numberOfLines={3}
           autoCapitalize="sentences"
         />
-      </Card>
+      </RingCard>
     </Screen>
   );
 }

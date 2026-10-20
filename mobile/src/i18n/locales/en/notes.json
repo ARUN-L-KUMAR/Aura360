@@ -140,5 +140,16 @@
       "title": "Delete this note?",
       "confirm": "Delete"
     }
+  },
+  "summary": {
+    "notes": "Notes",
+    "pinned": "Pinned",
+    "tasksLeft": "Tasks left",
+    "tasks": "Checklist tasks",
+    "ringCenter": "{{done}}/{{total}}",
+    "tasksSpoken": "{{done}} of {{total}} checklist tasks done"
+  },
+  "offline": {
+    "description": "Connect to the internet to load your notes."
   }
 }
