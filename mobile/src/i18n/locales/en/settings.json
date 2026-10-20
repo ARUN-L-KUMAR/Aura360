@@ -93,5 +93,17 @@
     "confirmTitle": "Sign out?",
     "confirmMessage": "You will need to sign in again to access your Aura360 workspace.",
     "failed": "Couldn't sign you out. Try again."
+  },
+  "navigation": {
+    "title": "Navigation bar",
+    "footer": "Pick the two modules pinned next to Home. Every module stays one tap away under More. Saved on this device only.",
+    "hint": "Choose the module for slot {{slot}}.",
+    "reset": "Reset to default"
+  },
+  "homeLayout": {
+    "title": "Home",
+    "row": "Customize Home",
+    "rowSubtitle": "Choose which modules and sections Home shows, and their order.",
+    "footer": "Saved on this device only."
   }
 }
