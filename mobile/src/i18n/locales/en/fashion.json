@@ -103,7 +103,13 @@
     "worn": "Worn {{n}}x",
     "wornSpoken_one": "Worn {{count}} time",
     "wornSpoken_other": "Worn {{count}} times",
-    "tagWishlist": "Wishlist"
+    "tagWishlist": "Wishlist",
+    "wears_one": "{{count}} wear",
+    "wears_other": "{{count}} wears",
+    "idle_one": "Idle {{count}} day",
+    "idle_other": "Idle {{count}} days",
+    "idleSpoken_one": "Not worn in {{count}} day",
+    "idleSpoken_other": "Not worn in {{count}} days"
   },
   "overview": {
     "emptyTitle": "Start your wardrobe",
@@ -144,7 +150,10 @@
     "rotationOverline": "Heavy rotation",
     "recentOverline": "Latest",
     "wishlistBudget": "Wishlist budget",
-    "wishlistBudgetHint": "To buy everything saved"
+    "wishlistBudgetHint": "To buy everything saved",
+    "pieces_one": "{{count}} piece",
+    "pieces_other": "{{count}} pieces",
+    "categoryHint": "Opens your wardrobe filtered to {{category}}"
   },
   "wardrobe": {
     "search": "Search by name, brand or colour",
@@ -161,7 +170,9 @@
     "emptyBody": "Add shirts, jeans, sneakers and accessories to track what you own and how often you wear it.",
     "emptyAction": "Add an item",
     "overline": "Catalog",
-    "subtitle": "Everything you own, ready to search and filter."
+    "subtitle": "Everything you own, ready to search and filter.",
+    "pieces_one": "{{count}} piece",
+    "pieces_other": "{{count}} pieces"
   },
   "wishlist": {
     "bought": "I bought this",
@@ -365,6 +376,26 @@
     "emptyAction": "Add an item",
     "overline": "Outfit",
     "detailsTitle": "About this look",
-    "pickOverline": "Wardrobe"
+    "pickOverline": "Wardrobe",
+    "slotsTitle": "Your look",
+    "slotTop": "Top",
+    "slotBottom": "Bottom",
+    "slotShoes": "Shoes",
+    "slotAccessory": "Accessory",
+    "slotAdd": "Add",
+    "slotEmpty": "{{slot}} slot is empty. Choose a piece.",
+    "slotFilled": "{{slot}}: {{name}}",
+    "slotRemoveHint": "Takes this piece out of the look",
+    "layers": "Layers and extras",
+    "layerRemove": "{{name}}. Takes this piece out of the look.",
+    "colours": "Colours",
+    "coloursSpoken": "Colours in this look: {{names}}",
+    "pickNone": "No pieces in this category yet."
+  },
+  "vibes": {
+    "smart": "Smart",
+    "relaxed": "Relaxed",
+    "sharp": "Sharp",
+    "minimal": "Minimal"
   }
 }

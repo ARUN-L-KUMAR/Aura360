@@ -3,7 +3,8 @@ import type { ComponentProps, ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Card } from '@/components/ui/card';
-import { PressableScale } from '@/components/ui/pressable-scale';
+import { withAlpha } from '@/components/ui/logic';
+import { hitSlopOf, PressableScale } from '@/components/ui/pressable-scale';
 import { IconTile } from '@/components/ui/stat-parts';
 import { Text } from '@/components/ui/text';
 import { AnimatedNumber } from '@/components/viz/animated-number';
@@ -142,6 +143,49 @@ export function LinkAction({ label, accessibilityLabel, onPress }: { label: stri
         {label}
       </Text>
       <Ionicons name={directional('chevron-forward', 'chevron-back')} size={16} color={color} />
+    </PressableScale>
+  );
+}
+
+const WARN_CHIP_HEIGHT = 36;
+
+/**
+ * Filter chip for the laundry state: amber like the other "needs attention" marks. Icon plus label plus count, and a
+ * check mark when on, so the state never rests on colour alone.
+ */
+export function WarnChip({ label, count, selected, onPress }: { label: string; count: number; selected: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
+  const fg = selected ? colors.onWarningContainer : colors.warningText;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${count}`}
+      accessibilityState={{ selected }}
+      haptic="select"
+      hitSlop={hitSlopOf((layout.minTouchTarget - WARN_CHIP_HEIGHT) / 2, spacing.xs)}
+      ringRadius={radius.pill}
+      onPress={onPress}
+      style={{
+        minHeight: WARN_CHIP_HEIGHT,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: colors.warningBorder,
+        backgroundColor: selected ? colors.warningContainer : colors.card,
+      }}>
+      <Ionicons name={selected ? 'checkmark' : 'water-outline'} size={16} color={fg} />
+      <Text variant="label" weight="semiBold" numberOfLines={1} style={{ color: fg, flexShrink: 1 }}>
+        {label}
+      </Text>
+      <View style={{ minWidth: spacing.lg + spacing.xs, paddingHorizontal: spacing.xs, borderRadius: radius.pill, alignItems: 'center', backgroundColor: withAlpha(fg, 0.16) }}>
+        <Text variant="caption" weight="semiBold" numeric style={{ color: fg }}>
+          {count}
+        </Text>
+      </View>
     </PressableScale>
   );
 }

@@ -5,13 +5,14 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { OfflineState, RefreshError } from '@/components/finance/load-error';
 import { accentTint } from '@/components/ui/accent-tint';
+import { withAlpha } from '@/components/ui/logic';
 import { Card } from '@/components/ui/card';
 import { ErrorState, errorKindFromError } from '@/components/ui/error-state';
 import { useScreenPadding } from '@/components/ui/screen';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import type { FashionItem } from '@/features/fashion/types';
 import { useTranslation } from '@/i18n';
-import { layout, radius, spacing, useTheme } from '@/theme';
+import { layout, spacing, useTheme } from '@/theme';
 import { categoryIcon } from './labels';
 
 /** Gap between grid cells and rows. */
@@ -21,6 +22,12 @@ export const GRID_COLUMNS = 2;
 const FAB_CLEARANCE = spacing.xxxl * 2;
 
 export const EMPTY_ITEMS: FashionItem[] = [];
+
+/** Dark scrim for text and icons that sit on a photo, so they read on any picture in both themes. */
+export function usePhotoScrim() {
+  const { colors } = useTheme();
+  return { background: withAlpha(colors.heroSurface, 0.72), foreground: colors.onHero, muted: colors.onHeroMuted };
+}
 
 /** What the sections need to know about the shared wardrobe query. */
 export type ItemsState = {
@@ -72,7 +79,8 @@ export function SpacerCell() {
 }
 
 /**
- * Item picture: skeleton while it loads, a quiet icon tile when there is no picture or it fails to load.
+ * Item picture: skeleton while it loads. With no picture (or one that fails to load) the whole area becomes a tile tinted
+ * with the module accent and the category glyph, so a wardrobe without photos still looks designed.
  * Fills its parent; give the parent (or `style`) a size.
  */
 export function FashionImage({
@@ -122,14 +130,8 @@ export function FashionImage({
         <View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-          {iconSize >= 32 ? (
-            <View style={{ width: iconSize * 1.9, height: iconSize * 1.9, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center', backgroundColor: accentTint(fashion, scheme, 0.14) }}>
-              <Ionicons name={categoryIcon(category)} size={iconSize} color={fashion.text} />
-            </View>
-          ) : (
-            <Ionicons name={categoryIcon(category)} size={iconSize} color={fashion.text} />
-          )}
+          style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: accentTint(fashion, scheme, 0.16) }]}>
+          <Ionicons name={categoryIcon(category)} size={iconSize} color={fashion.text} />
         </View>
       ) : null}
     </View>

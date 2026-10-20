@@ -72,7 +72,7 @@ const OutfitCard = memo(function OutfitCard({ outfit, itemsMap, index, busyWorn,
         </View>
 
         {pieces.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+          <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
             {pieces.map((piece) => (
               <View key={piece.id} accessible accessibilityLabel={piece.name} style={{ width: THUMB, gap: spacing.xs }}>
                 <FashionImage uri={piece.imageUrl} category={piece.category} iconSize={24} style={{ width: THUMB, height: THUMB, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }} />
