@@ -160,11 +160,6 @@
     "value": "{{label}}: {{value}}",
     "notSet": "not set"
   },
-  "comingSoon": {
-    "badge": "Coming soon",
-    "body": "This screen is on its way to the mobile app.",
-    "spoken": "{{label}}. {{blurb}} Coming soon to the mobile app."
-  },
   "categoryHeader": {
     "sections": "{{label}} sections"
   },
@@ -243,7 +238,9 @@
     "savedItem": "Saved item",
     "clothingItem": "Clothing Item",
     "curatedLook": "Curated Look",
-    "conversations": "Conversations"
+    "conversations": "Conversations",
+    "subscription": "Subscription",
+    "customizeHome": "Customize Home"
   },
   "header": {
     "brand": "Aura360",
@@ -253,5 +250,77 @@
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",
     "account": "Account and settings"
+  },
+  "loadStates": {
+    "refreshTitle": "Couldn't refresh",
+    "refreshMessage": "Showing what was last saved on this device.",
+    "refreshNetwork": "You're offline. Showing what was last saved on this device.",
+    "refreshTimeout": "The server is slow to respond. Showing what was last saved on this device.",
+    "refreshSession": "Your session has expired. Sign in again to refresh."
+  },
+  "nav": {
+    "more": "More",
+    "moreOpen": "More modules and shortcuts",
+    "moreInModule": "{{module}}, opens all modules",
+    "log": "Log",
+    "logA11y": "Log something new",
+    "logTitle": "Log something",
+    "logSubtitle": "Pick what you want to add. It opens right where you can fill it in.",
+    "slotHint": "Long press to change which module is pinned here",
+    "log_items": {
+      "transaction": {
+        "label": "Transaction",
+        "hint": "Income, expense or investment"
+      },
+      "meal": {
+        "label": "Meal",
+        "hint": "Log what you ate"
+      },
+      "workout": {
+        "label": "Workout",
+        "hint": "Start a live session"
+      },
+      "activity": {
+        "label": "Activity",
+        "hint": "Log a workout or measurement"
+      },
+      "note": {
+        "label": "Note",
+        "hint": "A thought or checklist"
+      },
+      "time": {
+        "label": "Time entry",
+        "hint": "Where an hour went"
+      },
+      "link": {
+        "label": "Saved link",
+        "hint": "Paste a link to keep"
+      },
+      "fashion": {
+        "label": "Wardrobe item",
+        "hint": "Add a piece"
+      }
+    },
+    "hub": {
+      "title": "All modules",
+      "subtitle": "Every part of Aura360. Pinned ones sit in the bar.",
+      "pinned": "Pinned to the bar",
+      "itemsCount_one": "{{count}} item",
+      "itemsCount_other": "{{count}} items",
+      "shortcuts": "Shortcuts",
+      "search": "Search everything",
+      "notifications": "Notifications",
+      "settings": "Settings",
+      "customize": "Customize bar",
+      "customizeDone": "Done",
+      "customizeTitle": "Customize the bar",
+      "customizeHint": "Choose the module for slot {{slot}}. Tapping a module that is already pinned swaps the two.",
+      "slot": "Slot {{slot}}",
+      "slotValue": "Slot {{slot}}: {{module}}",
+      "reset": "Reset to default",
+      "deviceOnly": "Saved on this device only.",
+      "pickFor": "Pin {{module}} to slot {{slot}}",
+      "pinnedAnnouncement": "{{module}} pinned to slot {{slot}}"
+    }
   }
 }

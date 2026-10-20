@@ -51,6 +51,8 @@ export type DonutChartProps = {
   children?: ReactNode;
   /** Spoken name of the chart; the segments and their shares are appended. */
   label?: string;
+  /** Emphasises one segment and fades the rest (driven by a tappable legend). The chart itself has no touch handling. */
+  selectedIndex?: number | null;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -59,7 +61,7 @@ const DEFAULT_THICKNESS = spacing.lg;
 const DEFAULT_GAP = spacing.xs;
 const START_SCALE = 0.92;
 
-function DonutChartImpl({ segments, total, size = DEFAULT_SIZE, thickness = DEFAULT_THICKNESS, gap = DEFAULT_GAP, accent, children, label, style }: DonutChartProps) {
+function DonutChartImpl({ segments, total, size = DEFAULT_SIZE, thickness = DEFAULT_THICKNESS, gap = DEFAULT_GAP, accent, children, label, selectedIndex, style }: DonutChartProps) {
   const { reduceMotion } = useTheme();
   const tones = useVizTones(accent);
   const palette = useDonutColors(segments.length, accent);
@@ -105,6 +107,7 @@ function DonutChartImpl({ segments, total, size = DEFAULT_SIZE, thickness = DEFA
                   cy={mid}
                   r={r}
                   stroke={segments[i].color ?? palette[i]}
+                  strokeOpacity={selectedIndex === null || selectedIndex === undefined || selectedIndex === i ? 1 : 0.28}
                   strokeWidth={thickness}
                   fill="none"
                   strokeDasharray={arc.dashArray}

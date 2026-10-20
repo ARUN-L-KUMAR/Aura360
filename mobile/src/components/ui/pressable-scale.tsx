@@ -76,6 +76,7 @@ export function PressableScale({
 
   // Sizing and placement belong to the outer touchable (see splitLayoutStyle); the look belongs to the inner view.
   const { outer, inner } = splitLayoutStyle(style);
+  const fillsOuter = outer.flex != null || outer.flexGrow != null || outer.flexBasis != null || outer.height != null;
 
   return (
     <Pressable
@@ -108,8 +109,9 @@ export function PressableScale({
       <Animated.View
         style={[
           animated,
-          // Fill the outer touchable when it has been given a size by its parent.
-          { flexGrow: 1 },
+          // Fill the outer touchable only when the style sized it (a tile in a grid). An auto-sized control such as a chip
+          // must keep its own height: on Android, a flexGrow here stretches it to the full height of its container.
+          fillsOuter ? { flexGrow: 1 } : null,
           inner as ViewStyle,
           disabled ? { opacity: DISABLED_OPACITY } : null,
         ]}>

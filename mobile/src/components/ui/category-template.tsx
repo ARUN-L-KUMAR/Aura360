@@ -12,9 +12,14 @@ import { useTranslation } from '@/i18n';
 import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /** The categories that share this template; each gets its own accent from the tertiary-derived ramps. */
-export type CategoryKey = Extract<ModuleKey, 'fashion' | 'fitness' | 'food' | 'skincare' | 'finance' | 'time'>;
+export type CategoryKey = Extract<ModuleKey, 'fashion' | 'fitness' | 'food' | 'skincare' | 'finance' | 'time' | 'notes' | 'saved' | 'ai'>;
 
-export type CategorySection<T extends string = string> = { value: T; label: string; count?: number };
+export type CategorySection<T extends string = string> = {
+  value: T;
+  label: string;
+  count?: number;
+  icon?: React.ComponentType<{ size?: number; color?: string }>;
+};
 
 type HeaderProps<T extends string> = {
   module: CategoryKey;
@@ -26,6 +31,8 @@ type HeaderProps<T extends string> = {
   sections?: CategorySection<T>[];
   section?: T;
   onSectionChange?: (section: T) => void;
+  /** Force scrollable tabs regardless of section count. */
+  scrollableTabs?: boolean;
   /** Optional control shown at the trailing edge of the title row (e.g. an IconButton). */
   action?: ReactNode;
 };
@@ -34,7 +41,7 @@ type HeaderProps<T extends string> = {
  * The header block every category screen puts at the top of its scroll content (sections accept it as a `header`
  * prop): accent eyebrow, headline, icon tile in the category accent, and the section switcher.
  */
-export function CategoryHeader<T extends string>({ module, title, eyebrow, sections, section, onSectionChange, action }: HeaderProps<T>) {
+export function CategoryHeader<T extends string>({ module, title, eyebrow, sections, section, onSectionChange, scrollableTabs, action }: HeaderProps<T>) {
   const { accent } = useTheme();
   const { t } = useTranslation('common');
   const info = modules[module];
@@ -60,7 +67,7 @@ export function CategoryHeader<T extends string>({ module, title, eyebrow, secti
         <IconTile icon={info.icon} accent={module} size={layout.minTouchTarget + spacing.xs} />
       </View>
       {showSwitcher ? (
-        sections.length > 4 ? (
+        scrollableTabs || sections.length > 4 ? (
           <Tabs scrollable accent={module} tabs={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
         ) : (
           <Segmented options={sections} value={section} onChange={onSectionChange} accessibilityLabel={t('categoryHeader.sections', { label })} />
@@ -79,6 +86,5 @@ export function CategoryFab({ module, label, icon = 'add', onPress, extended }: 
 
 /** Full-height background frame for a category screen. */
 export function CategoryFrame({ children }: { children: ReactNode }) {
-  const { colors } = useTheme();
-  return <View style={{ flex: 1, backgroundColor: colors.background }}>{children}</View>;
+  return <View style={{ flex: 1 }}>{children}</View>;
 }

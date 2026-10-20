@@ -1,10 +1,11 @@
 import { memo, useEffect, useMemo } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
 import { useVizTones } from '@/components/viz/tones';
 import { barLayout, isFiniteNumber } from '@/features/viz/geometry';
+import { haptics } from '@/lib/haptics';
 import { duration, easing, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 /**
@@ -37,6 +38,12 @@ export type MiniBarsProps = {
   max?: number;
   /** Spoken summary of the whole chart. Without it the chart is hidden from screen readers. */
   accessibilityLabel?: string;
+  /** Makes each bar a button; the handler gets the bar's index in `values`. */
+  onSelect?: (index: number) => void;
+  /** Bar shown as selected (index in `values`). Tapping it again is up to the caller. */
+  selectedIndex?: number | null;
+  /** Spoken name of one bar when `onSelect` is set ("Mon, 3 activities"). */
+  barLabel?: (index: number, value: number) => string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -66,7 +73,7 @@ function Bar({ index, height, color, replay }: BarProps) {
   return <Animated.View style={[{ height, borderRadius: radius.pill, backgroundColor: color, transformOrigin: '50% 100%' }, style]} />;
 }
 
-function MiniBarsImpl({ values, highlightIndex, labels, showValues = false, formatValue, height = DEFAULT_HEIGHT, accent, max, accessibilityLabel, style }: MiniBarsProps) {
+function MiniBarsImpl({ values, highlightIndex, labels, showValues = false, formatValue, height = DEFAULT_HEIGHT, accent, max, accessibilityLabel, onSelect, selectedIndex, barLabel, style }: MiniBarsProps) {
   const { colors } = useTheme();
   const tones = useVizTones(accent);
 
@@ -87,9 +94,22 @@ function MiniBarsImpl({ values, highlightIndex, labels, showValues = false, form
       {bars.map((bar) => {
         const isActive = bar.index === active;
         const raw = shown[bar.index];
-        const color = hasHighlight && !isActive ? tones.muted : tones.solid;
+        const selected = selectedIndex !== null && selectedIndex !== undefined && selectedIndex - offset === bar.index;
+        const color = (hasHighlight && !isActive) || (selectedIndex !== null && selectedIndex !== undefined && !selected) ? tones.muted : tones.solid;
+        const interactive = onSelect
+          ? {
+              onPress: () => {
+                haptics.select();
+                onSelect(bar.index + offset);
+              },
+              accessibilityRole: 'button' as const,
+              accessibilityLabel: barLabel?.(bar.index + offset, isFiniteNumber(raw) ? raw : 0),
+              accessibilityState: { selected },
+            }
+          : null;
+        const Column = interactive ? Pressable : View;
         return (
-          <View key={bar.index} style={{ flex: 1, gap: spacing.xs, alignItems: 'stretch' }}>
+          <Column key={bar.index} {...(interactive ?? {})} style={{ flex: 1, gap: spacing.xs, alignItems: 'stretch' }}>
             {showValues ? (
               <Text variant="caption" numeric weight={isActive ? 'semiBold' : 'regular'} color={isActive ? 'text' : 'textSecondary'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ textAlign: 'center' }}>
                 {isFiniteNumber(raw) ? (formatValue ? formatValue(raw) : String(raw)) : ''}
@@ -106,7 +126,7 @@ function MiniBarsImpl({ values, highlightIndex, labels, showValues = false, form
             {hasHighlight ? (
               <View style={{ alignSelf: 'center', width: MARKER, height: MARKER, borderRadius: radius.full, backgroundColor: isActive ? colors.text : 'transparent' }} />
             ) : null}
-          </View>
+          </Column>
         );
       })}
     </View>

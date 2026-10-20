@@ -57,6 +57,23 @@ export function withAlpha(color: string, alpha: number): string {
   return `${color}${a}`;
 }
 
+/**
+ * Splits a colour that carries its own alpha (`#rrggbbaa` as `withAlpha` returns, or `rgba(r, g, b, a)`) into a solid colour
+ * and an opacity. Anything else is returned as is, fully opaque. SVG gradient stops need this: on Android a stop's colour
+ * alpha is dropped, so a faint wash becomes a solid block, while `stopOpacity` is honoured everywhere.
+ */
+export function splitAlpha(color: string): { color: string; opacity: number } {
+  const trimmed = color.trim();
+  const hex = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(trimmed);
+  if (hex) return { color: `#${hex[1]}`, opacity: Math.round((parseInt(hex[2], 16) / 255) * 1000) / 1000 };
+  const rgba = /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]+)\s*\)$/i.exec(trimmed);
+  if (rgba) {
+    const hexOf = (value: string) => Math.max(0, Math.min(255, Number(value))).toString(16).padStart(2, '0');
+    return { color: `#${hexOf(rgba[1])}${hexOf(rgba[2])}${hexOf(rgba[3])}`, opacity: Math.max(0, Math.min(1, Number(rgba[4]))) };
+  }
+  return { color, opacity: 1 };
+}
+
 /** WCAG relative luminance (0-1) of a #rgb / #rrggbb colour, or null for anything else. */
 export function luminance(color: string): number | null {
   const hex = normalizeHex(color);

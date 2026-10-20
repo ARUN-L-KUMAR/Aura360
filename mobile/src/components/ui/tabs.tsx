@@ -18,6 +18,8 @@ export type TabItem<T extends string = string> = {
   /** Count shown next to the label (unread, items...). Part of the accessibility label. */
   count?: number;
   disabled?: boolean;
+  /** Lucide or vector icon component rendered before the label. */
+  icon?: React.ComponentType<{ size?: number; color?: string }>;
 };
 
 type Props<T extends string> = {
@@ -125,6 +127,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
             onChange(tab.value);
           }}
           style={styles.item}>
+          {tab.icon ? <tab.icon size={15} color={selected ? indicatorColor : colors.textMuted} /> : null}
           <Text variant="label" weight={selected ? 'bold' : 'medium'} color={selected ? selectedText : 'textMuted'} numberOfLines={2} style={styles.label}>
             {tab.label}
           </Text>
@@ -159,7 +162,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, scrollable = fal
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={[styles.root, { borderBottomColor: colors.border }, style]}>
       {scrollable ? (
-        <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollRef} horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.row} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
             {items}
             {indicator}

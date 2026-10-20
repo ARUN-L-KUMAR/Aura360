@@ -245,7 +245,8 @@ export function ChipGroup({ children }: { children: ReactNode }) {
 /** Single horizontally-scrolling row of chips (filters). */
 export function ChipRow({ children }: { children: ReactNode }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
+    /* flexGrow 0: a horizontal scroller must not stretch to the height of its parent on Android. */
+    <ScrollView horizontal style={{ flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, alignItems: 'center' }}>
       {children}
     </ScrollView>
   );

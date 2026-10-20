@@ -4,9 +4,10 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { GradientText } from '@/components/ui/gradient-text';
+import { withAlpha } from '@/components/ui/logic';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { layout, radius, spacing, useTheme } from '@/theme';
+import { layout, radius, spacing, useTheme, type ModuleKey } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -21,7 +22,7 @@ export type HeroAction = {
 
 type Props = {
   /** Small status chip above the title, e.g. the greeting. */
-  chip?: { label: string; icon?: IconName };
+  chip?: { label: string; icon?: IconName | React.ComponentType<{ size?: number; color?: string }> };
   /** First line(s) of the headline. */
   title: string;
   /** A word shown on its own line in a white-to-blue gradient (the user's name in the web hero). */
@@ -30,6 +31,8 @@ type Props = {
   actions?: HeroAction[];
   /** Anything under the buttons: headline numbers, chips. */
   children?: ReactNode;
+  /** Module colour for the hero's glow and hairline, so a module has its own identity on the shared dark card. */
+  accent?: ModuleKey;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -103,8 +106,9 @@ function ActionButton({ action }: { action: HeroAction }) {
  *   actions={[{ label: 'New note', icon: 'add', onPress }, { label: 'Transaction', icon: 'cash-outline', variant: 'glass', onPress }]} />
  * ```
  */
-export const PremiumHero = memo(function PremiumHero({ chip, title, accentWord, subtitle, actions, children, style }: Props) {
-  const { colors, shades } = useTheme();
+export const PremiumHero = memo(function PremiumHero({ chip, title, accentWord, subtitle, actions, children, accent, style }: Props) {
+  const { colors, shades, accent: accentFor } = useTheme();
+  const glow = accent ? accentFor(accent).solid : colors.heroGlowA;
   const headline = accentWord ? `${title} ${accentWord}` : title;
 
   return (
@@ -113,13 +117,15 @@ export const PremiumHero = memo(function PremiumHero({ chip, title, accentWord, 
         {
           borderRadius: radius.xl,
           backgroundColor: colors.heroSurface,
+          borderWidth: 1,
+          borderColor: accent ? withAlpha(glow, 0.45) : colors.heroChipBorder,
           overflow: 'hidden',
           padding: spacing.xl,
           gap: spacing.lg,
         },
         style,
       ]}>
-      <Orb color={colors.heroGlowA} opacity={0.28} style={{ top: -ORB * 0.35, end: -ORB * 0.35 }} />
+      <Orb color={glow} opacity={accent ? 0.42 : 0.28} style={{ top: -ORB * 0.35, end: -ORB * 0.35 }} />
       <Orb color={colors.heroGlowB} opacity={0.2} style={{ bottom: -ORB * 0.4, start: -ORB * 0.4 }} />
 
       {chip ? (
@@ -134,7 +140,13 @@ export const PremiumHero = memo(function PremiumHero({ chip, title, accentWord, 
             paddingHorizontal: spacing.md,
             paddingVertical: spacing.xs + 2,
           }}>
-          {chip.icon ? <Ionicons name={chip.icon} size={12} color={shades.warning[400]} /> : null}
+          {chip.icon ? (
+            typeof chip.icon === 'string' ? (
+              <Ionicons name={chip.icon} size={12} color={shades.warning[400]} />
+            ) : (
+              <chip.icon size={13} color={shades.warning[400]} />
+            )
+          ) : null}
           <Text variant="overline" style={{ color: colors.onHero }}>
             {chip.label}
           </Text>
