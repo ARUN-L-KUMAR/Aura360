@@ -1,6 +1,7 @@
 import { applyPreset, DEFAULT_LAYOUT, HOME_LAYOUT_KEY, HOME_PRESETS, type HomePresetId } from '../features/home/layout';
 import { installMockApi } from './mock-api';
 import { isoDaysAgo } from './seed-util';
+import { seedShareInbox } from './seed-share';
 
 /**
  * Called once at app start in preview builds (see src/app/_layout.tsx). Answers the app's API calls with sample data and
@@ -15,6 +16,7 @@ export function installPreview() {
     // Storage unavailable: the water ring just starts empty.
   }
   seedHomeLayout();
+  seedShareInbox(); // `?share=<state>`: see seed-share.ts
 }
 
 function seedHomeLayout() {

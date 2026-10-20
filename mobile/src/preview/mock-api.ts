@@ -1,5 +1,6 @@
 import { buildSeed, type PreviewSeed } from './seed';
 import { buildSubscriptions } from './seed-finance';
+import { isoDaysAgo } from './seed-util';
 
 /**
  * Answers the app's `/api/...` calls with the sample data, in place of the server. It sits on `fetch`, so the real
@@ -85,6 +86,31 @@ function route(seed: PreviewSeed, path: string, params: URLSearchParams): Respon
   }
 }
 
+/**
+ * Stands in for the vision model when a payment screenshot shared into a preview build is read (the screenshot itself
+ * is never looked at). The answer depends on the image type, so every state of the import screen can be tried:
+ *  - PNG:  a successful payment that is already in the sample ledger (the duplicate warning and the confirmation),
+ *  - JPEG: a failed payment (the failed-payment warning and the confirmation),
+ *  - WebP: not a payment at all (the "no payment found" state).
+ */
+function paymentScan(seed: PreviewSeed, body: unknown): Response {
+  const mimeType = typeof (body as { mimeType?: unknown } | null)?.mimeType === 'string' ? (body as { mimeType: string }).mimeType : 'image/png';
+  const none = {
+    isPayment: false, app: null, status: null, direction: null, amount: null, currency: null, counterparty: null,
+    date: null, referenceId: null, note: null, category: null, paymentMethod: null, confidence: 0,
+  };
+  let data: Record<string, unknown>;
+  if (mimeType === 'image/webp') {
+    data = none;
+  } else if (mimeType === 'image/jpeg') {
+    data = { ...none, isPayment: true, app: 'phonepe', status: 'failed', direction: 'paid', amount: 349, currency: 'INR', counterparty: 'Swiggy', date: isoDaysAgo(0), referenceId: 'T2610201234567', category: 'Food', paymentMethod: 'upi', confidence: 0.88 };
+  } else {
+    const broadband = seed.transactions.find((t) => t.type === 'expense' && t.description === 'Broadband') ?? seed.transactions.find((t) => t.type === 'expense');
+    data = { ...none, isPayment: true, app: 'gpay', status: 'success', direction: 'paid', amount: Number(broadband?.amount ?? 999), currency: 'INR', counterparty: broadband?.description ?? 'Broadband', date: broadband?.date ?? isoDaysAgo(8), referenceId: '415678901234', category: broadband?.category ?? 'Bills', paymentMethod: 'upi', confidence: 0.93 };
+  }
+  return json({ success: true, kind: 'payment', data, message: 'Payment read' });
+}
+
 export function installMockApi() {
   const realFetch = globalThis.fetch.bind(globalThis);
   const seed = buildSeed();
@@ -103,6 +129,17 @@ export function installMockApi() {
     // The fitness coach is a POST that reads: only its readiness check has an answer here.
     if (method === 'POST' && url.pathname === '/api/fitness/ai-coach') {
       return String(init?.body ?? '').includes('readiness_check') ? route(seed, url.pathname, url.searchParams) : json({ success: false, error: 'Not part of the preview data' });
+    }
+    if (method === 'POST' && url.pathname === '/api/finance/receipt-scan') {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(String(init?.body ?? 'null'));
+      } catch {
+        // Not JSON: the screenshot is treated as a PNG.
+      }
+      if ((body as { kind?: unknown } | null)?.kind !== 'payment') return json({ success: true });
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // long enough to see the "reading" state
+      return paymentScan(seed, body);
     }
     if (method !== 'GET') return json({ success: true });
     return route(seed, url.pathname, url.searchParams);
