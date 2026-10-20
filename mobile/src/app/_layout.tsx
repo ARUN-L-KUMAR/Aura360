@@ -21,6 +21,7 @@ import { addNotificationResponseListener, notificationService } from '@/lib/noti
 import { installGlobalErrorHandler } from '@/lib/global-errors';
 import { isNotificationPermissionGranted } from '@/lib/notification-permission';
 import { registerForServerPush } from '@/lib/push';
+import { ShareIntake } from '@/features/share-import/share-intake';
 import { PREVIEW } from '@/preview/flag';
 import { analytics } from '@/lib/telemetry';
 import { AuthProvider, useAuth } from '@/providers/auth';
@@ -128,6 +129,7 @@ function RootContent() {
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <RootStack />
+      <ShareIntake />
       {!splashDone && <AnimatedSplash ready={status !== 'loading' && fontsReady} onFinish={finishSplash} />}
       {signedIn && isLocked ? <BiometricLockScreen /> : null}
     </>

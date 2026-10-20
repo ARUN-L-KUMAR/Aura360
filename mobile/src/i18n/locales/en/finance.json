@@ -573,5 +573,126 @@
     "rangeMonthA11y": "This month",
     "chartA11y": "Spending per day, {{range}}. Highest {{peak}} on {{day}}, average {{average}} a day. Swipe up or down to move between days.",
     "chartEmptyA11y": "Spending per day: nothing recorded yet."
+  },
+  "shareImport": {
+    "title": "Import payment",
+    "counter": "Screenshot {{index}} of {{total}}",
+    "previewLabel": "The screenshot you shared",
+    "receiving": {
+      "title": "Receiving your screenshot",
+      "body": "Making a private copy on this phone."
+    },
+    "reading": {
+      "title": "Reading the payment",
+      "body": "Looking for the amount, date, who it was with and the transaction ID. This usually takes a few seconds."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "skip": "Skip this one",
+      "retry": "Try again",
+      "addByHand": "Add it by hand",
+      "reviewAgain": "Review the details",
+      "importAnyway": "Import anyway",
+      "viewLedger": "View in ledger",
+      "done": "Done",
+      "close": "Close"
+    },
+    "seen": {
+      "saved": {
+        "title": "You've imported this before",
+        "body": "This exact screenshot was already added to your ledger. Importing it again could count the payment twice."
+      },
+      "skipped": {
+        "title": "You skipped this before",
+        "body": "You chose not to import this exact screenshot earlier."
+      }
+    },
+    "review": {
+      "title": "Not saved yet",
+      "body": "You closed the form before saving, so nothing was added to your ledger."
+    },
+    "errors": {
+      "unsupportedType": {
+        "title": "This file can't be read",
+        "body": "Only JPG, PNG and WebP screenshots can be imported."
+      },
+      "unreadable": {
+        "title": "Couldn't open the screenshot",
+        "body": "Aura360 couldn't read the file that was shared. Share it again from the payment app."
+      },
+      "tooLarge": {
+        "title": "This image is too large",
+        "body": "Images over 8 MB can't be imported. Share a regular screenshot of the payment instead."
+      },
+      "notPayment": {
+        "title": "No payment found",
+        "body": "This doesn't look like a payment confirmation, so nothing was filled in. You can add the transaction by hand."
+      },
+      "network": {
+        "title": "You're offline",
+        "body": "Reconnect and try again. The screenshot is kept until you close this screen."
+      },
+      "timeout": {
+        "title": "That took too long",
+        "body": "The server was slow to answer. Try again."
+      },
+      "session": {
+        "title": "Sign in again",
+        "body": "Your session has expired. Sign in, then share the screenshot again."
+      },
+      "server": {
+        "title": "Couldn't read the screenshot",
+        "body": "Something went wrong on our side. Try again, or add the transaction by hand."
+      }
+    },
+    "rejected": {
+      "unsupported_one": "{{count}} shared file isn't a JPG, PNG or WebP image, so it was left out.",
+      "unsupported_other": "{{count}} shared files aren't JPG, PNG or WebP images, so they were left out.",
+      "unsafe_one": "{{count}} shared file couldn't be accepted from the app that sent it.",
+      "unsafe_other": "{{count}} shared files couldn't be accepted from the app that sent them.",
+      "tooMany_one": "{{count}} more screenshot was left out. Up to {{max}} can be imported at once.",
+      "tooMany_other": "{{count}} more screenshots were left out. Up to {{max}} can be imported at once."
+    },
+    "nothing": {
+      "title": "Nothing to import",
+      "body": "None of the shared files could be imported. Share a JPG, PNG or WebP screenshot of the payment."
+    },
+    "done": {
+      "title_one": "Added to your ledger",
+      "title_other": "{{count}} payments added",
+      "skipped_one": "{{count}} skipped",
+      "skipped_other": "{{count}} skipped",
+      "entry": "{{description}} · {{amount}}",
+      "entryNoDescription": "{{amount}}"
+    },
+    "form": {
+      "prefilled": "Filled in from the screenshot you shared. A screenshot isn't proof of payment, so check every detail before saving.",
+      "warningsTitle": "Check these",
+      "duplicatesTitle": "Already in your ledger?",
+      "duplicate": "{{description}} · {{amount}} · {{date}}",
+      "duplicateNoDescription": "{{amount}} · {{date}}",
+      "match": {
+        "certain": "Same transaction ID",
+        "likely": "Same amount, day and name",
+        "possible": "Same amount around the same day"
+      },
+      "warnings": {
+        "statusFailed": "The screenshot shows a failed payment, so the money may not have left your account.",
+        "statusPending": "The screenshot shows a payment that is still pending.",
+        "directionUnknown": "Couldn't tell whether you paid or received this. Check the type.",
+        "amountMissing": "No amount was found. Enter it below.",
+        "dateMissing": "No date was found, so today is filled in. Check it.",
+        "currencyOther": "The screenshot isn't in rupees. Check the amount before saving.",
+        "lowConfidence": "The screenshot was hard to read. Check every detail.",
+        "duplicateCheckSkipped": "Couldn't check your ledger for duplicates."
+      },
+      "confirm": {
+        "title": "Check before saving",
+        "duplicate": "This looks like a payment that is already in your ledger. Saving it again would count it twice.",
+        "statusFailed": "The screenshot shows a failed payment.",
+        "statusPending": "The screenshot shows a payment that is still pending.",
+        "action": "Save anyway"
+      }
+    }
   }
 }

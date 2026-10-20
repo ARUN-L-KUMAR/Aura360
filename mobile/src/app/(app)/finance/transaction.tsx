@@ -10,6 +10,7 @@ import { failureMessage } from '@/components/finance/failure-message';
 import { FormCard, FormSection, TypeSwitch, parseAmount } from '@/components/finance/form-parts';
 import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from '@/components/finance/labels';
 import type { TransactionDraft } from '@/components/finance/receipt';
+import { ShareDraftNotice } from '@/components/finance/share-draft-notice';
 import { NO_DESCRIPTION } from '@/components/finance/transaction-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,6 +26,8 @@ import {
   type PaymentMethod,
   type Transaction,
 } from '@/features/finance/types';
+import { confirmReasons } from '@/features/share-import/draft';
+import { markSaved } from '@/features/share-import/inbox';
 import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
@@ -72,8 +75,8 @@ export default function TransactionScreen() {
   const { t } = useTranslation('finance');
   const params = useLocalSearchParams<{ tx?: string; draft?: string }>();
   const existing = useMemo(() => parseTransaction(params.tx), [params.tx]);
-  // A scanned receipt opens the form filled in (a new transaction, not an edit). Whatever the scan could not find is
-  // empty here, and a category it did not find leaves none selected.
+  // A scanned receipt, or a payment screenshot shared from another app, opens the form filled in (a new transaction,
+  // not an edit). Whatever the scan could not find is empty here, and a category it did not find leaves none selected.
   const draft = useMemo(() => (existing ? null : parseDraft(params.draft)), [existing, params.draft]);
   const draftCategory = draft?.category ?? '';
   const draftKnownCategory = draft ? CATEGORY_OPTIONS[draft.type].includes(draftCategory) : false;
@@ -119,6 +122,22 @@ export default function TransactionScreen() {
       return;
     }
 
+    // A payment read from a screenshot is a claim, not proof: a failed or pending status, or an entry that is probably
+    // this same payment, needs an explicit yes before it reaches the ledger.
+    if (draft?.share) {
+      const unchanged = amountValue === draft.amount && date === (draft.date ?? date);
+      const reasons = confirmReasons(draft.share, unchanged);
+      if (reasons.length > 0) {
+        const ok = await notify.confirm({
+          title: t('shareImport.form.confirm.title'),
+          message: reasons.map((reason) => t(`shareImport.form.confirm.${reason}`)).join('\n\n'),
+          confirmLabel: t('shareImport.form.confirm.action'),
+          cancelLabel: t('common.cancel'),
+        });
+        if (!ok) return;
+      }
+    }
+
     try {
       await save.mutateAsync({
         id: existing?.id,
@@ -134,6 +153,8 @@ export default function TransactionScreen() {
       });
       // The event only knows income and expense; investments are not reported until it does.
       if (!existing) analytics.track('transaction_created', { type });
+      // Settles the shared screenshot this entry came from, so the import screen moves on to the next one.
+      if (draft?.share) markSaved(draft.share.itemId, { amount: amountValue, description: description.trim() });
       notify.success(existing ? t('transaction.updated') : t('transaction.added'));
       router.back();
     } catch (e) {
@@ -203,7 +224,9 @@ export default function TransactionScreen() {
       }>
       <Stack.Screen options={{ title: existing ? t('transaction.titleEdit') : t('transaction.titleNew') }} />
 
-      {draft ? (
+      {draft?.share ? (
+        <ShareDraftNotice info={draft.share} />
+      ) : draft ? (
         <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
           {t('scan.prefilled')}
         </Text>
@@ -218,7 +241,8 @@ export default function TransactionScreen() {
         onChangeText={setAmount}
         tone={TYPE_TONE[type]}
         error={submitted ? amountError : null}
-        autoFocus={!existing}
+        // A screenshot that was read already has an amount; the keyboard would only cover what there is to check.
+        autoFocus={!existing && !(draft?.share && draft.amount > 0)}
         presets={PRESET_AMOUNTS}
         presetsAdd
         onPreset={addPreset}
