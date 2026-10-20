@@ -40,6 +40,50 @@ export function buildSeed() {
     skincare: SKINCARE_PRODUCTS.length,
     time: timeLogs.length,
   };
+  // The `today` block, computed from the same sample data the screens read.
+  const todayDate = isoDaysAgo(0);
+  const weekFrom = isoDaysAgo(6);
+  const sum = (values: (number | string | null | undefined)[]) => values.reduce<number>((total, value) => total + (Number(value) || 0), 0);
+  const todaysMeals = meals.filter((m) => m.date === todayDate);
+  const weekWorkouts = fitness.filter((f) => f.type === 'workout' && f.date >= weekFrom && f.date <= todayDate);
+  const todaysTime = timeLogs.filter((l) => l.date === todayDate);
+  const topTime = [...todaysTime].sort((a, b) => b.duration - a.duration)[0];
+  const monthBudgets = buildBudgets(transactions, currentMonth, currentMonth).data;
+  const today: NonNullable<Dashboard['today']> = {
+    date: todayDate,
+    food: {
+      calories: sum(todaysMeals.map((m) => m.calories)),
+      protein: sum(todaysMeals.map((m) => m.protein)),
+      carbs: sum(todaysMeals.map((m) => m.carbs)),
+      fats: sum(todaysMeals.map((m) => m.fats)),
+      meals: todaysMeals.length,
+    },
+    fitness: {
+      minutesToday: sum(weekWorkouts.filter((f) => f.date === todayDate).map((f) => f.duration)),
+      minutesWeek: sum(weekWorkouts.map((f) => f.duration)),
+      workoutsToday: weekWorkouts.filter((f) => f.date === todayDate).length,
+      workoutsWeek: weekWorkouts.length,
+      activeDaysWeek: new Set(weekWorkouts.map((f) => f.date)).size,
+    },
+    time: { minutesToday: sum(todaysTime.map((l) => l.duration)), topCategory: topTime?.category ?? null },
+    finance: {
+      spentToday: sum(transactions.filter((t) => t.type === 'expense' && t.date === todayDate).map((t) => t.amount)),
+      budgetTotal: sum(monthBudgets.map((b) => b.amount)),
+      budgetSpent: sum(monthBudgets.map((b) => b.spent)),
+      budgetCount: monthBudgets.length,
+    },
+    pinnedNotes: NOTES.filter((n) => n.isPinned && !n.isArchived)
+      .slice(0, 3)
+      .map((n) => {
+        const checklist = Array.isArray(n.metadata?.checklist) ? (n.metadata.checklist as { completed?: boolean }[]) : null;
+        return {
+          ...n,
+          preview: (n.content ?? '').slice(0, 140),
+          checklistDone: checklist ? checklist.filter((item) => item.completed).length : null,
+          checklistTotal: checklist ? checklist.length : null,
+        };
+      }),
+  };
   const dashboard: Dashboard = {
     profile: { name: PREVIEW_USER.name, image: null },
     totalActivities: chart.reduce((sum, point) => sum + point.activities, 0),
@@ -48,8 +92,8 @@ export function buildSeed() {
     month,
     recentTransactions: [...transactions]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 5)
-      .map(({ id, date, type, category, amount, description }) => ({ id, date, type, category, amount, description })),
+      .slice(0, 5),
+    today,
   };
 
   const prefs: ServerPrefs = {
