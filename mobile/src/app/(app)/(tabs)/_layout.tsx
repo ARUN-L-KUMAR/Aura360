@@ -4,6 +4,7 @@ import { View } from "react-native";
 
 import { FloatingAiWidget } from "@/components/ai/floating-ai-widget";
 import { AppTabs } from "@/components/app-tabs";
+import { AuroraBackdrop } from "@/components/ui/aurora-backdrop";
 import { TabsHeader } from "@/components/tabs-header";
 import { ChromeContext } from "@/components/ui/chrome";
 import { modules } from "@/features/modules";
@@ -66,6 +67,7 @@ export default function TabsLayout() {
   useFirstRunFlow();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <AuroraBackdrop />
       <TabsHeader />
       <ChromeContext.Provider value={chrome}>
         <View style={{ flex: 1 }}>
@@ -75,7 +77,7 @@ export default function TabsLayout() {
               headerShown: false,
               // Cross-fade between tabs; none at all when the user prefers reduced motion.
               animation: reduceMotion ? "none" : "fade",
-              sceneStyle: { backgroundColor: colors.background },
+              sceneStyle: { backgroundColor: 'transparent' },
             }}
           >
             <Tabs.Screen name="index" options={{ title: "Home" }} />
