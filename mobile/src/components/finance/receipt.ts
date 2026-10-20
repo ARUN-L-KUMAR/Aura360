@@ -3,10 +3,12 @@
  * types), so it runs under plain Node (tests/finance-receipt.test.ts).
  */
 import type { PaymentMethod, ScannedReceipt } from '../../features/finance/types.ts';
+import type { ShareDraftInfo } from '../../features/share-import/types.ts';
 
 /**
- * What the transaction form opens with after a scan. Fields the scan could not find are left empty (amount 0,
- * category '', date null) rather than made up; the form shows them as missing.
+ * What the transaction form opens with after a scan. A receipt is always an expense; a shared payment screenshot can
+ * also be money received. Fields the scan could not find are left empty (amount 0, category '', date null) rather than
+ * made up; the form shows them as missing.
  */
 export type TransactionDraft = {
   type: 'expense' | 'income';
@@ -17,6 +19,8 @@ export type TransactionDraft = {
   date: string | null;
   paymentMethod: PaymentMethod;
   notes: string | null;
+  /** Only on a draft that came from a shared screenshot (features/share-import). */
+  share?: ShareDraftInfo;
 };
 
 /** The vision model names categories its own way; map them onto the ones the app stores. Unknown ones become "Other". */

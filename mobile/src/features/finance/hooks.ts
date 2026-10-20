@@ -213,6 +213,20 @@ export function useScanReceipt() {
   });
 }
 
+/**
+ * Reads a shared payment screenshot (Google Pay, PhonePe, Paytm...) with the same endpoint and vision model as the
+ * receipt scan, asked for the payment reading: anything the screen does not show comes back null. `data` is checked by
+ * features/share-import/draft.ts (`normalizeScan`) because an older server answers with the receipt shape instead.
+ * Not queued when offline (see lib/offline/queue.ts): a screenshot read cannot be replayed later.
+ */
+export function scanPayment({ base64, mimeType, signal }: { base64: string; mimeType: string; signal?: AbortSignal }) {
+  return api<{ success: boolean; data: unknown }>('/api/finance/receipt-scan', {
+    method: 'POST',
+    body: { base64, mimeType, kind: 'payment' },
+    signal,
+  });
+}
+
 /** More than a person logs in a month; the duplicate check compares against these. */
 const LEDGER_CHECK_LIMIT = 500;
 
