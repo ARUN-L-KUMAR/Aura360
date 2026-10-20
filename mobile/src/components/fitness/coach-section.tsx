@@ -182,7 +182,7 @@ export function CoachSection({ header, onStarted }: { header: ReactNode; onStart
         <Animated.View {...planMotion} style={{ gap: layout.sectionGap }}>
           {day ? (
             <>
-              <PremiumHero
+              <PremiumHero accent="fitness"
                 chip={{ icon: 'sparkles', label: t('coach.planEyebrow') }}
                 title={program.programName}
                 subtitle={[program.frequency, program.difficulty, program.goal].filter(Boolean).join(' · ') || undefined}

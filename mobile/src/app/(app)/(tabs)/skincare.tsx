@@ -201,7 +201,7 @@ export default function SkincareScreen() {
 
         {!offline && !failed ? (
           <Animated.View {...heroMotion}>
-            <PremiumHero
+            <PremiumHero accent="skincare"
               chip={{ icon: 'sparkles', label: isRoutine ? t('hero.chipRoutine') : t('hero.chipShelf') }}
               title={isRoutine ? (section === 'evening' ? t('hero.eveningTitle') : t('hero.morningTitle')) : t('hero.shelfTitle')}
               accentWord={isRoutine ? t('hero.routineAccent') : t('hero.shelfAccent')}

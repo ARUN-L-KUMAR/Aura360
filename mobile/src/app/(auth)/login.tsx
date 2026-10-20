@@ -175,7 +175,14 @@ export default function LoginScreen() {
             {t('signIn.newHere')}
           </Text>
           <Link href="/sign-up" asChild>
-            <Button title={t('signIn.createAccount')} variant="ghost" size="sm" fullWidth={false} accessibilityRole="link" />
+            <Button
+              title={t('signIn.createAccount')}
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              accessibilityRole="link"
+              style={styles.promptLink}
+            />
           </Link>
         </View>
 
@@ -245,7 +252,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     columnGap: spacing.xs,
   },
-  footer: { alignItems: 'center' },
+  promptLink: {
+    paddingHorizontal: spacing.xs,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
   sheetBody: { gap: layout.cardPadding },
   sheetActions: { gap: spacing.sm },
 });

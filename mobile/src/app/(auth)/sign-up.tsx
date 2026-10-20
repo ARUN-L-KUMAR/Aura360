@@ -168,7 +168,14 @@ export default function SignUpScreen() {
             {t('signUp.haveAccount')}
           </Text>
           <Link href="/login" asChild>
-            <Button title={t('signUp.signIn')} variant="ghost" size="sm" fullWidth={false} accessibilityRole="link" />
+            <Button
+              title={t('signUp.signIn')}
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              accessibilityRole="link"
+              style={styles.promptLink}
+            />
           </Link>
         </View>
       </View>
@@ -190,5 +197,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     columnGap: spacing.xs,
+  },
+  promptLink: {
+    paddingHorizontal: spacing.xs,
   },
 });

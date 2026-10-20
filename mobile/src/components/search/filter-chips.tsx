@@ -24,6 +24,7 @@ export function FilterChips({ scope, total, groups, onChange }: Props) {
   return (
     <ScrollView
       horizontal
+      style={{ flexGrow: 0 }}
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       accessibilityLabel={t('filters.label')}

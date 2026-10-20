@@ -107,7 +107,7 @@ export function TodaySection({ header, onOpenAi }: { header: ReactNode; onOpenAi
       />
 
       <Animated.View {...heroMotion}>
-        <PremiumHero
+        <PremiumHero accent="food"
           chip={{ icon: 'restaurant', label: dayTitle(day) }}
           title={ready ? t('units.kcal', { value: number(eaten) }) : t('hero.titleIdle')}
           accentWord={ready ? (isToday ? t('hero.eatenToday') : t('hero.eaten')) : undefined}

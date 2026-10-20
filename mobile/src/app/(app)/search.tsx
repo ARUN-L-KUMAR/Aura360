@@ -262,7 +262,7 @@ export default function SearchScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ paddingTop: insets.top + spacing.sm, paddingBottom: spacing.sm, gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.screenPadding }}>
             <View style={{ flex: 1 }}>

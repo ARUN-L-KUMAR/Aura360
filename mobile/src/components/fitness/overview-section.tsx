@@ -168,7 +168,7 @@ export function OverviewSection({ header, onOpenTrain, onLogWorkout }: { header:
       {header}
 
       <Animated.View {...heroMotion}>
-        <PremiumHero
+        <PremiumHero accent="fitness"
           chip={{ icon: 'flash', label: t('overview.thisWeek') }}
           title={heroLead}
           accentWord={heroAccent}
