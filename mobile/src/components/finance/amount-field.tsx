@@ -25,6 +25,8 @@ type Props = {
   presetsAdd?: boolean;
   returnKeyType?: TextInputProps['returnKeyType'];
   onSubmitEditing?: TextInputProps['onSubmitEditing'];
+  /** `card` (default) sits in a bordered card; `plain` is the transaction sheet's look: large centred digits straight on the page. */
+  variant?: 'card' | 'plain';
 };
 
 /** Large amount entry with currency symbol, tabular digits, a formatted preview, inline error and quick-amount chips. */
@@ -40,19 +42,22 @@ export function AmountField({
   presetsAdd,
   returnKeyType = 'done',
   onSubmitEditing,
+  variant = 'card',
 }: Props) {
   const { colors } = useTheme();
   const { t } = useTranslation('finance');
   const parsed = parseAmount(value);
   const hasValue = Number.isFinite(parsed) && parsed > 0;
+  const plain = variant === 'plain';
+  const digits = plain ? typeScale.hero : typeScale.display;
 
-  return (
-    <Card padding="lg" style={{ alignItems: 'center', gap: spacing.md, ...(error ? { borderColor: colors.error, borderWidth: 2 } : null) }}>
+  const body = (
+    <>
       <Text variant="overline" color="textMuted" accessibilityElementsHidden importantForAccessibility="no">
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs }}>
-        <Text variant="display" color={tone} accessibilityElementsHidden importantForAccessibility="no">
+        <Text variant={plain ? 'headline' : 'display'} color={tone} accessibilityElementsHidden importantForAccessibility="no">
           {CURRENCY_SYMBOL}
         </Text>
         <TextInput
@@ -76,11 +81,11 @@ export function AmountField({
           accessibilityHint={error ?? undefined}
           style={{
             minWidth: spacing.xxxl * 2,
-            minHeight: typeScale.display.lineHeight,
+            minHeight: digits.lineHeight,
             paddingVertical: 0,
             textAlign: 'center',
             color: colors.text,
-            fontSize: typeScale.display.fontSize,
+            fontSize: digits.fontSize,
             fontFamily: fontWeightFamily.bold,
             fontVariant: tabularNums,
           }}
@@ -106,6 +111,14 @@ export function AmountField({
           ))}
         </View>
       ) : null}
+    </>
+  );
+
+  return plain ? (
+    <View style={{ alignItems: 'center', gap: spacing.sm }}>{body}</View>
+  ) : (
+    <Card padding="lg" style={{ alignItems: 'center', gap: spacing.md, ...(error ? { borderColor: colors.error, borderWidth: 2 } : null) }}>
+      {body}
     </Card>
   );
 }

@@ -6,6 +6,7 @@ import Animated from 'react-native-reanimated';
 import { groupByDay } from '@/components/finance/insights';
 import { FAB_CLEARANCE } from '@/components/finance/list-helpers';
 import { LoadError, OfflineState, RefreshError } from '@/components/finance/load-error';
+import { categoryLabel } from '@/components/finance/labels';
 import { openTransaction, TransactionRow } from '@/components/finance/transaction-row';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -92,18 +93,21 @@ const HistoryItem = memo(function HistoryItem({ tx, index, edge }: { tx: Transac
   );
 });
 
-export function HistorySection({ header }: { header: ReactNode }) {
+/** Filters the ledger opens with (from a card or a chart that was tapped). */
+export type LedgerFilter = { type?: TransactionFilters['type']; category?: string; month?: MonthFilter };
+
+export function HistorySection({ header, initial }: { header: ReactNode; initial?: LedgerFilter }) {
   const router = useRouter();
-  const { colors } = useTheme();
   const { t } = useTranslation('finance');
   const padding = useScreenPadding();
 
-  const [type, setType] = useState<TransactionFilters['type']>('all');
-  const [monthFilter, setMonthFilter] = useState<MonthFilter>('all');
+  const [type, setType] = useState<TransactionFilters['type']>(initial?.type ?? 'all');
+  const [monthFilter, setMonthFilter] = useState<MonthFilter>(initial?.month ?? 'all');
+  const [category, setCategory] = useState<string | undefined>(initial?.category);
   const [search, setSearch] = useState('');
 
   const month = monthFilter === 'all' ? 'all' : monthFilter === 'this' ? monthKey() : shiftMonth(monthKey(), -1);
-  const query = useTransactions({ type, search, month });
+  const query = useTransactions({ type, search, month, category });
   const refreshControl = useRefreshControl({ onRefresh: () => query.refetch(), refreshing: query.isRefetching && !query.isFetchingNextPage });
 
   const items = useMemo(() => query.data?.pages.flatMap((page) => page.data) ?? [], [query.data]);
@@ -124,7 +128,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
   }, [items, query.hasNextPage]);
   const total = query.data?.pages[0]?.pagination.total ?? 0;
   const totalAmount = query.data?.pages[0]?.totalAmount ?? 0;
-  const filtered = type !== 'all' || monthFilter !== 'all' || search.trim().length > 0;
+  const filtered = type !== 'all' || monthFilter !== 'all' || !!category || search.trim().length > 0;
   const offline = query.isPending && query.fetchStatus === 'paused';
   const loading = query.isPending && !offline;
 
@@ -143,6 +147,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
   function clearFilters() {
     setType('all');
     setMonthFilter('all');
+    setCategory(undefined);
     setSearch('');
   }
 
@@ -150,6 +155,17 @@ export function HistorySection({ header }: { header: ReactNode }) {
     <View style={{ gap: spacing.md, paddingBottom: spacing.sm }}>
       {header}
       <SearchBar value={search} onChangeText={setSearch} debounceMs={350} placeholder={t('history.search')} accessibilityLabel={t('history.searchA11y')} />
+      {category ? (
+        <ChipRow>
+          <Chip
+            label={t('history.categoryFilter', { category: categoryLabel(category) })}
+            accent="finance"
+            selected
+            onRemove={() => setCategory(undefined)}
+            removeLabel={t('history.removeCategory', { category: categoryLabel(category) })}
+          />
+        </ChipRow>
+      ) : null}
       <ChipRow>
         {typeOptions.map((option) => (
           <Chip key={option.value} label={option.label} accent="finance" selected={type === option.value} onPress={() => setType(option.value)} />
@@ -224,7 +240,7 @@ export function HistorySection({ header }: { header: ReactNode }) {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       contentContainerStyle={[padding, { gap: 0, paddingBottom: FAB_CLEARANCE }]}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1 }}
     />
   );
 }

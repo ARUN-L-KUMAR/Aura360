@@ -36,15 +36,37 @@ function toneColors(tone: Tone, c: ThemeColors) {
 
 const TILE = layout.minTouchTarget;
 
+type GlyphComponent = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+/**
+ * Draws an icon component (Lucide). Callers tell an Ionicons NAME (a string) from a component with `typeof === 'string'`:
+ * Lucide icons are wrapped components (objects), so `typeof icon === 'function'` is false for them and they would fall
+ * through to Ionicons and render a "?".
+ */
+function Glyph({ icon: Icon, size, color }: { icon: GlyphComponent; size: number; color: string }) {
+  return <Icon size={size} color={color} />;
+}
+
 /** Rounded square icon tile tinted by `tone` (the web's `rounded-2xl p-3 bg-*-500/10`). Decorative: hidden from screen readers. */
-export function IconTile({ icon, tone = 'neutral', size = TILE, style }: { icon: IconName; tone?: Tone; size?: number; style?: StyleProp<ViewStyle> }) {
+export function IconTile({
+  icon,
+  tone = 'neutral',
+  size = TILE,
+  style,
+}: {
+  icon: IconName | React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  tone?: Tone;
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { bg, fg } = useToneColors(tone);
+  const iconSize = Math.round(size * 0.5);
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[{ width: size, height: size, borderRadius: size > TILE - 1 ? radius.lg : radius.md, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Ionicons name={icon} size={Math.round(size * 0.5)} color={fg} />
+      {typeof icon === 'string' ? <Ionicons name={icon} size={iconSize} color={fg} /> : <Glyph icon={icon} size={iconSize} color={fg} />}
     </View>
   );
 }
@@ -129,7 +151,7 @@ export function SectionHead({ overline, title, actionLabel, actionAccessibilityL
 type StatCardProps = {
   label: string;
   value: string;
-  icon: IconName;
+  icon: IconName | React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
   tone?: Tone;
   trend?: PillProps;
   /** Muted line under the number. */

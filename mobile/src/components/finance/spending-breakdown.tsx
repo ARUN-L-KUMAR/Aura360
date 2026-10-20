@@ -1,16 +1,18 @@
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
 
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { withAlpha } from '@/components/ui/logic';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Text } from '@/components/ui/text';
-import { AnimatedNumber } from '@/components/viz/animated-number';
 import { DonutChart } from '@/components/viz/donut-chart';
-import { Sparkline } from '@/components/viz/sparkline';
 import { useDonutColors } from '@/components/viz/tones';
 import { useTranslation, getDeviceLocale } from '@/i18n';
-import { formatDay, formatMoney } from '@/lib/format';
-import { layout, radius, spacing, useTheme } from '@/theme';
-import { IconTile, Overline } from './finance-ui';
+import { formatMoney, monthLabel } from '@/lib/format';
+import { haptics } from '@/lib/haptics';
+import { layout, radius, spacing } from '@/theme';
+import { Overline, TrendPill } from './finance-ui';
 import { percentChange, type SpendSlice } from './insights';
 import { categoryLabel } from './labels';
 
@@ -19,33 +21,35 @@ type Props = {
   slices: SpendSlice[];
   /** Sum of the slices; shown in the middle of the ring. */
   total: number;
-  /** Spending per day of `month`, day 1 first, up to today. */
-  daily: number[];
   /** "YYYY-MM" the figures belong to. */
   month: string;
   /** Spending in the month before, for the comparison pill. `null` while unknown. */
   previousTotal: number | null;
   /** Set when only the latest expenses could be loaded: how many the chart is based on. */
   partialCount: number | null;
-  /** Count the centre number up (first view in the session). */
-  countUp: boolean;
+  /** When set, a selected category offers "See transactions" and calls this with the stored category name. */
+  onOpenCategory?: (category: string) => void;
 };
 
-const DONUT_SIZE = spacing.xxxl * 3 + spacing.lg;
+const DONUT_SIZE = spacing.xxxl * 3;
 const DONUT_THICKNESS = spacing.lg + 2;
 const DOT = spacing.sm + 2;
-const SPARK_HEIGHT = spacing.xxxl + spacing.lg;
+/** Above this system font scale the legend moves under the ring instead of beside it. */
+const STACK_FONT_SCALE = 1.15;
 
 /**
- * "Where it went": two quiet cards. The first is a donut of this month's spending by category with a legend that names
- * every slice (name, share and amount, so the chart is never colour only); the second is the daily average with a line
- * of daily spending. All numbers are sums of the loaded transactions. Each card reads as one sentence to a screen reader.
+ * "Where it went": one card with a donut of this month's spending by category and, beside it, a legend that names every
+ * slice (name and share). A legend row is the touch target for its slice: it is focused in the ring, the centre shows its
+ * amount and "See <category> transactions" opens the ledger for it. The first (largest) category starts focused; tapping
+ * it again, or "Show all", clears the focus. All numbers are sums of the loaded transactions.
  */
-export function SpendingBreakdown({ slices, total, daily, month, previousTotal, partialCount, countUp }: Props) {
+export function SpendingBreakdown({ slices, total, month, previousTotal, partialCount, onOpenCategory }: Props) {
   const { t } = useTranslation('finance');
-  const { colors } = useTheme();
+  const { fontScale } = useWindowDimensions();
   const palette = useDonutColors(slices.length, 'finance');
+  const [selected, setSelected] = useState<number | null>(0);
   const percent = useMemo(() => new Intl.NumberFormat(getDeviceLocale(), { style: 'percent', maximumFractionDigits: 0 }), []);
+  const stacked = fontScale > STACK_FONT_SCALE;
 
   const rows = slices.map((slice, i) => ({
     key: slice.category ?? '__rest__',
@@ -54,107 +58,131 @@ export function SpendingBreakdown({ slices, total, daily, month, previousTotal, 
     share: total > 0 ? slice.value / total : 0,
     color: palette[i],
   }));
+  const focus = selected !== null ? (rows[selected] ?? null) : null;
+  const focusCategory = selected !== null ? (slices[selected]?.category ?? null) : null;
 
   const change = previousTotal === null ? null : percentChange(total, previousTotal);
   const lessThanBefore = change !== null && change < 0;
 
-  const peakValue = daily.reduce((max, v) => Math.max(max, v), 0);
-  const peakIndex = daily.indexOf(peakValue);
-  const showTrend = daily.length >= 3 && peakValue > 0;
-  const average = daily.length > 0 ? total / daily.length : 0;
-  const peakDay = formatDay(`${month}-${String(peakIndex + 1).padStart(2, '0')}`);
-
   const spoken = [
     t('overview.spendingA11y', { total: formatMoney(total) }),
-    rows.map((r) => t('overview.sliceA11y', { name: r.label, percent: percent.format(r.share), amount: formatMoney(r.value) })).join(', '),
     change !== null && change !== 0 ? (lessThanBefore ? t('overview.lessThanLast', { percent: Math.abs(change) }) : t('overview.moreThanLast', { percent: change })) : null,
     partialCount !== null ? t('overview.partial', { count: partialCount }) : null,
   ]
     .filter(Boolean)
     .join('. ');
 
-  const trendSpoken = showTrend ? t('overview.trendA11y', { peak: formatMoney(peakValue), day: peakDay, average: formatMoney(Math.round(average)) }) : null;
+  const donut = (
+    <DonutChart
+      segments={rows.map((r) => ({ label: r.label, value: r.value }))}
+      size={DONUT_SIZE}
+      thickness={DONUT_THICKNESS}
+      accent="finance"
+      selectedIndex={selected}
+      label={spoken}>
+      <Text variant="title" weight="bold" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        {formatMoney(focus ? focus.value : total, { compact: true })}
+      </Text>
+      <Text variant="overline" color={focus ? 'primaryAccent' : 'textMuted'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {focus ? t('overview.centerShare', { category: focus.label, percent: percent.format(focus.share) }) : t('overview.spent')}
+      </Text>
+    </DonutChart>
+  );
+
+  const legend = (
+    <View style={{ flex: stacked ? undefined : 1, alignSelf: 'stretch', gap: spacing.xs }}>
+      {rows.map((r, i) => {
+        const active = selected === i;
+        return (
+          <PressableScale
+            key={r.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={t('overview.sliceA11y', { name: r.label, percent: percent.format(r.share), amount: formatMoney(r.value) })}
+            accessibilityHint={t('overview.sliceHint')}
+            scaleTo={1}
+            ringRadius={radius.md}
+            hitSlop={{ top: 2, bottom: 2 }}
+            onPress={() => {
+              haptics.select();
+              setSelected((current) => (current === i ? null : i));
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              minHeight: layout.minTouchTarget - spacing.xs,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.xs,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: active ? withAlpha(r.color, 0.45) : 'transparent',
+              backgroundColor: active ? withAlpha(r.color, 0.14) : 'transparent',
+              opacity: selected === null || active ? 1 : 0.7,
+            }}>
+            <View style={{ width: DOT, height: DOT, borderRadius: radius.pill, backgroundColor: r.color }} />
+            <Text variant="label" weight={active ? 'bold' : 'regular'} numberOfLines={2} style={{ flex: 1 }}>
+              {r.label}
+            </Text>
+            <Text variant="caption" weight={active ? 'bold' : 'semiBold'} numeric color={active ? 'text' : 'textSecondary'}>
+              {percent.format(r.share)}
+            </Text>
+          </PressableScale>
+        );
+      })}
+    </View>
+  );
 
   return (
-    <View style={{ gap: spacing.md }}>
-      <Card accessible accessibilityLabel={spoken} style={{ gap: spacing.lg }}>
-        <Overline>{t('overview.spendingChart')}</Overline>
-        <View style={{ alignItems: 'center' }}>
-          <DonutChart
-            segments={rows.map((r) => ({ label: r.label, value: r.value }))}
-            size={DONUT_SIZE}
-            thickness={DONUT_THICKNESS}
-            accent="finance"
-            label={t('overview.spendingChart')}>
-            <AnimatedNumber
-              value={total}
-              from={countUp ? 0 : total}
-              format={(n) => formatMoney(Math.round(n), { compact: true })}
-              variant="title"
-              weight="bold"
-              accessibilityLabel={formatMoney(total)}
-            />
-            <Text variant="overline" color="textMuted" numberOfLines={1}>
-              {t('overview.spent')}
-            </Text>
-          </DonutChart>
-        </View>
+    <Card rounded="xl" padding="none" style={{ padding: spacing.lg, gap: spacing.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.md }}>
+        <Text variant="title" weight="bold" accessibilityRole="header" numberOfLines={2} style={{ flexShrink: 1 }}>
+          {t('overview.whereItWent')}
+        </Text>
+        <Overline style={{ flexShrink: 0 }}>{monthLabel(month)}</Overline>
+      </View>
 
-        <View>
-          {rows.map((r, i) => (
-            <View
-              key={r.key}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.sm,
-                minHeight: layout.minTouchTarget,
-                borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
-                borderTopColor: colors.border,
-              }}>
-              <View style={{ width: DOT, height: DOT, borderRadius: radius.pill, backgroundColor: r.color }} />
-              <Text variant="body" weight="medium" numberOfLines={1} style={{ flex: 1 }}>
-                {r.label}
-              </Text>
-              <Text variant="caption" weight="semiBold" numeric color="textMuted">
-                {percent.format(r.share)}
-              </Text>
-              <View style={{ minWidth: spacing.xxxl + spacing.xl, alignItems: 'flex-end' }}>
-                <Text variant="label" weight="bold" numeric numberOfLines={1}>
-                  {formatMoney(r.value, { compact: true })}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {partialCount !== null ? (
+      {change !== null && change !== 0 ? (
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm }}>
+          <TrendPill text={`${Math.abs(change)}%`} direction={lessThanBefore ? 'down' : 'up'} good={lessThanBefore} />
           <Text variant="caption" color="textSecondary">
-            {t('overview.partial', { count: partialCount })}
+            {t('overview.vsLastMonth')}
           </Text>
-        ) : null}
-      </Card>
-
-      {showTrend ? (
-        <Card accessible accessibilityLabel={trendSpoken ?? undefined} style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md }}>
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <Overline>{t('overview.dailyTitle')}</Overline>
-              <Text variant="headline" numeric numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {formatMoney(Math.round(average), { compact: true })}
-              </Text>
-              <Text variant="caption" color="textSecondary">
-                {t('overview.perDay')}
-              </Text>
-            </View>
-            <IconTile icon="pulse" tone="info" />
-          </View>
-          <Sparkline values={daily} accent="finance" height={SPARK_HEIGHT} />
-          <Text variant="caption" numeric color="textSecondary">
-            {t('overview.peakNote', { peak: formatMoney(peakValue, { compact: true }), day: peakDay })}
-          </Text>
-        </Card>
+        </View>
       ) : null}
-    </View>
+
+      <View style={{ flexDirection: stacked ? 'column' : 'row', alignItems: 'center', gap: spacing.lg }}>
+        {donut}
+        {legend}
+      </View>
+
+      {focus ? (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: stacked ? 'column' : 'row', gap: spacing.sm }}>
+          {onOpenCategory && focusCategory ? (
+            <Button
+              title={t('overview.seeCategory', { category: focus.label })}
+              size="md"
+              variant="primary"
+              rightIcon="arrow-forward"
+              onPress={() => onOpenCategory(focusCategory)}
+              style={{ flex: stacked ? undefined : 1 }}
+            />
+          ) : null}
+          <Button
+            title={t('overview.showAll')}
+            size="md"
+            variant="tertiary"
+            fullWidth={stacked || !(onOpenCategory && focusCategory)}
+            onPress={() => setSelected(null)}
+          />
+        </View>
+      ) : null}
+
+      {partialCount !== null ? (
+        <Text variant="caption" color="textSecondary">
+          {t('overview.partial', { count: partialCount })}
+        </Text>
+      ) : null}
+    </Card>
   );
 }

@@ -1,20 +1,21 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import { View, type TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AmountField } from '@/components/finance/amount-field';
 import { CategoryPicker } from '@/components/finance/category-picker';
 import { CUSTOM_CATEGORY_ICON, PAYMENT_ICONS, categoryIcon } from '@/components/finance/category-icons';
 import { failureMessage } from '@/components/finance/failure-message';
-import { FormCard, parseAmount } from '@/components/finance/form-parts';
+import { FormCard, FormSection, TypeSwitch, parseAmount } from '@/components/finance/form-parts';
 import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from '@/components/finance/labels';
+import type { TransactionDraft } from '@/components/finance/receipt';
 import { NO_DESCRIPTION } from '@/components/finance/transaction-row';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DateField, toIsoDay } from '@/components/ui/date-field';
 import { Input } from '@/components/ui/input';
 import { Screen } from '@/components/ui/screen';
-import { Segmented } from '@/components/ui/segmented';
 import { Text } from '@/components/ui/text';
 import { useDeleteTransaction, useSaveTransaction } from '@/features/finance/hooks';
 import {
@@ -25,10 +26,11 @@ import {
   type Transaction,
 } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
+import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
-import { spacing, type ThemeColors } from '@/theme';
+import { layout, spacing, useTheme, type ThemeColors } from '@/theme';
 
 const TYPE_VALUES: EditableTransactionType[] = ['expense', 'income', 'investment'];
 
@@ -37,6 +39,10 @@ const TYPE_TONE: Record<EditableTransactionType, keyof ThemeColors> = {
   income: 'successText',
   investment: 'warningText',
 };
+
+/** Columns of the category grid and of the payment-method row on the sheet. */
+const CATEGORY_COLUMNS = 4;
+const PAYMENT_COLUMNS = 5;
 
 const PRESET_AMOUNTS = [100, 500, 1000, 2000, 5000];
 
@@ -50,25 +56,40 @@ function parseTransaction(raw?: string): Transaction | null {
   }
 }
 
+function parseDraft(raw?: string): TransactionDraft | null {
+  try {
+    return raw ? (JSON.parse(raw) as TransactionDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function TransactionScreen() {
   const router = useRouter();
   const notify = useNotify();
+  const { colors, accent } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation('finance');
-  const params = useLocalSearchParams<{ tx?: string }>();
+  const params = useLocalSearchParams<{ tx?: string; draft?: string }>();
   const existing = useMemo(() => parseTransaction(params.tx), [params.tx]);
+  // A scanned receipt opens the form filled in (a new transaction, not an edit). Whatever the scan could not find is
+  // empty here, and a category it did not find leaves none selected.
+  const draft = useMemo(() => (existing ? null : parseDraft(params.draft)), [existing, params.draft]);
+  const draftCategory = draft?.category ?? '';
+  const draftKnownCategory = draft ? CATEGORY_OPTIONS[draft.type].includes(draftCategory) : false;
   const isTransfer = existing?.type === 'transfer';
 
-  const initialType: EditableTransactionType = existing && existing.type !== 'transfer' ? existing.type : 'expense';
+  const initialType: EditableTransactionType = existing && existing.type !== 'transfer' ? existing.type : (draft?.type ?? 'expense');
   const knownCategory = existing ? CATEGORY_OPTIONS[initialType].includes(existing.category) : false;
 
   const [type, setType] = useState<EditableTransactionType>(initialType);
-  const [amount, setAmount] = useState(existing ? String(Number(existing.amount)) : '');
-  const [category, setCategory] = useState(existing ? (knownCategory ? existing.category : CUSTOM) : '');
-  const [customCategory, setCustomCategory] = useState(existing && !knownCategory ? existing.category : '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(existing?.paymentMethod ?? 'upi');
-  const [description, setDescription] = useState(existing && existing.description !== NO_DESCRIPTION ? existing.description : '');
-  const [date, setDate] = useState(existing?.date.slice(0, 10) ?? toIsoDay(new Date()));
-  const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [amount, setAmount] = useState(existing ? String(Number(existing.amount)) : draft && draft.amount > 0 ? String(draft.amount) : '');
+  const [category, setCategory] = useState(existing ? (knownCategory ? existing.category : CUSTOM) : draft && draftCategory ? (draftKnownCategory ? draftCategory : CUSTOM) : '');
+  const [customCategory, setCustomCategory] = useState(existing && !knownCategory ? existing.category : draft && draftCategory && !draftKnownCategory ? draftCategory : '');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(existing?.paymentMethod ?? draft?.paymentMethod ?? 'upi');
+  const [description, setDescription] = useState(existing && existing.description !== NO_DESCRIPTION ? existing.description : (draft?.description ?? ''));
+  const [date, setDate] = useState(existing?.date.slice(0, 10) ?? draft?.date ?? toIsoDay(new Date()));
+  const [notes, setNotes] = useState(existing?.notes ?? draft?.notes ?? '');
   const [submitted, setSubmitted] = useState(false);
 
   const descriptionRef = useRef<TextInput>(null);
@@ -153,15 +174,45 @@ export default function TransactionScreen() {
     );
   }
 
-  const typeOptions = TYPE_VALUES.map((value) => ({ value, label: transactionTypeLabel(value) }));
+  const typeOptions = TYPE_VALUES.map((value) => ({
+    value,
+    label: transactionTypeLabel(value),
+    tint: value === 'expense' ? colors.error : value === 'income' ? colors.success : colors.warning,
+    onTint: value === 'expense' ? colors.onError : value === 'income' ? colors.onSuccess : colors.onWarning,
+  }));
+  const finance = accent('finance');
+  const amountKnown = Number.isFinite(amountValue) && amountValue > 0;
+  const saveLabel = existing ? t('transaction.saveChanges') : t(amountKnown ? `transaction.save.${type}With` : `transaction.save.${type}`, { amount: formatMoney(amountValue) });
 
   return (
-    <Screen topInset={false}>
+    <Screen
+      topInset={false}
+      contentContainerStyle={{ gap: spacing.xl }}
+      footer={
+        <View
+          style={{
+            paddingHorizontal: layout.screenPadding,
+            paddingTop: spacing.md,
+            paddingBottom: insets.bottom + spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            backgroundColor: colors.background,
+          }}>
+          <Button title={saveLabel} size="lg" onPress={submit} loading={save.isPending} />
+        </View>
+      }>
       <Stack.Screen options={{ title: existing ? t('transaction.titleEdit') : t('transaction.titleNew') }} />
 
-      <Segmented options={typeOptions} value={type} onChange={changeType} accessibilityLabel={t('transaction.typeLabel')} />
+      {draft ? (
+        <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">
+          {t('scan.prefilled')}
+        </Text>
+      ) : null}
+
+      <TypeSwitch options={typeOptions} value={type} onChange={changeType} accessibilityLabel={t('transaction.typeLabel')} />
 
       <AmountField
+        variant="plain"
         label={t('transaction.amountLabel', { type: transactionTypeLabel(type) })}
         value={amount}
         onChangeText={setAmount}
@@ -173,14 +224,16 @@ export default function TransactionScreen() {
         onPreset={addPreset}
       />
 
-      <FormCard title={t('transaction.category')} icon="pricetag-outline" error={submitted ? categoryError : null}>
+      <FormSection title={t('transaction.category')} error={submitted ? categoryError : null}>
         <CategoryPicker
           accessibilityLabel={t('transaction.category')}
           value={category}
           onChange={setCategory}
+          columns={CATEGORY_COLUMNS}
+          tint={{ solid: finance.solid, text: finance.text }}
           options={[
             ...CATEGORY_OPTIONS[type].map((name) => ({ value: name, label: categoryLabel(name), icon: categoryIcon(name) })),
-            { value: CUSTOM, label: t('categories.custom'), icon: CUSTOM_CATEGORY_ICON },
+            { value: CUSTOM, label: t('categories.custom'), icon: CUSTOM_CATEGORY_ICON, dashed: true },
           ]}
         />
         {category === CUSTOM ? (
@@ -194,16 +247,18 @@ export default function TransactionScreen() {
             onSubmitEditing={() => descriptionRef.current?.focus()}
           />
         ) : null}
-      </FormCard>
+      </FormSection>
 
-      <FormCard title={t('transaction.paidWith')} icon="card-outline">
+      <FormSection title={t('transaction.paidWith')}>
         <CategoryPicker
           accessibilityLabel={t('transaction.paidWith')}
           value={paymentMethod}
           onChange={setPaymentMethod}
+          columns={PAYMENT_COLUMNS}
+          tint={{ solid: colors.info, text: colors.infoText }}
           options={PAYMENT_METHODS.map((method) => ({ value: method.value, label: paymentMethodLabel(method.value), icon: PAYMENT_ICONS[method.value] }))}
         />
-      </FormCard>
+      </FormSection>
 
       <FormCard>
         <Input
@@ -229,7 +284,6 @@ export default function TransactionScreen() {
         />
       </FormCard>
 
-      <Button title={existing ? t('transaction.saveChanges') : t('transaction.add')} onPress={submit} loading={save.isPending} />
       {existing ? <Button title={t('transaction.delete')} variant="destructive" leftIcon="trash-outline" onPress={confirmDelete} loading={remove.isPending} /> : null}
     </Screen>
   );

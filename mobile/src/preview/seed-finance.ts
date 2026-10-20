@@ -208,18 +208,24 @@ export function buildGoals() {
 
 /** A handful of recurring payments, some due within a week, for the Subscriptions section. */
 export function buildSubscriptions(): SubscriptionsResponse {
-  const sub = (id: string, name: string, amount: number, billingCycle: Subscription['billingCycle'], category: string, dueIn: number, paymentMethod: PaymentMethod): Subscription => ({
+  const monthly = (amount: number, cycle: Subscription['billingCycle']) =>
+    cycle === 'weekly' ? (amount * 52) / 12 : cycle === 'quarterly' ? amount / 3 : cycle === 'semi_annually' ? amount / 6 : cycle === 'yearly' ? amount / 12 : amount;
+  const sub = (id: string, name: string, amount: number, billingCycle: Subscription['billingCycle'], category: string, dueIn: number, paymentMethod: PaymentMethod, status: Subscription['status'] = 'active'): Subscription => ({
     id,
     name,
     amount,
+    currency: 'INR',
     billingCycle,
     category,
-    status: 'active',
+    status,
     nextBillingDate: isoOf(daysAgo(-dueIn)),
     paymentMethod,
     autoRenew: true,
-    notes: null,
-    daysRemaining: dueIn,
+    reminderDays: 7,
+    daysUntilRenewal: dueIn,
+    isDueSoon: status === 'active' && dueIn >= 0 && dueIn <= 7,
+    isOverdue: status === 'active' && dueIn < 0,
+    monthlyEquivalent: Math.round(monthly(amount, billingCycle) * 100) / 100,
   });
   const data: Subscription[] = [
     sub('sub-1', 'Netflix', 649, 'monthly', 'Entertainment', 3, 'card'),
@@ -227,16 +233,22 @@ export function buildSubscriptions(): SubscriptionsResponse {
     sub('sub-3', 'iCloud 200 GB', 75, 'monthly', 'Utilities', 5, 'upi'),
     sub('sub-4', 'Cult.fit membership', 3600, 'quarterly', 'Health', 27, 'bank_transfer'),
     sub('sub-5', 'Notion Plus', 4800, 'yearly', 'Productivity', 84, 'card'),
+    sub('sub-6', 'Old gym pass', 999, 'monthly', 'Health', -12, 'upi', 'cancelled'),
   ];
-  const monthly = (s: Subscription) => (s.billingCycle === 'weekly' ? s.amount * 4 : s.billingCycle === 'quarterly' ? s.amount / 3 : s.billingCycle === 'semi_annually' ? s.amount / 6 : s.billingCycle === 'yearly' ? s.amount / 12 : s.amount);
+  const active = data.filter((s) => s.status === 'active');
+  const burn = active.reduce((sum, s) => sum + (s.monthlyEquivalent ?? 0), 0);
   return {
     success: true,
     data,
     summary: {
-      totalMonthlyBurnRate: Math.round(data.reduce((sum, s) => sum + monthly(s), 0)),
-      activeCount: data.length,
-      dueIn7DaysCount: data.filter((s) => (s.daysRemaining ?? 99) <= 7).length,
-      upcomingRenewals: data.filter((s) => (s.daysRemaining ?? 99) <= 30),
+      totalSubscriptions: data.length,
+      activeCount: active.length,
+      pausedCount: 0,
+      cancelledCount: data.length - active.length,
+      monthlyBurnRate: Math.round(burn),
+      yearlyBurnRate: Math.round(burn * 12),
+      dueIn7DaysCount: active.filter((s) => s.isDueSoon).length,
+      overdueCount: active.filter((s) => s.isOverdue).length,
     },
   };
 }

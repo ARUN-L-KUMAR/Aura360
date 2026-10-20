@@ -9,7 +9,7 @@ import { useTranslation } from '@/i18n';
 import { formatDay, formatMoney } from '@/lib/format';
 import { layout, radius, spacing, useTheme, type ThemeColors } from '@/theme';
 import { IconTile, type Tone } from './finance-ui';
-import { categoryIcon } from './category-icons';
+import { getCategoryLucideIcon } from './lucide-category-icons';
 import { categoryLabel, paymentMethodLabel, transactionTypeLabel } from './labels';
 
 function typeTone(type: TransactionType): Tone {
@@ -89,7 +89,7 @@ export const TransactionRow = memo(function TransactionRow({ tx, divider, hideDa
         borderBottomWidth: divider ? StyleSheet.hairlineWidth : 0,
         borderBottomColor: colors.border,
       }}>
-      <IconTile icon={categoryIcon(tx.category)} tone={typeTone(tx.type)} size={layout.minTouchTarget - spacing.xs} />
+      <IconTile icon={getCategoryLucideIcon(tx.category)} tone={typeTone(tx.type)} size={layout.minTouchTarget - spacing.xs} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="body" weight="semiBold" numberOfLines={1}>
           {description}

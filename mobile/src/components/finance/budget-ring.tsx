@@ -1,12 +1,12 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo } from 'react';
+import { AlertCircle, AlertTriangle } from 'lucide-react-native';
 
 import { ProgressRing } from '@/components/viz/progress-ring';
 import type { Budget } from '@/features/finance/types';
 import { useTranslation } from '@/i18n';
 import { formatMoney } from '@/lib/format';
 import { useTheme, type ModuleKey } from '@/theme';
-import { categoryIcon } from './category-icons';
+import { getCategoryLucideIcon } from './lucide-category-icons';
 import { budgetLevel } from './insights';
 import { categoryLabel } from './labels';
 
@@ -41,13 +41,16 @@ export const BudgetRing = memo(function BudgetRing({ budget, size, thickness }: 
       accent={budgetRingAccent(level)}
       label={t('budgets.ringLabel', { category: categoryLabel(budget.category) })}
       valueText={t('budgets.ringValue', { spent: formatMoney(budget.spent), limit: formatMoney(budget.amount), percent: budget.percentage })}>
-      {level === 'over' ? (
-        <Ionicons name="alert-circle" size={24} color={colors.errorText} />
-      ) : level === 'near' ? (
-        <Ionicons name="warning" size={22} color={colors.warningText} />
-      ) : (
-        <Ionicons name={categoryIcon(budget.category)} size={22} color={tone.text} />
-      )}
+      {(() => {
+        if (level === 'over') {
+          return <AlertTriangle size={24} color={colors.errorText} />;
+        }
+        if (level === 'near') {
+          return <AlertCircle size={22} color={colors.warningText} />;
+        }
+        const CategoryLucide = getCategoryLucideIcon(budget.category);
+        return <CategoryLucide size={22} color={tone.text} />;
+      })()}
     </ProgressRing>
   );
 });
