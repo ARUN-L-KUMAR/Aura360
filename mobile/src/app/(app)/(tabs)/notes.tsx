@@ -12,8 +12,10 @@ import { useUndoableRemove } from '@/components/notes/use-undoable-remove';
 import { Chip, ChipRow } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
-import { FloatingAction } from '@/components/ui/floating-action';
+import { CategoryFab, CategoryHeader } from '@/components/ui/category-template';
 import { IconButton } from '@/components/ui/icon-button';
+import { isWaitingForNetwork, OfflineState } from '@/components/ui/load-states';
+import { SummaryStrip } from '@/components/ui/summary-strip';
 import { SearchBar } from '@/components/ui/search-bar';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -39,7 +41,8 @@ export default function NotesScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { t } = useTranslation('notes');
-  const { data, isPending, isError, error, refetch, isRefetching } = useNotes();
+  const query = useNotes();
+  const { data, isPending, isError, error, refetch, isRefetching } = query;
   const { mutate: patchNote } = usePatchNote();
   const { mutateAsync: deleteNote } = useDeleteNote();
 
@@ -87,16 +90,24 @@ export default function NotesScreen() {
     const tags = new Map<string, number>();
     let active = 0;
     let pinned = 0;
+    let tasks = 0;
+    let tasksDone = 0;
     for (const note of notes) {
       if (note.isArchived) continue;
       active += 1;
       if (note.isPinned) pinned += 1;
+      for (const item of checklistOf(note) ?? []) {
+        tasks += 1;
+        if (item.completed) tasksDone += 1;
+      }
       if (note.category) categories.set(note.category, (categories.get(note.category) ?? 0) + 1);
       for (const tag of new Set(note.tags ?? [])) tags.set(tag, (tags.get(tag) ?? 0) + 1);
     }
     return {
       all: active,
       pinned,
+      tasks,
+      tasksDone,
       archived: notes.length - active,
       categories: [...categories].sort(byName),
       tags: [...tags].sort(byName),
@@ -208,6 +219,18 @@ export default function NotesScreen() {
 
   const header = (
     <View style={{ gap: spacing.md }}>
+      <CategoryHeader module="notes" title={t('title')} />
+      {summary.all > 0 ? (
+        <SummaryStrip
+          accent="notes"
+          ring={summary.tasks > 0 ? { value: summary.tasksDone, max: summary.tasks, center: t('summary.ringCenter', { done: summary.tasksDone, total: summary.tasks }), label: t('summary.tasks'), spoken: t('summary.tasksSpoken', { done: summary.tasksDone, total: summary.tasks }) } : undefined}
+          figures={[
+            { key: 'notes', label: t('summary.notes'), value: summary.all },
+            { key: 'pinned', label: t('summary.pinned'), value: summary.pinned },
+            { key: 'left', label: t('summary.tasksLeft'), value: summary.tasks - summary.tasksDone },
+          ]}
+        />
+      ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
         <View style={{ flex: 1 }}>
           <SearchBar placeholder={t('search.placeholder')} accessibilityLabel={t('search.placeholder')} value={search} onChangeText={setSearch} debounceMs={200} />
@@ -244,7 +267,9 @@ export default function NotesScreen() {
   );
 
   let empty;
-  if (isPending) {
+  if (isWaitingForNetwork(query)) {
+    empty = <OfflineState description={t('offline.description')} onRetry={() => refetch()} />;
+  } else if (isPending) {
     empty =
       mode === 'grid' ? (
         <View style={{ flexDirection: 'row', gap: layout.itemGap }}>
@@ -285,6 +310,7 @@ export default function NotesScreen() {
         // a new column count needs a new list
         key={mode}
         title={t('title')}
+        hideTitle
         data={visible}
         numColumns={mode === 'grid' ? 2 : 1}
         renderItem={renderItem}
@@ -295,7 +321,7 @@ export default function NotesScreen() {
         // a grid row holds two tiles, so it needs fewer rows on the first pass
         initialNumToRender={mode === 'grid' ? 5 : 8}
         windowSize={mode === 'grid' ? 7 : 9}
-        fab={<FloatingAction accent="notes" accessibilityLabel={t('fab')} onPress={() => openNote(router)} />}
+        fab={<CategoryFab module="notes" label={t('fab')} onPress={() => openNote(router)} />}
       />
       <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={menuNote?.title} actions={menuActions} />
     </>

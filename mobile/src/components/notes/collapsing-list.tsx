@@ -8,7 +8,7 @@ import { useHasHeader } from '@/components/ui/chrome';
 import { useListMotion } from '@/components/ui/motion';
 import { useRefreshControl } from '@/components/ui/pull-to-refresh';
 import { useScreenPadding } from '@/components/ui/screen';
-import { layout, spacing, useTheme } from '@/theme';
+import { layout, spacing } from '@/theme';
 
 /** Room under the last row so the floating action button never covers it. */
 const FAB_CLEARANCE = spacing.xxxl + spacing.xl;
@@ -29,6 +29,8 @@ type Props<T> = {
   numColumns?: number;
   /** Floating action button. */
   fab?: ReactNode;
+  /** Skip the large title (the screen draws its own header, such as `CategoryHeader`, in `header`). */
+  hideTitle?: boolean;
   extraData?: unknown;
   /** Rows rendered on the first pass (default 8; a grid needs fewer because each row holds several tiles). */
   initialNumToRender?: number;
@@ -41,8 +43,7 @@ type Props<T> = {
  * pull-to-refresh, but the content is a FlatList instead of a ScrollView. In a single column the rows reflow smoothly
  * when one leaves; rows add their own enter / exit motion with `useListMotion`.
  */
-export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, extraData, initialNumToRender = 8, windowSize = 9 }: Props<T>) {
-  const { colors } = useTheme();
+export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtractor, header, empty, onRefresh, refreshing, numColumns = 1, fab, hideTitle = false, extraData, initialNumToRender = 8, windowSize = 9 }: Props<T>) {
   const insets = useSafeAreaInsets();
   // Inside the tabs a persistent header already shows the page and the status-bar space, so no second app bar here.
   const hasHeader = useHasHeader();
@@ -56,7 +57,7 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
   const { layout: reflow } = useListMotion();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1 }}>
       <Animated.FlatList<T>
         data={data}
         renderItem={renderItem}
@@ -67,7 +68,7 @@ export function CollapsingList<T>({ title, subtitle, data, renderItem, keyExtrac
         columnWrapperStyle={numColumns > 1 ? { gap: layout.itemGap } : undefined}
         ListHeaderComponent={
           <View style={{ gap: layout.itemGap, marginBottom: spacing.xs }}>
-            <LargeTitle title={title} subtitle={subtitle} scrollY={hasHeader ? undefined : scrollY} />
+            {hideTitle ? null : <LargeTitle title={title} subtitle={subtitle} scrollY={hasHeader ? undefined : scrollY} />}
             {header}
           </View>
         }
