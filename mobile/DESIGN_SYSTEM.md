@@ -51,7 +51,7 @@ Status is never colour alone: pair it with an icon or label.
 
 ## Typography
 
-One family, Inter, weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/theme/typography.ts)). Always use
+One family, Geist (with Geist Mono for code-like text), weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/theme/typography.ts)). Always use
 `<Text variant weight>`; never set `fontSize`, `fontFamily` or `fontWeight` in a style.
 
 | Variant | Size / line | Default weight | Use |
@@ -65,6 +65,48 @@ One family, Inter, weights 400 / 500 / 600 / 700 only ([`typography.ts`](src/the
 
 `<Text numeric>` turns on tabular digits for amounts and timers. Text follows the system font size up to 1.4x
 (`MAX_FONT_SCALE`); lay out with `minHeight` and flexible containers, not fixed heights.
+
+## Navigation
+
+The bottom bar has five fixed slots: **Home**, two pinned modules (Finance and Fashion until the user changes them), the raised
+**+** and **More**. All ten tab routes still exist, so deep links are unchanged.
+
+| Piece | File | What it does |
+|---|---|---|
+| `AppTabs` | `components/app-tabs.tsx` | The bar. A module that is not pinned shows in the More slot (name and icon) while it is open. Long press a pinned tab to swap it. |
+| `QuickLogSheet` | `components/nav/quick-log-sheet.tsx` | The **+**: every "create" flow (transaction, meal, workout, activity, note, time entry, link, wardrobe item). |
+| `MoreHubSheet` | `components/nav/more-hub-sheet.tsx` | Every module with its item count, shortcuts to Search, Notifications and Settings, and "Customize bar". |
+| `SlotPicker` | `components/nav/slot-picker.tsx` | Chooses the pinned modules; used by the More sheet and by Settings. |
+| `useTabSlots` | `features/nav/use-tab-slots.ts` | The choice, stored on the device (AsyncStorage `aura.nav.slots`); pure rules in `features/nav/slots.ts`. |
+
+## Home
+
+Home is a dashboard built from a layout the person chooses (**Customize Home**: the options icon in the Home header, or
+Settings, Home). The layout is `modules` (the modules they follow, in order) plus four switchable sections: day score, Up next,
+shortcut tiles and the activity chart. Home draws the sections they kept, then one card for each module they follow. People who
+only use Finance and Fashion, only Notes, Saved and Skincare, or only Food and Fitness get a Home about just that. The server
+keeps no per-person dashboard setting, so the choice is stored on the phone (AsyncStorage `aura.home.layout.v1`) and the
+customize screen says so. A new install starts with everything on and offers the choice once (`FocusPrompt`).
+
+| Piece | File | What it does |
+|---|---|---|
+| Layout rules | `features/home/layout.ts` | Pure: the default, the quick picks, toggling and ordering modules, which goals the day score uses, which Up next suggestions fit. Tested in `tests/home-layout.test.ts`. |
+| `useHomeLayout` | `features/home/use-home-layout.ts` | The shared store; `ready` is false until the saved choice has been read, so Home waits instead of flashing the default. |
+| `HomeWidgets` | `components/home/home-widgets.tsx` | Composes Home from the layout. Focus and Workouts are half cards and share a row. |
+| Module cards | `components/home/*.tsx`, `components/home/widgets/*.tsx` | One glass card per module: money, focus, workouts, food, pinned notes, saved, skincare, fashion. Each has its own loading, empty and offline state. |
+| Customize screen | `app/(app)/home/customize.tsx` | Quick picks, a reorderable list (arrows plus a switch, so it works without dragging and with a screen reader), the sections and a reset. Changes apply and save at once. |
+
+The day score only counts goals whose module is on Home (calories need Food, active minutes need Fitness, the budget needs
+Finance); with none of them on, the gauge is left out. Up next only suggests actions from modules on Home.
+
+## Shared kit for module screens
+
+`components/ui/section-kit.tsx` (`RingCard`, `Heading`, `MetricCard`, `MetricGrid`, `MetricCell`, `HeroFigure`),
+`components/ui/summary-strip.tsx` (ring plus counted figures above a list) and `components/ui/load-states.tsx` (`LoadError`,
+`RefreshError`, `OfflineState`, `isWaitingForNetwork`). Fitness, Food, Skincare and Fashion keep their own older copies of
+the card kit; new screens should use these. `CategoryHeader` / `CategoryFab` accept every module including Notes, Saved and AI.
+`DonutChart` takes `selectedIndex` and `MiniBars` takes `onSelect` / `selectedIndex` for tappable charts (a donut is driven by
+its legend rows).
 
 ## Spacing, shape, elevation
 
@@ -227,6 +269,7 @@ npm run preview:web                                  every default screen, dark
 npm run preview:web -- home finance --scheme light   some screens (names or route fragments), light
 npm run preview:web -- fitness --scheme both --height 1800   both schemes, a long screen
 npm run preview:web -- /finance/budget               any route path
+npm run preview:web -- "/?home=health" --height 2800   Home as if Health was chosen (also moneyStyle, notesCare, everything, empty)
 ```
 
 Options: `--scheme light|dark|both`, `--height` / `--width` (CSS px), `--wait 15000`, `--skip-export` (reuse the last export in
