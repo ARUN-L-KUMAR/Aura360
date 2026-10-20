@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { activitySeries, initialOf, streakOf, todayIndexOf } from '@/components/home/derive';
@@ -23,6 +23,8 @@ const STREAK_TILE = layout.minTouchTarget - spacing.xs; // 40
  */
 export const ActivitySection = memo(function ActivitySection({ chart, index }: { chart: Dashboard['chart']; index: number }) {
   const { t } = useTranslation('home');
+  // Tapping a bar shows that day's count under the chart; tapping it again clears it.
+  const [selected, setSelected] = useState<number | null>(null);
 
   const model = useMemo(() => {
     const series = activitySeries(chart);
@@ -50,7 +52,17 @@ export const ActivitySection = memo(function ActivitySection({ chart, index }: {
           showValues
           height={BAR_AREA}
           accessibilityLabel={t('activity.chartLabel', { count: model.series.length, summary })}
+          selectedIndex={selected}
+          onSelect={(i) => setSelected((current) => (current === i ? null : i))}
+          barLabel={(i, value) => t('activity.barLabel', { day: model.days[i], count: value })}
         />
+        <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite" style={{ textAlign: 'center' }}>
+          {selected === null
+            ? t('activity.tapHint')
+            : model.series[selected] > 0
+              ? t('activity.selected', { day: model.days[selected], count: model.series[selected] })
+              : t('activity.selectedNone', { day: model.days[selected] })}
+        </Text>
         <Divider />
         <View style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>

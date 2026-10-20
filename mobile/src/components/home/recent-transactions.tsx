@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
+import { openTransaction } from '@/components/finance/transaction-row';
 import { memo } from 'react';
 import { View } from 'react-native';
 
@@ -15,6 +16,8 @@ import { formatDay, formatMoney } from '@/lib/format';
 import { radius, spacing, useTheme, type ThemeColors } from '@/theme';
 
 const TILE = spacing.xxl + spacing.sm; // 40
+/** Home shows only the latest few; the Ledger has the rest. */
+const RECENT_COUNT = 3;
 
 type Look = { icon: IconName; bg: keyof ThemeColors; fg: keyof ThemeColors; tone: keyof ThemeColors; sign: string; label: 'income' | 'expense' | 'investment' | 'transfer' };
 
@@ -74,7 +77,7 @@ const TransactionRow = memo(function TransactionRow({ tx, divider, onOpen }: { t
 export const RecentTransactions = memo(function RecentTransactions({ transactions, index }: { transactions: DashboardTransaction[]; index: number }) {
   const { t } = useTranslation('home');
   const router = useRouter();
-  const openFinance = () => router.push('/finance');
+  const shown = transactions.slice(0, RECENT_COUNT);
   return (
     <Section index={index}>
       <SectionHead
@@ -95,7 +98,7 @@ export const RecentTransactions = memo(function RecentTransactions({ transaction
             onAction={() => router.push('/finance/transaction')}
           />
         ) : (
-          transactions.map((tx, i) => <TransactionRow key={tx.id} tx={tx} divider={i < transactions.length - 1} onOpen={openFinance} />)
+          shown.map((tx, i) => <TransactionRow key={tx.id} tx={tx} divider={i < shown.length - 1} onOpen={() => openTransaction(router, tx)} />)
         )}
       </Card>
     </Section>

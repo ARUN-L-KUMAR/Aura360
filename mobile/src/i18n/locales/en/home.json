@@ -7,65 +7,9 @@
     "description": "Connect to the internet to load your dashboard.",
     "retry": "Try again"
   },
-  "quickActions": {
-    "title": "Quick actions",
-    "note": {
-      "label": "New note",
-      "hint": "Opens the note editor",
-      "caption": "Capture a thought or idea"
-    },
-    "transaction": {
-      "label": "Transaction",
-      "hint": "Opens the add transaction form",
-      "caption": "Log income or spending"
-    },
-    "meal": {
-      "label": "Log meal",
-      "hint": "Opens the meal form",
-      "caption": "Track what you eat"
-    },
-    "workout": {
-      "label": "Workout",
-      "hint": "Opens the workout form",
-      "caption": "Record a training session"
-    },
-    "description": "Jump straight into the things you log most",
-    "cardLabel": "{{label}}. {{caption}}"
-  },
-  "overview": {
-    "total": {
-      "label": "Total activities",
-      "today": "{{count}} today",
-      "up": "Up {{value}} on yesterday",
-      "down": "Down {{value}} on yesterday",
-      "spoken": "{{label}}: {{value}}, {{trend}}, {{today}}",
-      "spokenFlat": "{{label}}: {{value}}, {{today}}"
-    },
-    "finance": {
-      "label": "Finance logs"
-    },
-    "fitness": {
-      "label": "Fitness sessions"
-    },
-    "food": {
-      "label": "Meals tracked"
-    },
-    "tileLabel": "{{label}}: {{value}}, {{percent}} percent of all your entries",
-    "tileHint": "Opens {{module}}"
-  },
   "month": {
-    "title": "This month",
     "seeAll": "See all",
-    "seeAllLabel": "See all finance",
-    "income": "Income",
-    "expense": "Spent",
-    "investment": "Invested",
-    "figureLabel": "{{label}} this month, {{amount}}",
-    "net": "Net",
-    "chartLabel": "Income, spending and investments this month",
-    "cardLabel": "{{title}}. {{income}}, {{expense}}, {{investment}}. {{net}}",
-    "cardHint": "Opens finance",
-    "description": "Income, spending and investments so far"
+    "seeAllLabel": "See all finance"
   },
   "activity": {
     "title": "Activity overview",
@@ -80,7 +24,11 @@
       "current_other": "{{count}} day streak",
       "summary": "Active on {{done}} of {{total}} days",
       "dotsLabel": "{{done}} of {{total}} days active, today is {{day}}"
-    }
+    },
+    "selected": "{{day}}: {{count}} activities",
+    "selectedNone": "{{day}}: nothing logged",
+    "barLabel": "{{day}}, {{count}} activities. Shows details.",
+    "tapHint": "Tap a bar to see that day"
   },
   "modules": {
     "title": "Your modules",
@@ -107,24 +55,8 @@
     },
     "investment": "Invested",
     "transfer": "Transfer",
-    "rowHint": "Opens finance",
+    "rowHint": "Opens the transaction",
     "description": "Your latest income and spending"
-  },
-  "shortcuts": {
-    "title": "Shortcuts",
-    "targets": {
-      "label": "Daily targets",
-      "subtitle": "Workouts and goals"
-    },
-    "insights": {
-      "label": "Health insights",
-      "subtitle": "Meals and nutrition"
-    },
-    "ask": {
-      "label": "Ask Aura",
-      "subtitle": "Questions about your data"
-    },
-    "description": "Quick ways into your goals and insights"
   },
   "module": {
     "notFound": {
@@ -140,7 +72,341 @@
     "subtitleIdle": "Your notes, money, health and habits in one place.",
     "today": "Today",
     "streak": "Day streak",
-    "week": "Active this week",
-    "statLabel": "{{label}}: {{value}}"
+    "week": "Active this week"
+  },
+  "today": {
+    "subtitleMeals_one": "{{count}} meal logged",
+    "subtitleMeals_other": "{{count}} meals logged",
+    "subtitleSpent": "{{amount}} spent",
+    "subtitleQuiet": "Nothing logged yet today. A good moment to start.",
+    "rings": {
+      "calories": "Calories",
+      "move": "Move",
+      "budget": "Budget",
+      "caloriesValue": "{{done}} of {{goal}} kcal today",
+      "moveValue": "{{done}} of {{goal}} active minutes this week",
+      "budgetValue": "{{percent}} percent of this month's budget used",
+      "budgetNone": "No budget set this month",
+      "percent": "{{value}}%",
+      "setBudget": "Set one",
+      "kcalShort": "{{value}} kcal",
+      "minShort": "{{value}} min",
+      "ringHint": "Opens {{module}}"
+    }
+  },
+  "upNext": {
+    "title": "Up next",
+    "description": "Suggestions for right now, based on what you have logged today",
+    "logMeal": {
+      "label": "Log a meal",
+      "hint": "Opens the meal form",
+      "cta": "Log"
+    },
+    "workout": {
+      "label": "Start a workout",
+      "hint": "Opens the workout screen",
+      "cta": "Start"
+    },
+    "startTimer": {
+      "label": "Track your time",
+      "hint": "Opens the time tracker",
+      "cta": "Track"
+    },
+    "logSpending": {
+      "label": "Add today's spending",
+      "hint": "Opens the transaction form",
+      "cta": "Add"
+    },
+    "allDone": "You are all caught up for now."
+  },
+  "timer": {
+    "running": "Timer running",
+    "elapsed": "{{activity}}, {{time}} so far",
+    "openHint": "Opens the time tracker"
+  },
+  "money": {
+    "title": "Money this month",
+    "description": "How much of your budget is spent, and where the rest went",
+    "budgetUsed": "{{percent}}% of budget used",
+    "budgetLeft": "{{amount}} left of {{total}}",
+    "budgetOver": "{{amount}} over {{total}}",
+    "setBudget": "Set a budget",
+    "left": "Left",
+    "spentShort": "Spent",
+    "investedShort": "Invested",
+    "legendHint": "Tap to focus this part of the chart",
+    "donutLabel": "Where this month's income went",
+    "overspent": "Over income",
+    "selectedSummary": "{{label}}: {{amount}}, {{percent}} of income"
+  },
+  "pinned": {
+    "title": "Pinned notes",
+    "description": "Your pinned notes, a tap away",
+    "seeAll": "All notes",
+    "seeAllLabel": "See all notes",
+    "checklist": "{{done}} of {{total}} done",
+    "noTitle": "Untitled note",
+    "openHint": "Opens the note editor",
+    "emptyTitle": "No pinned notes yet",
+    "emptyBody": "Pin a note and it shows up here, one tap from Home.",
+    "emptyAction": "New note"
+  },
+  "bar": {
+    "streakLabel_one": "{{count}} day streak",
+    "streakLabel_other": "{{count}} day streak",
+    "account": "Account and settings"
+  },
+  "todayCard": {
+    "budgetNone": "No budget",
+    "hint": "Opens {{module}}",
+    "caloriesGoal": "of {{goal}} kcal",
+    "moveValue": "{{done}} min",
+    "moveGoal": "of {{goal}} this week",
+    "budgetSet": "Tap to set one",
+    "budgetSpent": "{{amount}} spent"
+  },
+  "bento": {
+    "focusTitle": "Focus",
+    "focusCaption": "tracked today",
+    "focusRunning": "Timer running",
+    "focusStart": "Start timer",
+    "focusOpen": "Open timer",
+    "focusHint": "Opens the time tracker",
+    "workoutsTitle": "Workouts",
+    "workoutsCaption_one": "this week · {{count}} active day",
+    "workoutsCaption_other": "this week · {{count}} active days",
+    "workoutsStart": "Start workout",
+    "workoutsHint": "Opens the workout screen"
+  },
+  "upcoming": {
+    "title": "Upcoming",
+    "description": "Renewals due soon",
+    "today": "Today",
+    "inDays_one": "in {{count}} day",
+    "inDays_other": "in {{count}} days",
+    "overdueBy_one": "{{count}} day overdue",
+    "overdueBy_other": "{{count}} days overdue",
+    "tileLabel": "{{name}}, {{amount}}, {{when}}",
+    "open": "Opens your subscriptions"
+  },
+  "gauge": {
+    "goals": "{{closed}} of {{total}} goals closed",
+    "caption": "Day score · {{goals}}",
+    "spoken": "Day score {{percent}} percent, {{goals}}. {{details}}"
+  },
+  "tiles": {
+    "financeLeft": "{{amount}} left this month",
+    "financeOver": "{{amount}} over this month",
+    "sessions_one": "{{count}} session",
+    "sessions_other": "{{count}} sessions",
+    "sessionsSpoken_one": "{{count}} workout this week",
+    "sessionsSpoken_other": "{{count}} workouts this week",
+    "meals_one": "{{count}} meal",
+    "meals_other": "{{count}} meals",
+    "mealsSpoken_one": "{{count}} meal logged today",
+    "mealsSpoken_other": "{{count}} meals logged today",
+    "pinned_one": "{{count}} pinned",
+    "pinned_other": "{{count}} pinned",
+    "pinnedSpoken_one": "{{count}} pinned note",
+    "pinnedSpoken_other": "{{count}} pinned notes",
+    "timeSpoken": "{{time}} tracked today",
+    "products_one": "{{count}} product",
+    "products_other": "{{count}} products",
+    "productsSpoken_one": "{{count}} skincare product",
+    "productsSpoken_other": "{{count}} skincare products",
+    "saved_one": "{{count}} saved",
+    "saved_other": "{{count}} saved",
+    "savedSpoken_one": "{{count}} saved item",
+    "savedSpoken_other": "{{count}} saved items",
+    "pieces_one": "{{count}} piece",
+    "pieces_other": "{{count}} pieces",
+    "piecesSpoken_one": "{{count}} piece in your wardrobe",
+    "piecesSpoken_other": "{{count}} pieces in your wardrobe"
+  },
+  "customize": {
+    "link": "Customize",
+    "linkLabel": "Customize Home",
+    "title": "Customize Home",
+    "intro": "Choose what Home shows. Home keeps a card for each module you pick, in the order you set. Your choice is saved on this device.",
+    "presetsTitle": "Quick picks",
+    "presets": {
+      "moneyStyle": {
+        "title": "Money & style",
+        "body": "Finance and Fashion"
+      },
+      "notesCare": {
+        "title": "Notes & care",
+        "body": "Notes, Saved and Skincare"
+      },
+      "health": {
+        "title": "Health",
+        "body": "Food and Fitness"
+      },
+      "everything": {
+        "title": "Everything",
+        "body": "Every module"
+      }
+    },
+    "modulesTitle": "On Home",
+    "modulesFooter": "Home shows one card for each, from top to bottom in this order. Use the arrows to move one, or switch it off.",
+    "hiddenTitle": "Not on Home",
+    "noModules": "No modules on Home. Switch one on below, or pick a quick pick above.",
+    "position": "{{position}} of {{count}}",
+    "moveUp": "Move {{module}} up, now {{place}}",
+    "moveDown": "Move {{module}} down, now {{place}}",
+    "toggleHint": "On Home, {{place}}. Switch off to hide it.",
+    "sectionsTitle": "Sections",
+    "sections": {
+      "score": {
+        "title": "Day score",
+        "body": "The gauge with your calorie, move and budget goals."
+      },
+      "scoreNeeds": "Needs Food, Fitness or Finance on Home.",
+      "upNext": {
+        "title": "Up next",
+        "body": "A suggestion for right now."
+      },
+      "tiles": {
+        "title": "Module shortcuts",
+        "body": "A tile for each module on Home."
+      },
+      "activity": {
+        "title": "Activity chart",
+        "body": "Your last seven days."
+      }
+    },
+    "deviceOnly": "Saved on this device only. Another phone starts with everything on.",
+    "reset": "Reset to default",
+    "prompt": {
+      "title": "Make Home yours",
+      "body": "Pick what you care about and Home shows just that.",
+      "customize": "Choose modules",
+      "keepAll": "Keep everything"
+    },
+    "empty": {
+      "title": "Nothing on Home yet",
+      "body": "Switch a module or a section on to fill it.",
+      "action": "Customize Home"
+    }
+  },
+  "widgets": {
+    "saved": {
+      "title": "Saved",
+      "description": "Links and items worth keeping",
+      "seeAll": "See all",
+      "seeAllLabel": "See all saved items",
+      "loading": "Loading your saved items",
+      "offline": "Connect to the internet to load your saved items.",
+      "error": "Couldn't load your saved items",
+      "stats": {
+        "total_one": "saved item",
+        "total_other": "saved items",
+        "totalSpoken_one": "{{count}} saved item",
+        "totalSpoken_other": "{{count}} saved items",
+        "favourites_one": "{{count}} favourite",
+        "favourites_other": "{{count}} favourites",
+        "thisWeek_one": "{{count}} added this week",
+        "thisWeek_other": "{{count}} added this week",
+        "spoken": "{{total}}, {{favourites}}, {{thisWeek}}"
+      },
+      "latest": "Recently saved",
+      "openLinkHint": "Opens the link",
+      "openDetailsHint": "Opens the details",
+      "add": "Save a link",
+      "addHint": "Opens the form to save a link",
+      "empty": {
+        "title": "Nothing saved yet",
+        "description": "Keep articles, videos, recipes and products to come back to later."
+      }
+    },
+    "skincare": {
+      "title": "Skincare",
+      "description": "Your routine and what is on your shelf",
+      "seeAll": "See all",
+      "seeAllLabel": "See all skincare",
+      "loading": "Loading your skincare",
+      "offline": "Connect to the internet to load your products.",
+      "error": "Couldn't load your products",
+      "routine": {
+        "morning": "Morning routine",
+        "evening": "Evening routine",
+        "steps_one": "{{count}} step",
+        "steps_other": "{{count}} steps",
+        "more_one": "+{{count}} more step",
+        "more_other": "+{{count}} more steps",
+        "stepHint": "Opens the routine",
+        "none": "No routine steps yet. Set products to a routine on the Aura360 web app."
+      },
+      "cta": {
+        "start": {
+          "morning": "Start your morning routine",
+          "evening": "Start your evening routine"
+        },
+        "open": {
+          "morning": "Open the morning routine",
+          "evening": "Open the evening routine"
+        },
+        "hint": {
+          "morning": "Opens the morning routine, where you can tick off each step",
+          "evening": "Opens the evening routine, where you can tick off each step"
+        }
+      },
+      "shelf": {
+        "products_one": "product",
+        "products_other": "products",
+        "productsSpoken_one": "{{count}} product on your shelf",
+        "productsSpoken_other": "{{count}} products on your shelf",
+        "toBuy_one": "{{count}} to buy",
+        "toBuy_other": "{{count}} to buy",
+        "finished_one": "{{count}} finished",
+        "finished_other": "{{count}} finished",
+        "spoken": "{{products}}, {{toBuy}}, {{finished}}",
+        "hint": "Opens your shelf"
+      },
+      "empty": {
+        "title": "Your shelf is empty",
+        "description": "Add cleansers, serums, moisturisers or SPF on the Aura360 web app and they will show up here.",
+        "action": "Refresh"
+      }
+    },
+    "food": {
+      "title": "Food",
+      "description": "Today's calories and macros",
+      "seeAll": "See all",
+      "seeAllLabel": "Open Food",
+      "meals_one": "{{count}} meal logged today",
+      "meals_other": "{{count}} meals logged today",
+      "none": "Nothing logged yet today",
+      "log": "Log a meal",
+      "logHint": "Opens the form to log a meal"
+    },
+    "fashion": {
+      "title": "Fashion",
+      "description": "Your wardrobe at a glance",
+      "seeAll": "See all",
+      "seeAllLabel": "Open your wardrobe",
+      "loading": "Loading your wardrobe",
+      "offline": "Connect to the internet to load your wardrobe.",
+      "error": "Couldn't load your wardrobe",
+      "stats": {
+        "pieces_one": "piece",
+        "pieces_other": "pieces",
+        "piecesSpoken_one": "{{count}} piece in your wardrobe",
+        "piecesSpoken_other": "{{count}} pieces in your wardrobe",
+        "worth": "Worth {{value}}",
+        "wears_one": "{{count}} wear",
+        "wears_other": "{{count}} wears",
+        "needsWash_one": "{{count}} needs a wash",
+        "needsWash_other": "{{count}} need a wash"
+      },
+      "openHint": "Opens your wardrobe",
+      "mostWorn": "Most worn",
+      "add": "Add a piece",
+      "addHint": "Opens the form to add a piece",
+      "empty": {
+        "title": "Your wardrobe is empty",
+        "description": "Add the pieces you own to see what they are worth and which you wear most."
+      }
+    }
   }
 }

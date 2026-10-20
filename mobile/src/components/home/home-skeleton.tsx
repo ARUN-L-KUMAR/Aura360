@@ -1,11 +1,9 @@
 import { View } from 'react-native';
 
-import { Grid, gridCell } from '@/components/home/grid';
 import { Skeleton, SkeletonGroup } from '@/components/ui/skeleton';
 import { useTranslation } from '@/i18n';
 import { layout, spacing } from '@/theme';
 
-const FOUR = [0, 1, 2, 3];
 const THREE = [0, 1, 2];
 
 function SectionTitle({ width = '40%' }: { width?: `${number}%` }) {
@@ -13,39 +11,43 @@ function SectionTitle({ width = '40%' }: { width?: `${number}%` }) {
 }
 
 /**
- * Placeholder with the same blocks as the loaded dashboard, in the same order: stat cards (2 x 2), quick actions
- * (2 x 2), activity bars, month donut, module cards, recent list. The hero above it is real.
+ * Placeholder with the same blocks as the loaded dashboard, in the same order: the day gauge, the up-next bar, the
+ * module tiles, the two glass squares, the money card and the recent list. The greeting above it is real.
  */
 export function HomeSkeleton() {
   const { t } = useTranslation('home');
   return (
     <SkeletonGroup label={t('loading')} style={{ gap: layout.sectionGap }}>
-      <Grid>
-        {FOUR.map((i) => (
-          <View key={i} style={gridCell}>
-            <Skeleton height={layout.minTouchTarget * 3 - spacing.sm} rounded="xl" />
-          </View>
-        ))}
-      </Grid>
+      <Skeleton height={layout.minTouchTarget * 6} rounded="xl" />
+
+      <Skeleton height={layout.minTouchTarget * 2} rounded="xl" />
 
       <View style={{ gap: spacing.lg }}>
         <SectionTitle width="35%" />
-        <Grid>
-          {FOUR.map((i) => (
-            <View key={i} style={gridCell}>
-              <Skeleton height={layout.minTouchTarget * 2 + spacing.md} rounded="xl" />
+        <View style={{ gap: spacing.md }}>
+          {[0, 1].map((row) => (
+            <View key={row} style={{ flexDirection: 'row', gap: spacing.md }}>
+              {THREE.map((i) => (
+                <View key={i} style={{ flex: 1 }}>
+                  <Skeleton height={layout.minTouchTarget * 2} rounded="xl" />
+                </View>
+              ))}
             </View>
           ))}
-        </Grid>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <View style={{ flex: 1 }}>
+          <Skeleton height={layout.minTouchTarget * 3} rounded="xl" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Skeleton height={layout.minTouchTarget * 3} rounded="xl" />
+        </View>
       </View>
 
       <View style={{ gap: spacing.lg }}>
         <SectionTitle width="45%" />
-        <Skeleton height={layout.minTouchTarget * 5} rounded="xl" />
-      </View>
-
-      <View style={{ gap: spacing.lg }}>
-        <SectionTitle width="30%" />
         <Skeleton height={layout.minTouchTarget * 4} rounded="xl" />
       </View>
 

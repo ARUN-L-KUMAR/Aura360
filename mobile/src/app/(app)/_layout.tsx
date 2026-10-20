@@ -43,6 +43,7 @@ export default function AppLayout() {
         <Stack.Screen name="notifications/settings" options={{ title: t('screens.alertsReminders') }} />
         <Stack.Screen name="module/[slug]" options={{ title: '' }} />
         <Stack.Screen name="finance/transaction" options={modal(t('screens.transaction'), reduceMotion)} />
+        <Stack.Screen name="home/customize" options={modal(t('screens.customizeHome'), reduceMotion)} />
         <Stack.Screen name="finance/subscription" options={modal(t('screens.subscription'), reduceMotion)} />
         <Stack.Screen name="finance/budget" options={modal(t('screens.budget'), reduceMotion)} />
         <Stack.Screen name="finance/goal" options={modal(t('screens.goal'), reduceMotion)} />
