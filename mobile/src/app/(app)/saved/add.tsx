@@ -204,7 +204,7 @@ export default function AddSavedScreen() {
         </>
       ) : null}
 
-      <Button title={t('add.manual')} variant="ghost" onPress={() => router.replace('/saved/item')} />
+      <Button title={t('add.manual')} variant="ghost" onPress={() => router.replace({ pathname: '/saved/item', params: url.trim() ? { url: extractUrl(url.trim()) ?? url.trim() } : {} })} />
     </Screen>
   );
 }

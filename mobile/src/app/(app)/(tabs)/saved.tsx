@@ -13,11 +13,15 @@ import { Card } from '@/components/ui/card';
 import { Chip, ChipRow, Tag } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
-import { FloatingAction } from '@/components/ui/floating-action';
+import { CategoryFab, CategoryHeader } from '@/components/ui/category-template';
 import { IconButton } from '@/components/ui/icon-button';
+import { isWaitingForNetwork, OfflineState } from '@/components/ui/load-states';
+import { SummaryStrip } from '@/components/ui/summary-strip';
 import { useListMotion } from '@/components/ui/motion';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SearchBar } from '@/components/ui/search-bar';
+import { IconTile } from '@/components/ui/stat-parts';
+import type { IconName } from '@/features/modules';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteSavedItem, useSavedItems, useToggleFavorite } from '@/features/saved/hooks';
@@ -30,15 +34,27 @@ import { layout, radius, spacing } from '@/theme';
 
 type Filter = 'all' | 'favorites' | SavedItem['type'];
 
+/** Stands in for a picture on items that have none, so every card has something to anchor on. */
+const TYPE_ICON: Record<SavedItem['type'], IconName> = {
+  article: 'newspaper-outline',
+  video: 'play-circle-outline',
+  product: 'bag-handle-outline',
+  recipe: 'restaurant-outline',
+  other: 'bookmark-outline',
+};
+
 const keyOf = (item: SavedItem) => item.id;
 
 export default function SavedScreen() {
   const router = useRouter();
   const notify = useNotify();
   const { t } = useTranslation('saved');
-  const { data, isPending, isError, error, refetch, isRefetching } = useSavedItems();
+  const query = useSavedItems();
+  const { data, isPending, isError, error, refetch, isRefetching } = query;
   const { mutate: setFavorite } = useToggleFavorite();
   const { mutateAsync: deleteItem } = useDeleteSavedItem();
+  // "This week" is counted from when the screen opened (the clock is not read while rendering).
+  const [openedAt] = useState(() => Date.now());
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [menuItem, setMenuItem] = useState<SavedItem | null>(null);
@@ -66,8 +82,10 @@ export default function SavedScreen() {
       byType.set(item.type, (byType.get(item.type) ?? 0) + 1);
       if (item.isFavorite) favorites += 1;
     }
-    return { all: items.length, favorites, byType };
-  }, [items]);
+    const weekAgo = openedAt - 7 * 24 * 60 * 60 * 1000;
+    const thisWeek = items.filter((item) => new Date(item.createdAt).getTime() >= weekAgo).length;
+    return { all: items.length, favorites, thisWeek, byType };
+  }, [items, openedAt]);
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -136,6 +154,17 @@ export default function SavedScreen() {
 
   const header = (
     <View style={{ gap: spacing.md }}>
+      <CategoryHeader module="saved" title={t('title')} />
+      {counts.all > 0 ? (
+        <SummaryStrip
+          accent="saved"
+          figures={[
+            { key: 'all', label: t('summary.saved'), value: counts.all },
+            { key: 'fav', label: t('summary.favourites'), value: counts.favorites },
+            { key: 'week', label: t('summary.thisWeek'), value: counts.thisWeek },
+          ]}
+        />
+      ) : null}
       <SearchBar placeholder={t('search.placeholder')} accessibilityLabel={t('search.placeholder')} value={search} onChangeText={setSearch} debounceMs={200} />
       <ChipRow>
         <Chip label={t('filter.all')} accent="saved" count={counts.all} selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -161,7 +190,9 @@ export default function SavedScreen() {
   );
 
   let empty;
-  if (isPending) {
+  if (isWaitingForNetwork(query)) {
+    empty = <OfflineState description={t('offline.description')} onRetry={() => refetch()} />;
+  } else if (isPending) {
     empty = (
       <View style={{ gap: layout.itemGap }}>
         <SkeletonCard media lines={2} />
@@ -189,13 +220,14 @@ export default function SavedScreen() {
     <>
       <CollapsingList<SavedItem>
         title={t('title')}
+        hideTitle
         data={visible}
         renderItem={renderItem}
         keyExtractor={keyOf}
         header={header}
         empty={empty}
         onRefresh={() => refetch()}
-        fab={<FloatingAction accent="saved" accessibilityLabel={t('fab')} onPress={() => router.push('/saved/add')} />}
+        fab={<CategoryFab module="saved" label={t('fab')} onPress={() => router.push('/saved/add')} />}
       />
       <ActionSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={menuItem?.title} actions={menuActions} />
     </>
@@ -252,6 +284,11 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
         ) : null}
         <View style={{ padding: spacing.lg, gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs }}>
+            {item.imageUrl ? null : (
+              <View style={{ paddingTop: spacing.xs, paddingEnd: spacing.xs }}>
+                <IconTile icon={TYPE_ICON[item.type] ?? 'bookmark-outline'} accent="saved" />
+              </View>
+            )}
             <PressableScale
               accessibilityRole="button"
               accessibilityLabel={t(`card.label.${labelKind}`, { title: item.title, type, host: host ?? '' })}
