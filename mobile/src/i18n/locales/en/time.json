@@ -21,7 +21,7 @@
   },
   "errors": {
     "save": "Couldn't save. Try again.",
-    "delete": "Couldn't delete. Try again.",
+    "delete": "Could not delete that entry. Try again.",
     "stop": "Couldn't save. The timer is still running, so try again.",
     "loadLogs": "Couldn't load time logs",
     "loadTotals": "Couldn't load your totals"
@@ -29,12 +29,18 @@
   "offline": "Connect to the internet to load your time logs.",
   "stats": {
     "today": "Tracked today",
-    "week": "Last 7 days"
+    "week": "Last 7 days",
+    "weekAverage": "{{duration}} a day on average",
+    "weekWithFocus": "{{duration}} a day · focus {{value}}/10"
   },
   "distribution": {
     "title": "Time distribution",
     "subtitle": "{{total}} logged in {{month}}",
-    "row": "{{duration}} ({{percent}}%)"
+    "row": "{{duration}} ({{percent}}%)",
+    "logged": "logged",
+    "filterHint": "Shows only this category in the list below",
+    "clearHint": "Shows every category again",
+    "clear": "Showing {{category}}. Show all"
   },
   "empty": {
     "title": "No time logged in {{month}}",
@@ -46,7 +52,9 @@
   "log": {
     "label": "{{activity}}, {{duration}}",
     "labelCategory": "{{activity}}, {{duration}}, {{category}}",
-    "hint": "Opens this time log"
+    "hint": "Opens this time log",
+    "focus": "Focus {{score}}/10",
+    "moreOptions": "More options for {{activity}}"
   },
   "timer": {
     "stopwatch": "Live stopwatch",
@@ -62,7 +70,8 @@
     "discardTitle": "Discard this timer?",
     "discardMessage": "The time will not be saved.",
     "keep": "Keep",
-    "discarded": "Timer discarded"
+    "discarded": "Timer discarded",
+    "running": "Timer running"
   },
   "form": {
     "titleEdit": "Edit time log",
@@ -93,5 +102,13 @@
     "delete": "Delete time log",
     "cancel": "Cancel",
     "confirmDelete": "Delete"
+  },
+  "action": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "toast": {
+    "deleted": "Time log deleted",
+    "undo": "Undo"
   }
 }
