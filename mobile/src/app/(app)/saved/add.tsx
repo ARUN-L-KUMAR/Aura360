@@ -15,8 +15,10 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 import { SuccessCheck } from '@/components/ui/success-check';
 import { Text } from '@/components/ui/text';
 import { useLinkPreview, useSaveLink } from '@/features/saved/hooks';
-import { extractUrl, hostOf, isSavedType, placeOf, type Destination, type IngestPreview, type PlaceKey } from '@/features/saved/types';
+import { extractUrl, hostOf, isSavedType, placeOf, productFacts, type Destination, type IngestPreview, type PlaceKey } from '@/features/saved/types';
+import { acknowledgeLink, usePendingLink } from '@/features/share-import/link-inbox';
 import { getDeviceLocale, useTranslation } from '@/i18n';
+import { formatMoney } from '@/lib/format';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
 import { spacing, useTheme } from '@/theme';
@@ -42,6 +44,10 @@ export default function AddSavedScreen() {
   /** Where the link went, once saved: swaps the form for a confirmation, then the screen closes. */
   const [savedTo, setSavedTo] = useState<PlaceKey | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The words a link was shared with ("Check out ... on Flipkart"): the server's fallback name if the shop cannot be read. */
+  const sharedHint = useRef<string | null>(null);
+  /** A link another app has just shared (a product from Amazon, Flipkart, Myntra ...). */
+  const sharedLink = usePendingLink();
 
   useEffect(
     () => () => {
@@ -49,6 +55,24 @@ export default function AddSavedScreen() {
     },
     [],
   );
+
+  // A shared link is taken over once: the fields are set while rendering (so there is no flash of the old content), then it
+  // is read straight away so the person only has to check it and save.
+  const [takenLink, setTakenLink] = useState<number | null>(null);
+  if (sharedLink && sharedLink.id !== takenLink) {
+    setTakenLink(sharedLink.id);
+    setResult(null);
+    setDestination('auto');
+    setUrl(sharedLink.url ?? '');
+    setUrlError(sharedLink.url ? null : t('add.errors.sharedNoLink'));
+  }
+  useEffect(() => {
+    if (!sharedLink) return;
+    sharedHint.current = sharedLink.hint;
+    acknowledgeLink(sharedLink.id);
+    if (sharedLink.url) void fetchDetails('auto', sharedLink.url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per shared link; fetchDetails is rebuilt on every render.
+  }, [sharedLink?.id]);
 
   const fail = (e: unknown, message: string) => notify.error(friendlyError(e, message, t('errors.offline')));
   const destinationLabel = (value: Destination) => (value === 'auto' ? t('add.destination.auto') : t(`place.${value}`));
@@ -63,6 +87,7 @@ export default function AddSavedScreen() {
     const found = extractUrl(text);
     if (found) {
       setUrl(found);
+      sharedHint.current = null;
       setResult(null);
       setUrlError(null);
     } else {
@@ -70,13 +95,13 @@ export default function AddSavedScreen() {
     }
   }
 
-  async function fetchDetails(nextDestination = destination) {
-    const clean = extractUrl(url.trim()) ?? url.trim();
+  async function fetchDetails(nextDestination = destination, from = url) {
+    const clean = extractUrl(from.trim()) ?? from.trim();
     if (!clean) return setUrlError(t('add.errors.empty'));
     if (!/^https?:\/\//i.test(clean)) return setUrlError(t('add.errors.scheme'));
     setUrlError(null);
     try {
-      setResult(await preview.mutateAsync({ url: clean, destination: nextDestination }));
+      setResult(await preview.mutateAsync({ url: clean, destination: nextDestination, hintTitle: sharedHint.current }));
       setUrl(clean);
     } catch (e) {
       setResult(null);
@@ -87,7 +112,7 @@ export default function AddSavedScreen() {
   async function save() {
     if (!result) return;
     try {
-      const saved = await saveLink.mutateAsync({ url: result.url, destination });
+      const saved = await saveLink.mutateAsync({ url: result.url, destination, hintTitle: sharedHint.current });
       const place = placeOf(saved.persistedTo);
       analytics.track('link_saved');
       // The toast already gives the success haptic; the check is the visual half of the same moment.
@@ -122,6 +147,7 @@ export default function AddSavedScreen() {
   const matchPercent = result ? new Intl.NumberFormat(getDeviceLocale(), { style: 'percent', maximumFractionDigits: 0 }).format(result.confidence) : '';
   const resultHost = result ? hostOf(result.url) : null;
   const resultType = result ? t(`type.${isSavedType(result.type) ? result.type : 'other'}`) : '';
+  const facts = result ? productFacts(result.metadata, placeOf(result.resolvedDestination)) : null;
 
   return (
     <Screen topInset={false}>
@@ -135,6 +161,7 @@ export default function AddSavedScreen() {
             setUrl(text);
             if (urlError) setUrlError(null);
             if (result) setResult(null);
+            sharedHint.current = null;
           }}
           error={urlError}
           placeholder={t('add.link.placeholder')}
@@ -174,6 +201,8 @@ export default function AddSavedScreen() {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
                 {resultHost ? <Tag label={resultHost} accent="saved" icon="link-outline" /> : null}
                 {result.type ? <Tag label={resultType} tone="neutral" /> : null}
+                {facts?.price ? <Tag label={formatMoney(facts.price)} tone="neutral" icon="pricetag-outline" /> : null}
+                {facts?.category ? <Tag label={facts.category} accent="saved" icon="grid-outline" /> : null}
               </View>
               {result.description ? (
                 <Text variant="body" color="textSecondary" numberOfLines={3}>

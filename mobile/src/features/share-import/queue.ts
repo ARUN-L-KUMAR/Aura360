@@ -6,7 +6,7 @@
  * here (and nothing a screen does while rendering) can add it again, so it cannot be imported twice by a re-render.
  */
 import type { TransactionDraft } from '../../components/finance/receipt.ts';
-import { noRejections } from './accept.ts';
+import { noRejections, totalRejected } from './accept.ts';
 import type { ImportErrorCode, RejectionCounts, ShareItem } from './types.ts';
 
 export type InboxState = {
@@ -35,6 +35,7 @@ const addCounts = (a: RejectionCounts, b: RejectionCounts): RejectionCounts => (
   unsupported: a.unsupported + b.unsupported,
   unsafe: a.unsafe + b.unsafe,
   tooMany: a.tooMany + b.tooMany,
+  empty: a.empty + b.empty,
 });
 
 /** Applies `change` to one item. If it returns the item untouched the state is returned as is, so subscribers do not re-render for nothing. */
@@ -119,5 +120,4 @@ export function positionOf(state: InboxState, id: string): { index: number; tota
 }
 
 /** Something has arrived that the import screen has to show: a screenshot, or a note that every file was turned away. */
-export const hasArrivals = (state: InboxState) =>
-  state.items.length > 0 || state.rejected.unsupported + state.rejected.unsafe + state.rejected.tooMany > 0;
+export const hasArrivals = (state: InboxState) => state.items.length > 0 || totalRejected(state.rejected) > 0;

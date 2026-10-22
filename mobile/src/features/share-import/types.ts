@@ -104,4 +104,8 @@ export type ShareItem = {
   saved: { amount: number; description: string } | null;
 };
 
-export type RejectionCounts = { unsupported: number; unsafe: number; tooMany: number };
+/**
+ * Why shared files were turned away, for the import screen to say so. `empty` is different from the rest: Android told the
+ * app something was shared, but handed over nothing it could read (no file at all), so there was no file to turn away.
+ */
+export type RejectionCounts = { unsupported: number; unsafe: number; tooMany: number; empty: number };

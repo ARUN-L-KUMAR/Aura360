@@ -2,7 +2,7 @@
 
 Share a payment screenshot from Google Pay, PhonePe, Paytm (or any app) to **Aura360** from Android's share sheet. The app
 reads the screenshot, opens the Finance transaction form filled in, and saves only after the person has checked it and
-pressed Save. The share sheet is Android's own: Aura360 appears in it for JPEG, PNG and WebP images, nothing else.
+pressed Save. The share sheet is Android's own: Aura360 appears in it for JPEG, PNG and WebP images and for text (product links), nothing else.
 
 > The web app's **Import from GPay** button (`ShareTransactionModal`) takes pasted text. The mobile equivalent of that
 > flow is **Scan receipt** (`ReceiptScanSheet`); this feature reuses its server endpoint, form and save call.
@@ -42,6 +42,33 @@ Cold start and warm start use the same path: the launch link (`initial: true`) o
 | Strings | `src/i18n/locales/en/finance.json` (`shareImport`), `common.json` (`screens.shareImport`) |
 | Server | `app/api/finance/receipt-scan/route.ts`, `lib/ai/services/payment-scanner.ts` |
 
+## Sharing a product link (Amazon, Flipkart, Myntra, Ajio, Meesho ...)
+
+Tap Share on a product in a shopping app and pick **Aura360**. The app opens **Save a link** with the link already read; the person
+checks it and presses Save.
+
+```
+shopping app --Share (text/plain)--> captureNativeShare(): features/share-import/links.ts takes the link out of the text
+  link-inbox.ts                      -> keeps it (and the words shared with it) until the screen can open
+  share-intake.tsx                   -> opens /saved/add when signed in, unlocked, router ready (same rules as screenshots)
+  app/(app)/saved/add.tsx            -> takes the link over, POST /api/ingest-link {autoSave:false, hintTitle}, shows the card
+  Save                               -> POST /api/ingest-link {autoSave:true}: Fashion wishlist, or Saved with a category
+```
+
+- **Fashion** (clothes, footwear, bags, watches, jewellery ...) goes to the **Fashion wishlist** with its price, brand, colour and
+  buying link. **Everything else** goes to **Saved** as a *product* with a category (Electronics, Appliances, Home & Kitchen,
+  Furniture, Books, Beauty & Care, Health & Fitness, Toys & Baby, Grocery, Sports & Outdoors, Automotive, Stationery, Other),
+  stored as a tag and in `metadata.category`, with the price in `metadata.price`. The person can still pick Saved / Notes /
+  Fashion by hand on the screen. The rules are in `lib/services/product-category.ts` (the noun at the end of the title wins:
+  a "Table Tennis T-shirt" is a shirt, a "Shoe Rack" is furniture).
+- The server reads the shop with `lib/services/product-scraper.ts` (it knows the shops' share links, e.g. `amzn.in`, `fkrt.it`,
+  Ajio's OneLink). Shops often block servers; when the read fails, the words the app was shared with ("Check out ... on
+  Flipkart") become the title (`hintTitle`) and the card simply has no picture or price.
+- Any web link is accepted, not only these shops: a shared article or video is filed the way **Save a link** always did.
+- A share with a link in it is never treated as a payment screenshot, even if a picture came with it. Text with no link in it
+  opens Save a link with a message saying so.
+- Links are only `http`/`https`; nothing is logged about the link or its text.
+
 ## Native changes and rebuilding
 
 `expo-sharing` is a native module and the intent filters live in `AndroidManifest.xml`, so this needs a **new native build**:
@@ -52,7 +79,7 @@ npx expo prebuild --platform android --no-install     # regenerates android/ fro
 cd android && ./gradlew :app:assembleDebug            # or scripts/build-release.ps1 for a signed release
 ```
 
-`prebuild` adds exactly: a `SEND` and a `SEND_MULTIPLE` intent filter (`image/*`, `DEFAULT` category) on `MainActivity`, and the
+`prebuild` adds exactly: a `SEND` and a `SEND_MULTIPLE` intent filter (`image/*`; `SEND` also `text/plain`, for product links; `DEFAULT` category) on `MainActivity`, and the
 string `share_into_scheme` (`aura360`). Existing filters, permissions and plugins are untouched, and no storage
 permission is added (Android's URI grant is enough). It does not work in Expo Go. iOS is not enabled (it would need a share
 extension and an App Group).
@@ -86,6 +113,26 @@ and matched there by the duplicate check.
 
 JPEG, PNG and WebP only (no HEIC, GIF, PDF or text); 8 MB per image; 10 images per share; Android only.
 
+## When a share does nothing
+
+The app leaves counts-only breadcrumbs tagged `[share-import]`: no addresses, file names or screenshot content. With the
+phone on USB debugging:
+
+```
+adb logcat -c
+# share the screenshot to Aura360
+adb logcat -d | findstr "share-import"
+```
+
+| Line | Meaning |
+|---|---|
+| `share read: 1 item(s), 1 accepted, ...` | Android handed over the file and it passed the intake rules. |
+| `share link arrived but no items came with it` | Android announced a share but sent no readable file (the import screen then says so). Some apps put the image only in the intent's clip data, which expo-sharing does not read. |
+| `copied a shared image (image/png, N bytes)` | The image was copied into the app's cache and checked. |
+| `could not copy a shared image: <reason>` | unreadable, tooLarge or unsupportedType. |
+| `opening the import screen (try N)` | The inbox has something and the app is signed in, unlocked and showing the signed-in screens. It repeats every 1.5 s, up to 10 times, until the screen reports that it opened. |
+| no `[share-import]` line at all | The share never reached the JavaScript. Check the installed build has the share filters: `adb shell pm query-activities --brief -a android.intent.action.SEND -t image/png`. |
+
 ## Tests
 
 - `npm run verify` (typecheck, ESLint, contrast, tokens, i18n, unit tests). The share logic is covered by
@@ -99,8 +146,8 @@ JPEG, PNG and WebP only (no HEIC, GIF, PDF or text); 8 MB per image; 10 images p
   save, then share the same screenshot again ("imported before"); save a payment that is already in the ledger
   (duplicate confirmation); turn on airplane mode and try again.
 - Looking at the screens without a phone (`npm run preview:web`): `/finance/share-import?share=<state>` renders the import
-  screen in `reading`, `receiving`, `multi`, `seen-before`, `failed-network`, `failed-large`, `not-payment`, `review`, `done` or
-  `rejected`; `/dev/share-draft?name=failed|unknown|income` opens the transaction form as a shared screenshot would
+  screen in `reading`, `receiving`, `multi`, `seen-before`, `failed-network`, `failed-large`, `not-payment`, `review`, `done`, `rejected` or `empty`; `?share=push` on `/` fills the
+  inbox like a real share and lets ShareIntake open the screen over Home; `/dev/share-draft?name=failed|unknown|income` opens the transaction form as a shared screenshot would
   (`src/preview/seed-share.ts`, `src/app/(app)/dev/share-draft.tsx`).
 - Preview builds (`EXPO_PUBLIC_PREVIEW=1`) answer the scan with samples chosen by image type: PNG = a payment that is already in
   the sample ledger, JPEG = a failed payment, WebP = not a payment (`src/preview/mock-api.ts`).

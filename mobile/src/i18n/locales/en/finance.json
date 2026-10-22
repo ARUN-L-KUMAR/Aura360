@@ -651,7 +651,8 @@
       "unsafe_one": "{{count}} shared file couldn't be accepted from the app that sent it.",
       "unsafe_other": "{{count}} shared files couldn't be accepted from the app that sent them.",
       "tooMany_one": "{{count}} more screenshot was left out. Up to {{max}} can be imported at once.",
-      "tooMany_other": "{{count}} more screenshots were left out. Up to {{max}} can be imported at once."
+      "tooMany_other": "{{count}} more screenshots were left out. Up to {{max}} can be imported at once.",
+      "empty": "Aura360 was opened to import a shared screenshot, but Android did not hand over a file it could read. Try sharing again, or save the screenshot to your phone and use Scan receipt."
     },
     "nothing": {
       "title": "Nothing to import",

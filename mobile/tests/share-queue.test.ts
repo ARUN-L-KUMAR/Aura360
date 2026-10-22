@@ -150,11 +150,18 @@ test('the current item is the first one not yet saved or skipped, and the rest f
 
 test('files that were turned away are remembered with the share, and add up across shares', () => {
   const state = run([
-    { type: 'received', shareId: 1, items: [], rejected: { unsupported: 2, unsafe: 0, tooMany: 0 } },
-    { type: 'received', shareId: 2, items: [], rejected: { unsupported: 1, unsafe: 1, tooMany: 4 } },
+    { type: 'received', shareId: 1, items: [], rejected: { unsupported: 2, unsafe: 0, tooMany: 0, empty: 0 } },
+    { type: 'received', shareId: 2, items: [], rejected: { unsupported: 1, unsafe: 1, tooMany: 4, empty: 1 } },
   ]);
-  assert.deepEqual(state.rejected, { unsupported: 3, unsafe: 1, tooMany: 4 });
+  assert.deepEqual(state.rejected, { unsupported: 3, unsafe: 1, tooMany: 4, empty: 1 });
   assert.equal(hasArrivals(state), true); // the screen has something to say even with nothing to import
+});
+
+test('a share that arrived with nothing readable in it is still something to show, not silence', () => {
+  const state = run([{ type: 'received', shareId: 1, items: [], rejected: { ...noRejections(), empty: 1 } }]);
+  assert.equal(hasArrivals(state), true);
+  assert.equal(state.items.length, 0);
+  assert.equal(state.rejected.empty, 1);
 });
 
 test('nothing has arrived until something is received, and clear forgets everything', () => {

@@ -5,7 +5,8 @@ import type { ShareItem } from '../features/share-import/types';
 /**
  * `?share=<state>` in a preview address fills the share inbox, so each state of the import screen
  * (/finance/share-import) can be looked at: reading, receiving, multi, seen-before, failed-network, failed-large,
- * not-payment, review, done and rejected. The screenshot is a small drawing, not a real payment.
+ * not-payment, review, done, rejected and empty. `push` is different: it fills the inbox but leaves the import screen to be
+ * opened by ShareIntake, as a real share does, so that path can be looked at from the Home screen. The screenshot is a small drawing, not a real payment.
  */
 const SCREENSHOT = `data:image/svg+xml;utf8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="640" viewBox="0 0 360 640">' +
@@ -58,7 +59,8 @@ const STATES: Record<string, () => InboxState> = {
       item({ id: 'b', status: 'saved', saved: { amount: 349, description: '' } }),
       item({ id: 'c', status: 'skipped' }),
     ]),
-  rejected: () => inbox([], { unsupported: 2, unsafe: 1, tooMany: 0 }),
+  rejected: () => inbox([], { unsupported: 2, unsafe: 1, tooMany: 0, empty: 0 }),
+  empty: () => inbox([], { unsupported: 0, unsafe: 0, tooMany: 0, empty: 1 }),
 };
 
 /**
@@ -107,6 +109,10 @@ export const shareDraftFor = (name: string | undefined): object | null => (name 
 export function seedShareInbox() {
   try {
     const wanted = new URLSearchParams(globalThis.location?.search ?? '').get('share');
+    if (wanted === 'push') {
+      seedInboxForPreview(STATES.reading(), { screenOpen: false });
+      return;
+    }
     const build = wanted ? STATES[wanted] : undefined;
     if (build) seedInboxForPreview(build());
   } catch {

@@ -84,6 +84,11 @@ test('missing, empty or malformed entries never throw and are counted as unsuppo
   assert.equal(rejected.unsupported, 9);
 });
 
+test('totalRejected counts every kind, including a share that arrived empty', () => {
+  assert.equal(totalRejected({ unsupported: 1, unsafe: 2, tooMany: 3, empty: 4 }), 10);
+  assert.equal(totalRejected({ unsupported: 0, unsafe: 0, tooMany: 0, empty: 1 }), 1);
+});
+
 test('nothing shared is not a rejection, but a payload that is not a list is', () => {
   assert.equal(totalRejected(classifyPayloads(undefined, { ownPackage: own }).rejected), 0);
   assert.equal(totalRejected(classifyPayloads(null, { ownPackage: own }).rejected), 0);
@@ -108,7 +113,7 @@ test('a share is capped, and the rest are counted rather than silently dropped',
 test('accepted and refused files in one share are sorted independently', () => {
   const { accepted, rejected } = classifyPayloads([image('content://a/1'), image('content://a/2', 'application/pdf'), image('file:///x.png')], { ownPackage: own });
   assert.equal(accepted.length, 1);
-  assert.deepEqual(rejected, { unsupported: 1, unsafe: 1, tooMany: 0 });
+  assert.deepEqual(rejected, { unsupported: 1, unsafe: 1, tooMany: 0, empty: 0 });
 });
 
 // ── what a file really is ──────────────────────────────────────────────────────────────────────────────────────

@@ -88,6 +88,7 @@
     "added": "Added to {{place}}",
     "errors": {
       "noLink": "No link found on your clipboard. Copy one first.",
+      "sharedNoLink": "What you shared didn't have a link in it. Share the product from its page, or paste the link here.",
       "empty": "Paste or type a link.",
       "scheme": "Enter a link starting with http:// or https://",
       "preview": "Couldn't read that link. Check it and try again.",
