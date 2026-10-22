@@ -4,10 +4,13 @@ import { Platform } from 'react-native';
 
 import type { TransactionDraft } from '@/components/finance/receipt';
 
-import { classifyPayloads } from './accept';
+import { classifyPayloads, noRejections } from './accept';
 import { lookupHandled, rememberHandled } from './handled';
+import { queueLink } from './link-inbox';
+import { splitSharePayloads } from './links';
 import { emptyInbox, hasArrivals, inboxReducer, isFinished, type InboxAction, type InboxState } from './queue';
 import { StageError, deleteStaged, stageSharedImage } from './stage';
+import { trace } from './trace';
 import type { ImportErrorCode, ShareItem } from './types';
 
 /**
@@ -35,6 +38,9 @@ let state: InboxState = emptyInbox;
 let screenOpen = false;
 let snapshot: InboxSnapshot = { ...state, screenOpen };
 let shareCounter = 0;
+/** When something was last captured, so a second trigger for the same share is not mistaken for an empty one. */
+let lastCapturedAt = 0;
+const RECENT_CAPTURE_MS = 3000;
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
@@ -80,17 +86,25 @@ function loadSharing(): SharingModule | null {
 /**
  * Reads whatever Android has delivered to the app and queues it. Safe to call at any time and any number of times: the
  * native copy is cleared right after reading, so a second call finds nothing. Returns how many screenshots were queued.
+ *
+ * `announce`: the caller knows a share just arrived (the share link). If Android then hands over nothing readable, the
+ * person is told, instead of the app opening and doing nothing. The other triggers (launch, coming back to the app) pass
+ * nothing, because for them "nothing waiting" is the normal case.
  */
-export function captureNativeShare(): number {
+export function captureNativeShare(options: { announce?: boolean } = {}): number {
   if (Platform.OS !== 'android') return 0;
 
   const Sharing = loadSharing();
-  if (!Sharing) return 0;
+  if (!Sharing) {
+    if (options.announce) trace('a share arrived but this build has no sharing module');
+    return 0;
+  }
 
   let payloads: unknown;
   try {
     payloads = Sharing.getSharedPayloads();
   } catch {
+    trace('reading the shared items failed');
     return 0; // this build has no sharing module
   }
   try {
@@ -98,10 +112,36 @@ export function captureNativeShare(): number {
   } catch {
     // Nothing to clear.
   }
-  if (!Array.isArray(payloads) || payloads.length === 0) return 0;
 
-  const { accepted, rejected } = classifyPayloads(payloads, { ownPackage: OWN_PACKAGE });
+  if (!Array.isArray(payloads) || payloads.length === 0) {
+    if (options.announce && Date.now() - lastCapturedAt > RECENT_CAPTURE_MS) {
+      trace('share link arrived but no items came with it');
+      shareCounter += 1;
+      dispatch({ type: 'received', shareId: shareCounter, items: [], rejected: { ...noRejections(), empty: 1 } });
+    }
+    return 0;
+  }
+
+  // A shopping app shares a link as text. A share with a link in it is a product to save, not a payment screenshot, so
+  // when both arrive together (an app that sends a picture and a caption) the link wins.
+  const split = splitSharePayloads(payloads);
+  if (split.links.length > 0) {
+    lastCapturedAt = Date.now();
+    trace(`share read: a link (${split.links.length} found, ${split.rest.length} other item(s) not used)`);
+    queueLink(split.links[0]);
+    return 0;
+  }
+
+  const { accepted, rejected } = classifyPayloads(split.rest, { ownPackage: OWN_PACKAGE });
+  if (accepted.length === 0 && split.textWithoutLink > 0) {
+    lastCapturedAt = Date.now();
+    trace('share read: text with no link in it');
+    queueLink(null);
+    return 0;
+  }
   const items = accepted.map((payload) => ({ id: Crypto.randomUUID(), ...payload }));
+  lastCapturedAt = Date.now();
+  trace(`share read: ${split.rest.length} item(s), ${items.length} accepted, turned away ${JSON.stringify(rejected)}`);
   shareCounter += 1;
   dispatch({ type: 'received', shareId: shareCounter, items, rejected });
   for (const item of items) enqueueStaging(item.id);
@@ -121,6 +161,7 @@ async function stageOne(id: string) {
   if (!item || item.status !== 'staging') return;
   try {
     const staged = await stageSharedImage(item.sourceUri);
+    trace(`copied a shared image (${staged.mimeType}, ${staged.bytes} bytes)`);
     const seenBefore = await lookupHandled(staged.fingerprint);
     if (!getItem(id)) {
       deleteStaged(staged.fileUri); // discarded while it was being copied
@@ -129,6 +170,7 @@ async function stageOne(id: string) {
     dispatch({ type: 'staged', id, fileUri: staged.fileUri, mimeType: staged.mimeType, fingerprint: staged.fingerprint, seenBefore });
   } catch (error) {
     const code: ImportErrorCode = error instanceof StageError ? error.code : 'unreadable';
+    trace(`could not copy a shared image: ${code}`);
     if (getItem(id)) dispatch({ type: 'failed', id, error: code });
   }
 }
@@ -209,12 +251,13 @@ export function setScreenOpen(open: boolean) {
 }
 
 /**
- * Preview builds only (`npm run preview:web`, see src/preview/seed-share.ts): puts the inbox in a given state, and marks the
- * import screen as already open, so every state of that screen can be photographed without a phone.
+ * Preview builds only (`npm run preview:web`, see src/preview/seed-share.ts): puts the inbox in a given state. By default it
+ * marks the import screen as already open, so every state of that screen can be photographed without a phone; with
+ * `screenOpen: false` the inbox is filled the way a real share fills it, and ShareIntake has to open the screen.
  */
-export function seedInboxForPreview(next: InboxState) {
+export function seedInboxForPreview(next: InboxState, options: { screenOpen?: boolean } = {}) {
   state = next;
-  screenOpen = true;
+  screenOpen = options.screenOpen ?? true;
   publish();
 }
 

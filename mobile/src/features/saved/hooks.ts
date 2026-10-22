@@ -62,19 +62,22 @@ export function useToggleFavorite() {
   });
 }
 
-/** Reads a link (title, picture, description, best-fit module) without saving anything. */
+/**
+ * Reads a link (title, picture, description, best-fit module) without saving anything. `hintTitle` is what the link was
+ * shared with ("Check out ... on Flipkart"): the server uses it as the name when the shop will not let itself be read.
+ */
 export function useLinkPreview() {
   return useMutation({
-    mutationFn: ({ url, destination }: { url: string; destination: Destination }) =>
-      api<IngestPreview>('/api/ingest-link', { method: 'POST', body: { url, destination, autoSave: false } }),
+    mutationFn: ({ url, destination, hintTitle }: { url: string; destination: Destination; hintTitle?: string | null }) =>
+      api<IngestPreview>('/api/ingest-link', { method: 'POST', body: { url, destination, autoSave: false, ...(hintTitle ? { hintTitle } : {}) } }),
   });
 }
 
 export function useSaveLink() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ url, destination }: { url: string; destination: Destination }) =>
-      api<IngestPreview>('/api/ingest-link', { method: 'POST', body: { url, destination, autoSave: true } }),
+    mutationFn: ({ url, destination, hintTitle }: { url: string; destination: Destination; hintTitle?: string | null }) =>
+      api<IngestPreview>('/api/ingest-link', { method: 'POST', body: { url, destination, autoSave: true, ...(hintTitle ? { hintTitle } : {}) } }),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: savedKey }),

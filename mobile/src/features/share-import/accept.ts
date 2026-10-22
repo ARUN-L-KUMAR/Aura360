@@ -17,7 +17,7 @@ const SUPPORTED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/
 
 export type AcceptedPayload = { sourceUri: string; mimeType: string };
 
-export const noRejections = (): RejectionCounts => ({ unsupported: 0, unsafe: 0, tooMany: 0 });
+export const noRejections = (): RejectionCounts => ({ unsupported: 0, unsafe: 0, tooMany: 0, empty: 0 });
 
 /** "content://com.example.provider/path" -> "com.example.provider". Per-user addresses ("content://10@media/...") lose the "10@". */
 function authorityOf(uri: string): string | null {
@@ -88,4 +88,4 @@ export function classifyPayloads(
   return { accepted, rejected };
 }
 
-export const totalRejected = (counts: RejectionCounts) => counts.unsupported + counts.unsafe + counts.tooMany;
+export const totalRejected = (counts: RejectionCounts) => counts.unsupported + counts.unsafe + counts.tooMany + counts.empty;

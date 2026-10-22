@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm"
 import { isIP } from "node:net"
 import { db, ingestedLinks, type WorkspaceContext } from "@/lib/db"
 import { enrichLink, type SuggestedModule } from "@/lib/services/gemini-link-enricher"
+import { classifyProduct, type ProductClassification } from "@/lib/services/product-category"
 
 export type IngestionPlatform = "instagram" | "youtube" | "ecommerce" | "generic"
 export type IngestionType = "video" | "product" | "article" | "other"
@@ -43,6 +44,28 @@ export type IngestLinkResult = {
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
+/** Titles a shop's bot wall or a failed read leaves behind: not worth keeping over the name the app was shared with. */
+const WEAK_TITLE = /^(untitled|amazon(\.[a-z.]+)?|flipkart(\.com)?|myntra|ajio|meesho|robot check|access denied|attention required.*|just a moment.*|sorry.*|page not found.*|are you a human.*|something went wrong.*)$/i
+
+export function isWeakTitle(title: string | null | undefined): boolean {
+  const clean = (title ?? "").replace(/\s+/g, " ").trim()
+  return clean.length < 3 || WEAK_TITLE.test(clean)
+}
+
+/** The product facts a shop page gave us, kept with the link so saving it later does not need a second read. */
+export type IngestedProduct = {
+  store: string
+  price: string | null
+  originalPrice: string | null
+  currency: string | null
+  brand: string | null
+  color: string | null
+  rating: string | null
+  /** The scraper's own Fashion category ("tops", "shoes", ...) or "general". */
+  scrapedCategory: string | null
+  images: string[]
+}
+
 
 export function detectPlatform(url: string): IngestionPlatform {
   const hostname = new URL(url).hostname.toLowerCase()
@@ -50,9 +73,7 @@ export function detectPlatform(url: string): IngestionPlatform {
   if (hostname.includes("instagram.com")) return "instagram"
   if (hostname.includes("youtube.com") || hostname.includes("youtu.be")) return "youtube"
   if (
-    hostname.includes("amazon.") ||
-    hostname.includes("flipkart.") ||
-    hostname.includes("myntra.")
+    /(^|\.)(amazon\.|amzn\.|a\.co$|flipkart\.|fkrt\.|myntra\.|myntr\.it$|ajio\.|ajiio\.|ajioapps\.|meesho\.|nykaa\.)/.test(hostname)
   ) {
     return "ecommerce"
   }
@@ -359,10 +380,56 @@ function mapRecordToResult(record: typeof ingestedLinks.$inferSelect, cached: bo
   }
 }
 
+/**
+ * Reads a shop page (Amazon, Flipkart, Myntra, Ajio, Meesho) with the product scraper, which knows these shops' share
+ * links and their bot walls. Returns null when the shop refuses: the caller then falls back to the page's own tags and
+ * to the name the app was shared with.
+ */
+async function scrapeShop(url: string): Promise<{ metadata: FetchMetadataResult; product: IngestedProduct } | null> {
+  // Loaded when needed: product-scraper itself imports validateExternalUrl from this file.
+  const { detectShoppingPlatform, scrapeProduct } = await import("@/lib/services/product-scraper")
+  const store = detectShoppingPlatform(url)
+  if (!store) return null
+
+  try {
+    const scraped = await scrapeProduct(url)
+    const images = (scraped.images ?? []).filter(Boolean)
+    return {
+      metadata: {
+        title: scraped.product_name || "Untitled",
+        description: scraped.description ? scraped.description.slice(0, 600) : null,
+        imageUrl: images[0] ?? null,
+        siteName: store,
+        canonicalUrl: scraped.buying_link || null,
+        ogType: "product",
+        detectedType: "product",
+        pageText: [scraped.brand, scraped.product_name, scraped.description].filter(Boolean).join(" ").slice(0, 1500) || null,
+        extra: { price: scraped.price?.current || null },
+      },
+      product: {
+        store,
+        price: scraped.price?.current || null,
+        originalPrice: scraped.price?.original || null,
+        currency: scraped.currency || "INR",
+        brand: scraped.brand || null,
+        color: scraped.color || null,
+        rating: scraped.rating || null,
+        scrapedCategory: scraped.category || null,
+        images: images.slice(0, 6),
+      },
+    }
+  } catch (error) {
+    console.warn("[Ingest] Product scrape failed, using page tags instead:", error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 export async function ingestLink(input: {
   context: WorkspaceContext
   url: string
   forceRefresh?: boolean
+  /** The words the app was shared with next to the link ("Check out Roadster Men T-shirt ..."), used when the shop blocks us. */
+  hintTitle?: string
 }): Promise<IngestLinkResult> {
   const urlValidation = validateExternalUrl(input.url)
   if (!urlValidation.valid) {
@@ -388,12 +455,18 @@ export async function ingestLink(input: {
     existing.lastFetchedAt instanceof Date &&
     Date.now() - existing.lastFetchedAt.getTime() < CACHE_TTL_MS
 
-  if (existing && isFresh && !input.forceRefresh) {
+  // A read that only got a bot-wall title is worth repeating when the person shared the link with a name for it.
+  const cachedIsWeak = !!existing && isWeakTitle(existing.title) && !!input.hintTitle
+  if (existing && isFresh && !input.forceRefresh && !cachedIsWeak) {
     return mapRecordToResult(existing, true)
   }
 
   const platform = detectPlatform(normalizedUrl)
-  const metadata = await extractMetadata(normalizedUrl, platform)
+  const shop = platform === "ecommerce" ? await scrapeShop(normalizedUrl) : null
+  const metadata = shop?.metadata ?? (await extractMetadata(normalizedUrl, platform))
+  if (platform === "ecommerce" && isWeakTitle(metadata.title) && input.hintTitle) {
+    metadata.title = input.hintTitle
+  }
   const type = inferType(platform, metadata)
 
   // ── Enrich with Gemini (classification + structured metadata) ──────
@@ -404,6 +477,22 @@ export async function ingestLink(input: {
     siteName: metadata.siteName,
     pageText: metadata.pageText ?? null,
   })
+
+  // Shopping links go to Fashion (clothes, footwear, wearable accessories) or to Saved with a product category.
+  let classification: ProductClassification | null = null
+  let suggestedModule: SuggestedModule = enrichResult.module
+  if (platform === "ecommerce") {
+    const ai = enrichResult.enrichment.contentType === "product" ? enrichResult.enrichment : null
+    classification = classifyProduct({
+      title: metadata.title,
+      description: metadata.description,
+      scrapedCategory: shop?.product.scrapedCategory,
+      aiModule: enrichResult.module,
+      aiCategory: ai?.category,
+      store: shop?.product.store ?? ai?.store,
+    })
+    suggestedModule = classification.module
+  }
 
   const now = new Date()
 
@@ -417,7 +506,7 @@ export async function ingestLink(input: {
     imageUrl: metadata.imageUrl,
     source: platform,
     type,
-    suggestedModule: enrichResult.module,
+    suggestedModule,
     confidence: enrichResult.confidence.toFixed(3),
     metadata: {
       siteName: metadata.siteName,
@@ -425,6 +514,8 @@ export async function ingestLink(input: {
       ogType: metadata.ogType,
       extraction: metadata.extra,
       enrichedBy: enrichResult.enrichedBy,
+      ...(shop ? { product: shop.product } : {}),
+      ...(classification ? { classification } : {}),
       // The full structured enrichment — accessible in the UI
       enrichment: enrichResult.enrichment,
     },

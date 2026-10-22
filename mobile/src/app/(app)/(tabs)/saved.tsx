@@ -25,8 +25,9 @@ import type { IconName } from '@/features/modules';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDeleteSavedItem, useSavedItems, useToggleFavorite } from '@/features/saved/hooks';
-import { SAVED_TYPES, hostOf, type SavedItem } from '@/features/saved/types';
+import { SAVED_TYPES, hostOf, productFacts, type SavedItem } from '@/features/saved/types';
 import { useTranslation } from '@/i18n';
+import { formatMoney } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { analytics } from '@/lib/telemetry';
 import { useNotify } from '@/providers/notify';
@@ -250,7 +251,9 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
   const { entering, exiting } = useListMotion(index);
   const host = hostOf(item.url);
   const favorite = !!item.isFavorite;
-  const tags = item.tags ?? [];
+  // A product saved from a shopping app carries its category (Electronics ...) and price; the category is also a tag, shown once.
+  const facts = productFacts(item.metadata);
+  const tags = (item.tags ?? []).filter((tag) => tag !== facts.category);
   const shownTags = tags.slice(0, 4);
   const type = t(`type.${item.type}`);
   const labelKind = host ? (favorite ? 'hostFavourite' : 'host') : favorite ? 'favourite' : 'plain';
@@ -306,6 +309,8 @@ const SavedCard = memo(function SavedCard({ item, index, onOpen, onToggleFavorit
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
                 {host ? <Tag label={host} accent="saved" icon="link-outline" /> : null}
                 <Tag label={type} tone="neutral" />
+                {facts.category ? <Tag label={facts.category} accent="saved" icon="grid-outline" /> : null}
+                {facts.price ? <Tag label={formatMoney(facts.price)} tone="neutral" icon="pricetag-outline" /> : null}
               </View>
             </PressableScale>
             <IconButton

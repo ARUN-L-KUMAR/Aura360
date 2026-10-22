@@ -43,7 +43,43 @@ export type IngestPreview = {
   confidence: number;
   resolvedDestination: string;
   persistedTo: string | null;
+  /** What the server read besides the title: for a shopping link, the price and how it was classified (see `productFacts`). */
+  metadata?: Record<string, unknown> | null;
 };
+
+export type ProductFacts = {
+  /** Electronics, Appliances, Home & Kitchen ... (Saved items only). */
+  category: string | null;
+  price: number | null;
+  currency: string;
+  store: string | null;
+};
+
+const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+
+/**
+ * The shopping details the server keeps with a link. Two shapes, both read here: a saved item keeps `category`, `price`,
+ * `currency` and `store` in its metadata; a link that has only been previewed keeps the price under `product` and the
+ * decision under `classification`. `forPlace` is where it would be filed: a clothing item filed under Saved is "Fashion".
+ */
+export function productFacts(metadata: Record<string, unknown> | null | undefined, forPlace: PlaceKey | null = null): ProductFacts {
+  const record = metadata ?? {};
+  const product = (record.product && typeof record.product === 'object' ? record.product : {}) as Record<string, unknown>;
+  const classification = (record.classification && typeof record.classification === 'object' ? record.classification : null) as Record<string, unknown> | null;
+
+  let category = str(record.category);
+  if (!category && classification && forPlace === 'saved') category = classification.module === 'saved' ? str(classification.category) : 'Fashion';
+
+  const rawPrice = record.price ?? product.price;
+  const price = typeof rawPrice === 'number' ? rawPrice : typeof rawPrice === 'string' ? Number.parseFloat(rawPrice.replace(/,/g, '')) : Number.NaN;
+
+  return {
+    category,
+    price: Number.isFinite(price) && price > 0 ? price : null,
+    currency: str(record.currency) ?? str(product.currency) ?? 'INR',
+    store: str(record.store) ?? str(product.store),
+  };
+}
 
 /** Where a link can end up. Labels live in the catalog: `t('saved:place.<key>')`. */
 export type PlaceKey = 'saved' | 'notes' | 'fashion';

@@ -276,9 +276,14 @@ function StateBlock({ icon, title, body, tone = 'neutral' }: { icon: IconName; t
 /** One line per kind of file that was turned away ("2 shared files aren't JPG, PNG or WebP images..."). */
 function RejectedNotes({ counts }: { counts: RejectionCounts }) {
   const { t } = useTranslation('finance');
-  if (counts.unsupported + counts.unsafe + counts.tooMany === 0) return null;
+  if (counts.unsupported + counts.unsafe + counts.tooMany + counts.empty === 0) return null;
   return (
     <View style={{ gap: spacing.xs }}>
+      {counts.empty > 0 ? (
+        <Text variant="caption" color="textMuted">
+          {t('shareImport.rejected.empty')}
+        </Text>
+      ) : null}
       {counts.unsupported > 0 ? (
         <Text variant="caption" color="textMuted">
           {t('shareImport.rejected.unsupported', { count: counts.unsupported })}

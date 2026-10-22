@@ -5,16 +5,24 @@ import { getWorkspaceContext } from "@/lib/auth-helpers"
 import { db, fashionItems, notes, savedItems } from "@/lib/db"
 import {
   ingestLink,
+  type IngestedProduct,
   type IngestLinkResult,
   type IngestionType,
   type SuggestedModule,
 } from "@/lib/services/link-ingestion"
+import { classifyProduct, type ProductClassification } from "@/lib/services/product-category"
+
+export const runtime = "nodejs"
+// Reading a shop page can take a while when the shop is slow or the renderer has to be asked.
+export const maxDuration = 60
 
 const ingestRequestSchema = z.object({
   url: z.string().url(),
   destination: z.enum(["auto", "fashion", "notes", "saved", "food", "fitness", "skincare", "time"]).optional(),
   autoSave: z.boolean().optional().default(false),
   forceRefresh: z.boolean().optional().default(false),
+  /** What the app was shared with next to the link; used as the name when the shop blocks the read. */
+  hintTitle: z.string().trim().max(300).optional(),
 })
 
 function mapToSavedType(type: IngestionType): "article" | "video" | "product" | "recipe" | "other" {
@@ -44,6 +52,26 @@ function deriveFashionCategory(ingested: IngestLinkResult): string {
   if (/bag|handbag|backpack|wallet|belt/.test(haystack)) return "accessories"
 
   return "general"
+}
+
+function productOf(ingested: IngestLinkResult): IngestedProduct | null {
+  return (ingested.metadata?.product as IngestedProduct | undefined) ?? null
+}
+
+/** Where a shopping link belongs and what it is called. Links read before this existed are classified now. */
+function classificationOf(ingested: IngestLinkResult): ProductClassification | null {
+  if (ingested.source !== "ecommerce") return null
+  const stored = ingested.metadata?.classification as ProductClassification | undefined
+  if (stored?.module) return stored
+  return classifyProduct({ title: ingested.title, description: ingested.description, scrapedCategory: productOf(ingested)?.scrapedCategory })
+}
+
+function priceOf(ingested: IngestLinkResult): number | undefined {
+  const raw = productOf(ingested)?.price ?? (ingested.metadata?.extraction as Record<string, unknown> | undefined)?.price
+  if (typeof raw !== "string") return undefined
+  const match = raw.match(/[\d,.]+/)
+  const parsed = match ? Number.parseFloat(match[0].replace(/,/g, "")) : Number.NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
 async function persistToDestination(input: {
@@ -82,20 +110,13 @@ async function persistToDestination(input: {
   }
 
   if (destination === "fashion") {
-    const extraction = (ingested.metadata?.extraction as Record<string, unknown> | undefined) ?? {}
-    const rawPrice = extraction.price
-
-    let numericPrice: number | undefined
-    if (typeof rawPrice === "string") {
-      const match = rawPrice.match(/[\d,.]+/)
-      if (match) {
-        const normalized = match[0].replace(/,/g, "")
-        const parsed = Number.parseFloat(normalized)
-        if (!Number.isNaN(parsed)) {
-          numericPrice = parsed
-        }
-      }
-    }
+    const product = productOf(ingested)
+    const classification = classificationOf(ingested)
+    const numericPrice = priceOf(ingested)
+    const category =
+      classification?.module === "fashion" && classification.category !== "general"
+        ? classification.category
+        : deriveFashionCategory(ingested)
 
     const [item] = await db
       .insert(fashionItems)
@@ -103,7 +124,9 @@ async function persistToDestination(input: {
         ...context,
         name: ingested.title,
         description: ingested.description,
-        category: deriveFashionCategory(ingested),
+        category,
+        brand: product?.brand ?? undefined,
+        color: product?.color ?? undefined,
         imageUrl: ingested.image,
         status: "wishlist",
         price: numericPrice?.toString(),
@@ -111,6 +134,7 @@ async function persistToDestination(input: {
           buyingLink: ingested.url,
           source: ingested.source,
           ingestedLinkId: ingested.id,
+          ...(product ? { store: product.store, originalPrice: product.originalPrice, currency: product.currency } : {}),
         },
       })
       .returning()
@@ -124,6 +148,12 @@ async function persistToDestination(input: {
     }
   }
 
+  // A shopping link saved here gets a product category (Electronics, Appliances, ...), kept as a tag so it can be searched.
+  const product = productOf(ingested)
+  const classification = classificationOf(ingested)
+  const category = classification ? (classification.module === "saved" ? classification.category : "Fashion") : null
+  const price = priceOf(ingested)
+
   const [saved] = await db
     .insert(savedItems)
     .values({
@@ -133,10 +163,14 @@ async function persistToDestination(input: {
       url: ingested.url,
       description: ingested.description,
       imageUrl: ingested.image,
+      tags: category ? [category] : undefined,
       metadata: {
         source: ingested.source,
         type: ingested.type,
         ingestedLinkId: ingested.id,
+        ...(category ? { category } : {}),
+        ...(price !== undefined ? { price, currency: product?.currency ?? "INR" } : {}),
+        ...(product ? { store: product.store, brand: product.brand } : {}),
       },
     })
     .returning()
@@ -182,6 +216,7 @@ export async function POST(request: NextRequest) {
       context,
       url: data.url,
       forceRefresh: data.forceRefresh,
+      hintTitle: data.hintTitle,
     })
 
     const destination = resolveDestination(data.destination, ingested.suggestedModule)
