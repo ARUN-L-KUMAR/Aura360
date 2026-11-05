@@ -1,0 +1,191 @@
+import { db } from "@/lib/db"
+import { subscriptions, transactions, workspaces } from "@/lib/db/schema"
+import { eq, and, lte, sql } from "drizzle-orm"
+import type { WorkspaceContext } from "@/lib/db"
+
+export interface ProcessRecurringResult {
+  processedCount: number
+  generatedTransactions: Array<{
+    subscriptionId: string
+    subscriptionName: string
+    amount: string
+    date: string
+    transactionId: string
+  }>
+  errors: string[]
+}
+
+/**
+ * Calculates the next billing date given current base date and billing cycle
+ */
+export function calculateNextBillingDate(baseDateStr: string, cycle: string): string {
+  const next = new Date(baseDateStr)
+
+  switch (cycle.toLowerCase()) {
+    case "daily":
+      next.setDate(next.getDate() + 1)
+      break
+    case "weekly":
+      next.setDate(next.getDate() + 7)
+      break
+    case "monthly":
+      next.setMonth(next.getMonth() + 1)
+      break
+    case "quarterly":
+      next.setMonth(next.getMonth() + 3)
+      break
+    case "semi_annually":
+      next.setMonth(next.getMonth() + 6)
+      break
+    case "yearly":
+      next.setFullYear(next.getFullYear() + 1)
+      break
+    default:
+      next.setMonth(next.getMonth() + 1)
+  }
+
+  return next.toISOString().split("T")[0]
+}
+
+/**
+ * Automatically evaluates due subscriptions/recurring bills for a workspace/user
+ * and generates corresponding ledger entries in `transactions` table.
+ */
+export async function processDueRecurringBills(
+  ctx: WorkspaceContext,
+  targetDate: string = new Date().toISOString().split("T")[0],
+  options: { dryRun?: boolean } = {}
+): Promise<ProcessRecurringResult> {
+  const result: ProcessRecurringResult = {
+    processedCount: 0,
+    generatedTransactions: [],
+    errors: [],
+  }
+
+  try {
+    // 1. Fetch active subscriptions where nextBillingDate <= targetDate
+    const dueSubscriptions = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.workspaceId, ctx.workspaceId),
+          eq(subscriptions.userId, ctx.userId),
+          eq(subscriptions.status, "active"),
+          lte(subscriptions.nextBillingDate, targetDate)
+        )
+      )
+
+    for (const sub of dueSubscriptions) {
+      if (!sub.nextBillingDate) continue
+
+      try {
+        const billingDate = sub.nextBillingDate
+
+        // 2. Check if transaction already recorded for this subscription on this billing date
+        const [existingTx] = await db
+          .select({ id: transactions.id })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.workspaceId, ctx.workspaceId),
+              eq(transactions.userId, ctx.userId),
+              eq(transactions.date, billingDate),
+              sql`metadata->>'subscriptionId' = ${sub.id}`
+            )
+          )
+          .limit(1)
+
+        if (existingTx) {
+          // Already recorded for this cycle, just ensure nextBillingDate advances if it hasn't
+          const nextDate = calculateNextBillingDate(billingDate, sub.billingCycle)
+          if (!options.dryRun) {
+            await db
+              .update(subscriptions)
+              .set({
+                nextBillingDate: nextDate,
+                updatedAt: new Date(),
+              })
+              .where(eq(subscriptions.id, sub.id))
+          }
+          continue
+        }
+
+        // 3. Infer transaction type from category/name
+        const lowerCat = (sub.category || "").toLowerCase()
+        const lowerName = sub.name.toLowerCase()
+        const isIncome =
+          lowerCat.includes("salary") ||
+          lowerCat.includes("income") ||
+          lowerName.includes("salary") ||
+          lowerName.includes("payroll")
+
+        const txType = isIncome ? "income" : "expense"
+
+        if (options.dryRun) {
+          result.processedCount++
+          result.generatedTransactions.push({
+            subscriptionId: sub.id,
+            subscriptionName: sub.name,
+            amount: sub.amount.toString(),
+            date: billingDate,
+            transactionId: "dry-run-preview",
+          })
+          continue
+        }
+
+        // 4. Create transaction entry in ledger
+        const [newTx] = await db
+          .insert(transactions)
+          .values({
+            workspaceId: ctx.workspaceId,
+            userId: ctx.userId,
+            date: billingDate,
+            type: txType,
+            category: sub.category || "Subscriptions & Bills",
+            amount: sub.amount,
+            description: sub.name,
+            paymentMethod: sub.paymentMethod || "card",
+            notes: sub.description
+              ? `${sub.description} (Recurring ${sub.billingCycle})`
+              : `Auto-generated recurring bill for ${sub.name}`,
+            needsReview: false,
+            tags: ["recurring", "subscription", sub.billingCycle.toLowerCase()],
+            metadata: {
+              isRecurring: true,
+              subscriptionId: sub.id,
+              billingCycle: sub.billingCycle,
+              autoGeneratedAt: new Date().toISOString(),
+            },
+          })
+          .returning({ id: transactions.id })
+
+        // 5. Advance next billing date
+        const nextBillingDate = calculateNextBillingDate(billingDate, sub.billingCycle)
+        await db
+          .update(subscriptions)
+          .set({
+            nextBillingDate,
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptions.id, sub.id))
+
+        result.processedCount++
+        result.generatedTransactions.push({
+          subscriptionId: sub.id,
+          subscriptionName: sub.name,
+          amount: sub.amount.toString(),
+          date: billingDate,
+          transactionId: newTx.id,
+        })
+      } catch (subErr: any) {
+        result.errors.push(`Sub ${sub.name} (${sub.id}): ${subErr.message || "Failed"}`)
+      }
+    }
+  } catch (err: any) {
+    result.errors.push(`Global processing error: ${err.message || "Failed"}`)
+  }
+
+  return result
+}
+
