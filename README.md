@@ -156,7 +156,7 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 1. **Clone the repository**
    ```bash
    git clone https://github.com/ARUN-L-KUMAR/Aura360.git
-   cd Aura360
+   cd Aura360/apps/web
    ```
 
 2. **Install dependencies**
@@ -166,7 +166,7 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 
 3. **Set up environment variables**
    
-   Create a `.env.local` file in the root directory:
+   Create a `.env.local` file in `apps/web/` (copy `apps/web/.env.example`):
    ```env
    # Database (Required)
    DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/dbname?sslmode=require
@@ -189,7 +189,7 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 
 4. **Set up the database**
    
-   Run the SQL scripts in the `scripts/` folder in your Supabase SQL editor:
+   Push the schema to your NeonDB PostgreSQL database using Drizzle ORM:
    ```bash
    # Push database schema
    pnpm db:push
@@ -211,65 +211,43 @@ Built with modern web technologies, Aura360 provides a seamless experience acros
 
 ## 📁 Project Structure
 
+The repository is a monorepo of three independent projects. Each has its own `package.json` and dependencies;
+there are no shared workspaces, so run `npm install` (or `pnpm install`) inside the project you work on, or use
+`npm run install:all` from the root.
+
 ```
-lifesync-app/
-├── app/                          # Next.js App Router
-│   ├── api/                      # API routes
-│   │   └── scrape-product/       # Web scraping endpoint
-│   ├── auth/                     # Authentication pages
-│   │   ├── login/
-│   │   ├── sign-up/
-│   │   ├── forgot-password/
-│   │   └── reset-password/
-│   ├── dashboard/                # Main application
-│   │   ├── notes/
-│   │   ├── finance/
-│   │   ├── fitness/
-│   │   ├── food/
-│   │   ├── fashion/
-│   │   ├── skincare/
-│   │   ├── saved/
-│   │   ├── time/
-│   │   ├── profile/
-│   │   └── settings/
-│   ├── globals.css               # Global styles
-│   ├── layout.tsx                # Root layout
-│   └── page.tsx                  # Landing page
-├── components/                   # React components
-│   ├── ui/                       # shadcn/ui components
-│   ├── fashion/                  # Fashion module components
-│   ├── finance/                  # Finance module components
-│   ├── fitness/                  # Fitness module components
-│   ├── food/                     # Food module components
-│   ├── notes/                    # Notes module components
-│   ├── saved/                    # Saved items components
-│   ├── skincare/                 # Skincare module components
-│   ├── time/                     # Time logs components
-│   └── profile/                  # Profile components
-├── lib/                          # Utilities
-│   ├── db/                       # Database (Drizzle ORM)
-│   │   ├── index.ts              # Database client
-│   │   └── schema.ts             # Database schema
-│   ├── services/                 # Business logic services
-│   ├── types/                    # TypeScript type definitions
-│   ├── auth.ts                   # NextAuth configuration
-│   ├── cloudinary.ts             # Image upload helpers
-│   └── utils.ts                  # Helper functions
-├── hooks/                        # Custom React hooks
-├── public/                       # Static assets
-├── scripts/                      # Database scripts
-│   ├── 01-create-schema.sql
-│   ├── 02-seed-data.sql
-│   ├── create-storage-bucket.sql
-│   └── update-fashion-schema.sql
-├── styles/                       # Additional styles
-├── .env.local                    # Environment variables (create this)
-├── components.json               # shadcn/ui config
-├── next.config.mjs               # Next.js configuration
-├── package.json                  # Dependencies
-├── tsconfig.json                 # TypeScript config
-└── tailwind.config.js            # Tailwind CSS config
+Faceviz/
+├── apps/
+│   ├── web/                      # Next.js 16 web app + API (deployed to Vercel, Root Directory = apps/web)
+│   │   ├── app/                  # App Router: pages and API routes
+│   │   ├── components/           # React components, one folder per module (+ ui/ for shadcn)
+│   │   ├── hooks/                # Custom React hooks
+│   │   ├── lib/                  # Server and shared code (db/, ai/, auth, services/, ...)
+│   │   ├── public/               # Static assets, PWA manifest, service worker
+│   │   ├── scripts/db/           # Data utilities: clear/shift transactions, wallet reset, seed sample data
+│   │   ├── .env.example          # Copy to .env.local
+│   │   ├── drizzle.config.ts
+│   │   ├── middleware.ts
+│   │   ├── next.config.mjs
+│   │   └── package.json
+│   └── mobile/                   # Expo / React Native app (Android first)
+│       ├── src/                  # app/ routes, components/, features/, lib/, i18n/, theme/
+│       ├── tests/                # node:test unit tests
+│       ├── scripts/              # Release build (build-release.ps1), lint checks
+│       └── BUILD.md              # Quick local release build reference
+├── services/
+│   └── scraper/                  # Self-hosted Chromium product-page renderer (Docker)
+├── docs/
+│   ├── NOTIFICATIONS.md
+│   ├── OFFLINE.md
+│   ├── brand/                    # Logo exploration
+│   └── reference/                # Source spreadsheets used when designing the finance module
+├── package.json                  # Root convenience scripts only (web:dev, mobile:start, ...)
+└── README.md
 ```
+
+> **Note:** `apps/web/lib/ai/mascot/` and `apps/mobile/src/features/ai/mascot/` must stay identical
+> (enforced by `apps/mobile/tests/aura-mascot.test.ts`).
 
 ---
 
@@ -483,7 +461,7 @@ pnpm lint
 3. **Styling**: Use Tailwind CSS utility classes
 4. **State Management**: Use React hooks and Context where needed
 5. **API Routes**: Place in `/app/api` directory
-6. **Database Queries**: Use Supabase client from `/lib/supabase`
+6. **Database Queries**: Use Drizzle ORM client from `@/lib/db`
 
 ### Adding a New Module
 
@@ -523,7 +501,7 @@ pnpm lint
 
 ### Production Checklist
 
-- [ ] Set up production Supabase project
+- [ ] Set up production NeonDB database (`DATABASE_URL`)
 - [ ] Configure environment variables
 - [ ] Run database migrations
 - [ ] Set up storage buckets
@@ -579,7 +557,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Next.js](https://nextjs.org/) - The React framework
-- [Supabase](https://supabase.com/) - Backend platform
+- [Neon](https://neon.tech/) & [Drizzle ORM](https://orm.drizzle.team/) - PostgreSQL database & ORM
 - [shadcn/ui](https://ui.shadcn.com/) - Component library
 - [Vercel](https://vercel.com/) - Hosting platform
 - [Radix UI](https://www.radix-ui.com/) - Accessible components
