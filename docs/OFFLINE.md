@@ -51,7 +51,7 @@ What happens to an entry the server doesn't accept:
 
 ## Phone app: offline mode
 
-The phone app (`mobile/`) has its own offline support, built differently from the web one (no service worker).
+The phone app (`apps/mobile/`) has its own offline support, built differently from the web one (no service worker).
 
 | | Offline behavior |
 |---|---|
@@ -77,12 +77,12 @@ Entries made offline show a temporary id until the next refresh, and don't appea
 
 ## Phone: push notifications (Expo)
 
-The server side is in `docs/NOTIFICATIONS.md`. The app side is `mobile/src/lib/push.ts`: after sign-in it asks for
+The server side is in `docs/NOTIFICATIONS.md`. The app side is `apps/mobile/src/lib/push.ts`: after sign-in it asks for
 permission, gets the phone's Expo push token and registers it (`POST /api/notifications/push-token`); on sign-out it
 removes it. Tapping a push opens the matching screen (`data.route`).
 
 To actually receive pushes you need, once:
-1. **An EAS project id.** Run `eas init` in `mobile/`. It writes `extra.eas.projectId` into `app.json`. Without it the app
+1. **An EAS project id.** Run `eas init` in `apps/mobile/`. It writes `extra.eas.projectId` into `app.json`. Without it the app
    logs nothing and quietly skips registration.
 2. **A development or production build, not Expo Go.** Push tokens don't work in Expo Go on current SDKs.
 3. **Push credentials**: Android needs Firebase (FCM) set up and uploaded to EAS (`eas credentials`); iOS needs an Apple
@@ -93,6 +93,6 @@ Then in the web app: Settings > Notifications > turn on **Phone push**. The card
 **Send a test** pushes to them.
 
 ### Avoid doubles
-`mobile/src/lib/notifications.ts` already schedules its **own local reminders on the phone** (skincare 8:00 and 22:00, daily
+`apps/mobile/src/lib/notifications.ts` already schedules its **own local reminders on the phone** (skincare 8:00 and 22:00, daily
 review, water). If you also turn on the server's skincare reminders in Settings > Notifications, the phone gets both.
 Turn off one of them. (The server's workout, meal, budget, subscription and unworn-clothes alerts have no local twin.)
