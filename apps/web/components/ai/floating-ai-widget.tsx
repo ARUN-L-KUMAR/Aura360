@@ -36,7 +36,10 @@ import { FormattedMessage } from "@/components/ai/formatted-message"
 import { AiCommandPalette, type AICommand } from "@/components/ai/ai-command-palette"
 import { usePageContext } from "@/lib/context/page-context"
 import { AuraMascot } from "@/components/ai/aura-mascot"
+import { MASCOTS } from "@/lib/ai/mascot/characters"
 import { MOOD_TEXT, useAuraMood } from "@/lib/ai/mascot/mood"
+import { useMascot } from "@/lib/ai/mascot/selection"
+import { useDraggableWidget } from "@/lib/ai/mascot/widget-position"
 
 export interface FloatingMessage {
   id: string
@@ -217,6 +220,12 @@ export function FloatingAiWidget() {
     (mood === "searching" || mood === "working") && streamingMessage?.activeTool
       ? streamingMessage.activeTool.label
       : MOOD_TEXT[mood]
+
+  const [mascotId] = useMascot()
+  const mascotName = MASCOTS.find((m) => m.id === mascotId)?.name ?? "Aura"
+
+  // The launcher can be dragged anywhere on screen; the spot is remembered per browser.
+  const { pos, onPointerDown, onPointerMove, onPointerUp, wasDragged } = useDraggableWidget()
 
   // Auto-scroll on message updates
   useEffect(() => {
@@ -752,22 +761,30 @@ export function FloatingAiWidget() {
     setActiveTab("chat")
   }
 
+  const anchorRight = !pos || pos.x > (typeof window !== "undefined" ? window.innerWidth / 2 : 0)
+  const anchorBottom = !pos || pos.y > (typeof window !== "undefined" ? window.innerHeight / 2 : 0)
+
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
-      {/* ── Docked Chat Window ── */}
-      {isOpen && (
-        <div
-          className={cn(
-            "mb-3 w-[94vw] sm:w-[420px] bg-card/95 dark:bg-card/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden transition-all duration-200 ease-out flex flex-col",
-            isMinimized ? "h-14" : "h-[540px] max-h-[85vh]"
-          )}
-        >
+    <div className="fixed z-50" style={pos ? { left: pos.x, top: pos.y } : { bottom: 20, right: 20 }}>
+      {/* The draggable launcher's own footprint. The chat panel anchors to this box, not to the fixed point above,
+          so opening it never has to resize or reflow the drag container. */}
+      <div className="relative" style={{ width: 116, height: 116 }}>
+        {/* ── Docked Chat Window ── */}
+        {isOpen && (
+          <div
+            className={cn(
+              "absolute w-[94vw] sm:w-[420px] bg-card/95 dark:bg-card/90 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden transition-all duration-200 ease-out flex flex-col",
+              anchorBottom ? "bottom-full mb-3" : "top-full mt-3",
+              anchorRight ? "right-0" : "left-0",
+              isMinimized ? "h-14" : "h-[540px] max-h-[85vh]"
+            )}
+          >
           {/* Header */}
           <div className="px-3.5 py-2.5 bg-card border-b border-border text-foreground flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
                 {/* No icon above the head here: the header clips it. The status line below says what Aura is doing. */}
-                <AuraMascot mood={mood} activity={activity} size={26} showProp={false} />
+                <AuraMascot mood={mood} activity={activity} size={36} showProp={false} />
               </div>
               <div className="min-w-0">
                 <span className="font-semibold text-xs tracking-wide truncate block max-w-[170px]" title="Aura Assistant">
@@ -1384,24 +1401,40 @@ export function FloatingAiWidget() {
         </div>
       )}
 
-      {/* ── Trigger Button ── */}
-      <button
-        onClick={() => {
-          setIsOpen(!isOpen)
-          setIsMinimized(false)
-        }}
-        onPointerEnter={wake}
-        onFocus={wake}
-        className={cn(
-          "group relative flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full shadow-lg shadow-primary/15 transition-all duration-300 hover:scale-105 active:scale-95",
-          "bg-primary text-primary-foreground font-medium text-xs border border-border/40"
-        )}
-        aria-label={mood === "sleeping" || mood === "idle" ? "Open AI Assistant" : `Open AI Assistant. ${moodLabel}`}
-      >
-        <AuraMascot mood={mood} activity={activity} size={34} />
-        <span className="hidden sm:inline-block tracking-wide sm:min-w-[6.5rem] sm:max-w-[11rem] truncate text-left">{moodLabel}</span>
-        <span className="sm:hidden text-[10px] font-bold">AI</span>
-      </button>
+        {/* ── Trigger: the mascot itself, no button chrome. Drag anywhere on it to move the widget; a tap (no
+            movement) opens the chat panel. ── */}
+        <div
+          role="button"
+          tabIndex={0}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={(e) => {
+            onPointerUp(e)
+            if (!wasDragged()) {
+              setIsOpen(!isOpen)
+              setIsMinimized(false)
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              setIsOpen(!isOpen)
+              setIsMinimized(false)
+            }
+          }}
+          onPointerEnter={wake}
+          onFocus={wake}
+          className="group absolute inset-0 flex touch-none select-none flex-col items-center justify-center gap-1 bg-transparent transition-transform duration-300 hover:scale-105 active:scale-95"
+          style={{ cursor: "grab" }}
+          aria-label={mood === "sleeping" || mood === "idle" ? `Open ${mascotName} AI` : `Open ${mascotName} AI. ${moodLabel}`}
+          title={`Ask ${mascotName} AI`}
+        >
+          <AuraMascot mood={mood} activity={activity} size={104} className="drop-shadow-[0_6px_14px_rgba(0,0,0,0.28)]" />
+          <span className="pointer-events-none rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold text-foreground shadow-xs border border-border/60 whitespace-nowrap">
+            Ask {mascotName} AI
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

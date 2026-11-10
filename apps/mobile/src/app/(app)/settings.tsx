@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { MascotPicker } from '@/components/ai/mascot-picker';
 import { SlotPicker } from '@/components/nav/slot-picker';
 import { Reveal, SettingsSection as Section, SwitchRow } from '@/components/settings-ui';
 import { Button } from '@/components/ui/button';
@@ -192,6 +193,10 @@ export default function SettingsScreen() {
           <SlotPicker slots={slots} editing={editingSlot} onEditingChange={setEditingSlot} onAssign={setSlot} />
           <Button title={t('navigation.reset')} variant="tertiary" onPress={resetSlots} />
         </View>
+      </Section>
+
+      <Section title={t('assistant.title')} footer={t('assistant.footer')}>
+        <MascotPicker />
       </Section>
 
       <Section title={t('notifications.title')} footer={notifPrefs.enabled ? t('notifications.footerOn') : t('notifications.footerOff')}>

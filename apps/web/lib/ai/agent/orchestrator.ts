@@ -241,24 +241,31 @@ export async function runAgent(
       },
     ]
 
-    let genRes: { text: string; usage: any }
+    const onDelta = async (delta: string) => {
+      await options.onEvent?.({ type: "text_delta", data: { delta } })
+    }
+
+    let genRes: { text?: string; usage: any }
     try {
       genRes =
         provider === "gemini"
-          ? await geminiClient.generateText(
+          ? await geminiClient.generateWithToolsStream(
               { messages: confirmMessages, systemPrompt },
-              { model: targetModel, config: { temperature: 0.2 } }
+              { model: targetModel, config: { temperature: 0.2 } },
+              onDelta
             )
-          : await openaiGroqClient.generateText(
+          : await openaiGroqClient.generateWithToolsStream(
               { messages: confirmMessages, systemPrompt },
-              { model: targetModel, config: { temperature: 0.2 } }
+              { model: targetModel, config: { temperature: 0.2 } },
+              onDelta
             )
     } catch (err: any) {
       if (provider === "groq") {
         console.warn(`[AgentOrchestrator] Groq quota limit hit. Auto-switching to Gemini 3.6 Flash fallback...`)
-        genRes = await geminiClient.generateText(
+        genRes = await geminiClient.generateWithToolsStream(
           { messages: confirmMessages, systemPrompt },
-          { model: "gemini-3.6-flash", config: { temperature: 0.2 } }
+          { model: "gemini-3.6-flash", config: { temperature: 0.2 } },
+          onDelta
         )
       } else {
         throw err
@@ -266,13 +273,12 @@ export async function runAgent(
     }
 
     const finalResult: AgentRunResult = {
-      reply: genRes.text,
+      reply: genRes.text ?? "",
       trace,
       usage: genRes.usage,
       source: "agent",
     }
 
-    await streamDeltas(genRes.text, options.onEvent)
     await options.onEvent?.({ type: "done", data: finalResult })
 
     return finalResult
@@ -284,12 +290,16 @@ export async function runAgent(
   let totalPromptTokens = 0
   let totalCompletionTokens = 0
 
+  const onDelta = async (delta: string) => {
+    await options.onEvent?.({ type: "text_delta", data: { delta } })
+  }
+
   for (let hop = 0; hop < MAX_TOOL_HOPS; hop++) {
     let result: any
     try {
       result =
         provider === "gemini"
-          ? await geminiClient.generateWithTools(
+          ? await geminiClient.generateWithToolsStream(
               {
                 messages: convo,
                 systemPrompt,
@@ -301,9 +311,10 @@ export async function runAgent(
                   temperature: 0.2,
                   timeoutMs: 30_000,
                 },
-              }
+              },
+              onDelta
             )
-          : await openaiGroqClient.generateWithTools(
+          : await openaiGroqClient.generateWithToolsStream(
               {
                 messages: convo,
                 systemPrompt,
@@ -314,12 +325,13 @@ export async function runAgent(
                 config: {
                   temperature: 0.2,
                 },
-              }
+              },
+              onDelta
             )
     } catch (err: any) {
       if (provider === "groq") {
         console.warn(`[AgentOrchestrator] Groq quota limit hit (${err?.message}). Auto-switching to Gemini 3.6 Flash fallback...`)
-        result = await geminiClient.generateWithTools(
+        result = await geminiClient.generateWithToolsStream(
           {
             messages: convo,
             systemPrompt,
@@ -331,7 +343,8 @@ export async function runAgent(
               temperature: 0.2,
               timeoutMs: 30_000,
             },
-          }
+          },
+          onDelta
         )
       } else {
         throw err
@@ -515,7 +528,6 @@ export async function runAgent(
         source: "agent",
       }
 
-      await streamDeltas(result.text, options.onEvent)
       await options.onEvent?.({ type: "done", data: finalResult })
 
       return finalResult

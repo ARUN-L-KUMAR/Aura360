@@ -34,7 +34,9 @@ import {
   PULSE_PEAK_OPACITY,
   PULSE_REPEATS,
 } from './widget-constants';
+import { MASCOTS } from '@/features/ai/mascot/characters';
 import { MOOD_TEXT, type Mood, type ToolActivity } from '@/features/ai/mascot/mood';
+import { useMascot } from '@/features/ai/mascot/selection';
 
 import { AuraFace } from './aura-face';
 import { useIdlePeek, useScreenReaderEnabled } from './widget-hooks';
@@ -65,8 +67,10 @@ type Props = {
  * Every drag-only affordance also exists as an accessibility action (open, move left / right / up / down).
  */
 function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
-  const { accent, colors, elevation, reduceMotion } = useTheme();
+  const { accent, colors, reduceMotion } = useTheme();
   const { t } = useTranslation('ai');
+  const [mascotId] = useMascot();
+  const mascotName = MASCOTS.find((m) => m.id === mascotId)?.name ?? 'Aura';
   // `x` is the distance from the start edge. Screen translations are physical, so they flip in a right-to-left layout.
   const dir = directionSign();
   const ai = accent('ai');
@@ -229,8 +233,8 @@ function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
               onWake();
             }}
             onPressOut={idle.touchEnd}
-            style={[styles.bubble, { backgroundColor: ai.solid }, elevation(3)]}>
-            <AuraFace mood={mood} activity={activity} size={FAB_SIZE - spacing.sm} color={ai.onSolid} paused={hidden} />
+            style={styles.bubble}>
+            <AuraFace mood={mood} activity={activity} size={FAB_SIZE} paused={hidden} rounded={false} />
             {badge > 0 ? (
               <View style={[styles.badge, { backgroundColor: colors.error, borderColor: colors.background }]}>
                 <Text variant="caption" weight="bold" color="onError">
@@ -239,6 +243,13 @@ function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
               </View>
             ) : null}
           </PressableScale>
+          <View pointerEvents="none" style={styles.labelWrap}>
+            <View style={[styles.labelPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text variant="caption" weight="semiBold" numberOfLines={1}>
+                {t('fab.askLabel', { name: mascotName })}
+              </Text>
+            </View>
+          </View>
         </Animated.View>
       </GestureDetector>
     </View>
@@ -262,7 +273,6 @@ const styles = StyleSheet.create({
   bubble: {
     width: FAB_SIZE,
     height: FAB_SIZE,
-    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -277,5 +287,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  labelWrap: {
+    position: 'absolute',
+    top: FAB_SIZE + spacing.xs,
+    start: -spacing.xxl,
+    end: -spacing.xxl,
+    alignItems: 'center',
+  },
+  labelPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
   },
 });

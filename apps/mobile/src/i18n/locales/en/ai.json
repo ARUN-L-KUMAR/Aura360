@@ -197,6 +197,7 @@
     "itemSpoken": "{{name}}, {{category}}, {{color}}"
   },
   "fab": {
+    "askLabel": "Ask {{name}} AI",
     "label": "Ask Aura AI assistant",
     "labelWithDrafts_one": "Ask Aura AI assistant, {{count}} draft waiting",
     "labelWithDrafts_other": "Ask Aura AI assistant, {{count}} drafts waiting",

@@ -105,5 +105,9 @@
     "row": "Customize Home",
     "rowSubtitle": "Choose which modules and sections Home shows, and their order.",
     "footer": "Saved on this device only."
+  },
+  "assistant": {
+    "title": "Aura Assistant",
+    "footer": "Pick the mascot that greets you in the AI bubble and chat sheet. Saved on this device only."
   }
 }

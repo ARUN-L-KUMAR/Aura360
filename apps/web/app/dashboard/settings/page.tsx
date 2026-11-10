@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { ModuleHeader } from "@/components/ui/module-header"
 import { NotificationSettings } from "@/components/settings/notification-settings"
 import { WorkspaceTeamSettings } from "@/components/settings/workspace-team-settings"
+import { MascotPicker } from "@/components/ai/mascot-picker"
 
 export default async function SettingsPage() {
   const session = await getAuthSession()
@@ -118,6 +119,22 @@ export default async function SettingsPage() {
                   </div>
                   <ThemeToggle />
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Aura Assistant: pick which mascot shows in the launcher and chat panel */}
+            <Card className="backdrop-blur-sm bg-card/50 border-border shadow-sm transition-all hover:border-primary/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Aura Assistant
+                  </CardTitle>
+                  <CardDescription className="text-xs font-semibold">Pick the mascot that greets you in the AI widget</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <MascotPicker />
               </CardContent>
             </Card>
 

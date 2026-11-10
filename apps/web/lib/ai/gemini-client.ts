@@ -247,6 +247,110 @@ async function callGeminiSingleRaw(
   throw lastError
 }
 
+/**
+ * Same request as `callGeminiSingleRaw`, but reads the response as a token stream
+ * (`streamGenerateContent?alt=sse`) and forwards each text chunk to `onDelta` as it arrives, instead of waiting
+ * for the whole response. Falls back to the caller's retry/fallback-model logic only if the stream fails before
+ * any text has been emitted (once the user has seen partial output, re-sending it from a different model would
+ * duplicate or contradict what's already on screen).
+ */
+async function streamGeminiSingleRaw(
+  model: AIModel,
+  input: GeminiInput,
+  config: GenerationConfig,
+  onDelta?: (delta: string) => void | Promise<void>
+): Promise<{ body: Record<string, unknown>; usage: AIUsageMetadata; emitted: boolean }> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey || apiKey === "your_gemini_api_key_here") {
+    throw new GeminiApiError("GEMINI_API_KEY is not configured")
+  }
+
+  const endpoint = `${BASE_URL}/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
+  const body = buildBody(input, config)
+  const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const startAt = Date.now()
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+
+  if (res.status === 429 || res.status === 503) {
+    throw new GeminiApiError(res.status === 429 ? "Rate limit reached" : `Model ${model} is experiencing high demand (503)`, res.status)
+  }
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => "")
+    throw new GeminiApiError(`Gemini API error ${res.status}: ${errText}`, res.status)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let text = ""
+  let functionCall: AiFunctionCall | undefined
+  // Every raw part the API actually sent, in order (not a reconstruction): newer Gemini models attach a
+  // `thoughtSignature` field to the functionCall part, and possibly separate "thought" parts, which must be
+  // echoed back verbatim on the next turn or the API rejects the request with "missing thought_signature".
+  const allParts: any[] = []
+  let emitted = false
+  let usageMeta: Record<string, number> = {}
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith("data:")) continue
+      const jsonStr = trimmed.slice(5).trim()
+      if (!jsonStr) continue
+
+      let chunk: any
+      try {
+        chunk = JSON.parse(jsonStr)
+      } catch {
+        continue
+      }
+
+      if (chunk.usageMetadata) usageMeta = chunk.usageMetadata
+      const parts = chunk?.candidates?.[0]?.content?.parts
+      if (!Array.isArray(parts)) continue
+
+      for (const part of parts) {
+        allParts.push(part)
+        if (part.functionCall) {
+          functionCall = { name: part.functionCall.name, args: (part.functionCall.args as Record<string, unknown>) ?? {} }
+        } else if (typeof part.text === "string" && part.text) {
+          text += part.text
+          emitted = true
+          if (onDelta) await onDelta(part.text)
+        }
+      }
+    }
+  }
+
+  if (!functionCall && !text) {
+    throw new GeminiApiError("Empty or malformed Gemini stream response")
+  }
+
+  const latencyMs = Date.now() - startAt
+  const usage: AIUsageMetadata = {
+    promptTokens: usageMeta.promptTokenCount ?? 0,
+    completionTokens: usageMeta.candidatesTokenCount ?? 0,
+    totalTokens: usageMeta.totalTokenCount ?? 0,
+    latencyMs,
+    model,
+  }
+
+  const rawParts = allParts.length > 0 ? allParts : [{ text }]
+  return { body: { text: text || undefined, functionCall, rawParts, usage }, usage, emitted }
+}
+
 async function callGeminiCore(
   model: AIModel,
   input: GeminiInput,
@@ -290,6 +394,39 @@ async function callGeminiWithTools(
     rawParts: result.rawParts,
     usage,
   }
+}
+
+async function callGeminiWithToolsStream(
+  model: AIModel,
+  input: GeminiInput,
+  config: GenerationConfig,
+  onDelta?: (delta: string) => void | Promise<void>
+): Promise<AiGenerateResult> {
+  const modelsToTry = Array.from(new Set([model, ...(FALLBACK_CANDIDATES[model] || ["gemini-3.6-flash", "gemini-3-flash-preview"])]))
+  let lastError: Error = new GeminiApiError("No response from Gemini models")
+  let emittedAny = false
+
+  for (const candidate of modelsToTry) {
+    try {
+      const { body, usage } = await streamGeminiSingleRaw(candidate, input, config, async (delta) => {
+        emittedAny = true
+        await onDelta?.(delta)
+      })
+      return {
+        text: body.text as string | undefined,
+        functionCall: body.functionCall as AiFunctionCall | undefined,
+        rawParts: body.rawParts as any[],
+        usage,
+      }
+    } catch (err: any) {
+      lastError = err
+      // Once text has reached the user, a different fallback model would duplicate or contradict it on screen.
+      if (emittedAny) throw err
+      console.warn(`[GeminiClient] Streamed model ${candidate} unavailable (${err.message}), checking fallback...`)
+    }
+  }
+
+  throw lastError
 }
 
 // ─── Public Client API ────────────────────────────────────────────────────────
@@ -356,6 +493,23 @@ export class GeminiClient {
     const model = options.model ?? this.defaultModel
     const config = options.config ?? {}
     return callGeminiWithTools(model, input, config)
+  }
+
+  /**
+   * Like `generateWithTools`, but calls `onDelta` with each chunk of text as it arrives from the model instead
+   * of waiting for the full response. `onDelta` is never called for a function-call response.
+   */
+  async generateWithToolsStream(
+    input: GeminiInput,
+    options: {
+      model?: AIModel
+      config?: GenerationConfig
+    } = {},
+    onDelta?: (delta: string) => void | Promise<void>
+  ): Promise<AiGenerateResult> {
+    const model = options.model ?? this.defaultModel
+    const config = options.config ?? {}
+    return callGeminiWithToolsStream(model, input, config, onDelta)
   }
 
   /**

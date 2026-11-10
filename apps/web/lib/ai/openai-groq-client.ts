@@ -41,6 +41,10 @@ interface LLMInput {
   tools?: AiToolDeclaration[]
 }
 
+/** Hard ceiling on a single OpenAI/Groq request (streaming included), so a stalled connection fails loudly
+ *  instead of leaving the chat stuck on "thinking" with nothing in the server logs. */
+const REQUEST_TIMEOUT_MS = 30_000
+
 class OpenAIGroqClient {
   private openaiInstance: OpenAI | null = null
   private groqInstance: OpenAI | null = null
@@ -55,6 +59,10 @@ class OpenAIGroqClient {
         this.groqInstance = new OpenAI({
           apiKey,
           baseURL: "https://api.groq.com/openai/v1",
+          // Without this, a stalled connection (stream opens but no chunk ever arrives) hangs forever instead of
+          // erroring — the request just sits there with nothing logged, since nothing ever throws.
+          timeout: REQUEST_TIMEOUT_MS,
+          maxRetries: 0, // our own fallback-model retry logic handles retries; the SDK's own would compound it
         })
       }
       return this.groqInstance
@@ -65,7 +73,7 @@ class OpenAIGroqClient {
       throw new LLMProviderError("OPENAI_API_KEY is not configured in .env.local", 401, "openai")
     }
     if (!this.openaiInstance) {
-      this.openaiInstance = new OpenAI({ apiKey })
+      this.openaiInstance = new OpenAI({ apiKey, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 })
     }
     return this.openaiInstance
   }
@@ -291,6 +299,109 @@ class OpenAIGroqClient {
       }
       throw new LLMProviderError(
         `[${provider.toUpperCase()}] Tool Generation Error (${options.model}): ${err.message || String(err)}`,
+        status,
+        provider
+      )
+    }
+  }
+
+  /**
+   * Like `generateWithTools`, but calls `onDelta` with each chunk of text as it arrives from the model instead
+   * of waiting for the full response. `onDelta` is never called for a function-call response.
+   */
+  async generateWithToolsStream(
+    input: LLMInput,
+    options: {
+      model: AIModel
+      config?: GenerationConfig
+    },
+    onDelta?: (delta: string) => void | Promise<void>
+  ): Promise<AiGenerateResult> {
+    const provider = getProviderForModel(options.model)
+    if (provider !== "openai" && provider !== "groq") {
+      throw new LLMProviderError(`Model ${options.model} is not handled by OpenAI/Groq client`)
+    }
+
+    const client = this.getClient(provider)
+    const messages = this.formatMessages(input)
+    const tools = this.formatTools(input.tools)
+    const startAt = Date.now()
+    let emitted = false
+
+    try {
+      const stream = await client.chat.completions.create({
+        model: options.model,
+        messages,
+        tools,
+        tool_choice: tools && tools.length > 0 ? "auto" : undefined,
+        temperature: options.config?.temperature ?? 0.2,
+        max_tokens: options.config?.maxOutputTokens ?? 4096,
+        stream: true,
+        stream_options: { include_usage: true },
+      })
+
+      let text = ""
+      const toolCalls: Record<number, { name?: string; args: string }> = {}
+      let usage: AIUsageMetadata = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        latencyMs: 0,
+        model: options.model,
+      }
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta
+        if (delta?.content) {
+          text += delta.content
+          emitted = true
+          if (onDelta) await onDelta(delta.content)
+        }
+        if (delta?.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0
+            const entry = toolCalls[idx] ?? (toolCalls[idx] = { args: "" })
+            if (tc.function?.name) entry.name = tc.function.name
+            if (tc.function?.arguments) entry.args += tc.function.arguments
+          }
+        }
+        if (chunk.usage) {
+          usage = {
+            promptTokens: chunk.usage.prompt_tokens ?? 0,
+            completionTokens: chunk.usage.completion_tokens ?? 0,
+            totalTokens: chunk.usage.total_tokens ?? 0,
+            latencyMs: Date.now() - startAt,
+            model: options.model,
+          }
+        }
+      }
+
+      usage.latencyMs = usage.latencyMs || Date.now() - startAt
+
+      const firstCall = toolCalls[0]
+      if (firstCall?.name) {
+        let parsedArgs: Record<string, unknown> = {}
+        try {
+          parsedArgs = JSON.parse(firstCall.args || "{}")
+        } catch {
+          console.warn(`Failed to parse streamed tool call args: ${firstCall.args}`)
+        }
+        return {
+          functionCall: { name: firstCall.name, args: parsedArgs },
+          rawParts: [{ tool_call: firstCall }],
+          usage,
+        }
+      }
+
+      return { text, usage }
+    } catch (err: any) {
+      const status = err?.status || err?.statusCode || 500
+      // Once text has reached the user, a different fallback model would duplicate or contradict it on screen.
+      if (!emitted && provider === "groq" && (status === 404 || status === 413 || status === 429) && options.model !== "qwen/qwen3.8-27b") {
+        return this.generateWithToolsStream(input, { ...options, model: "qwen/qwen3.8-27b" }, onDelta)
+      }
+      throw new LLMProviderError(
+        `[${provider.toUpperCase()}] Streamed Tool Generation Error (${options.model}): ${err.message || String(err)}`,
         status,
         provider
       )

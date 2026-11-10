@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { Glyph, Mood } from "./face"
+import type { Mood } from "./face"
 
 export type { Mood } from "./face"
 
@@ -27,53 +27,11 @@ const DONE_MS = 2200
 export type ToolActivity = {
   /** "search" reads the user's data, "work" writes it. */
   kind: "search" | "work"
-  /** The icon of the module being worked on. */
-  glyph: Glyph
 }
 
-const MODULE_GLYPHS: [RegExp, Glyph][] = [
-  [/transaction|budget|balance|goal/, "coin"],
-  [/fitness|workout/, "dumbbell"],
-  [/food|meal/, "fork"],
-  [/note/, "note"],
-  [/wardrobe|wishlist|fashion/, "hanger"],
-  [/skincare/, "drop"],
-  [/time/, "clock"],
-  [/saved|save_item/, "bookmark"],
-]
-
-/** Which kind of work a tool does and which module it touches. Unknown tools still get a sensible face. */
+/** Which kind of work a tool does. Unknown tools still get a sensible mood. */
 export function activityForTool(tool: string): ToolActivity {
-  const kind: ToolActivity["kind"] = tool.startsWith("get_") ? "search" : "work"
-  if (tool === "get_product_from_link") return { kind, glyph: "link" }
-  if (tool === "add_product_from_link") return { kind, glyph: "bag" }
-  const found = MODULE_GLYPHS.find(([pattern]) => pattern.test(tool))
-  return { kind, glyph: found ? found[1] : kind === "search" ? "magnifier" : "gear" }
-}
-
-export type MoodProp = { glyph: Glyph; /** Draw a small magnifier over the icon. */ lens: boolean }
-
-/** The little icon shown above the head for a mood, or null for none. */
-export function propFor(mood: Mood, activity: ToolActivity | null): MoodProp | null {
-  switch (mood) {
-    case "sleeping":
-      return { glyph: "zzz", lens: false }
-    case "thinking":
-      return { glyph: "dots", lens: false }
-    case "searching":
-      return { glyph: activity?.glyph ?? "magnifier", lens: !!activity && activity.glyph !== "magnifier" }
-    case "working":
-      return { glyph: activity?.glyph ?? "gear", lens: false }
-    case "found":
-    case "happy":
-      return { glyph: "sparkle", lens: false }
-    case "asking":
-      return { glyph: "question", lens: false }
-    case "oops":
-      return { glyph: "sweat", lens: false }
-    default:
-      return null
-  }
+  return { kind: tool.startsWith("get_") ? "search" : "work" }
 }
 
 // ─── The state machine ──────────────────────────────────────────────────────────────────────────────────────

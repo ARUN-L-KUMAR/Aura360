@@ -11,7 +11,7 @@ export type IconName = ComponentProps<typeof Ionicons>['name'];
 // ---------------------------------------------------------------------------------------------------------------
 
 /** Diameter of the collapsed bubble. */
-export const FAB_SIZE = 56;
+export const FAB_SIZE = 84;
 /** Gap between the bubble and the screen edge it docks to. */
 export const EDGE_MARGIN = spacing.md;
 /**
