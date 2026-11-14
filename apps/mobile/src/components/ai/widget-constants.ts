@@ -20,6 +20,12 @@ export const EDGE_MARGIN = spacing.md;
  * resting position is `screenHeight - bottomInset - TAB_BAR_CONTENT_HEIGHT - FAB_SIZE - EDGE_MARGIN`.
  */
 export const TAB_BAR_CONTENT_HEIGHT = 72;
+/**
+ * Gap between the bubble's lowest resting position and the tab bar, separate from `EDGE_MARGIN`'s side-edge gap.
+ * The "Ask ... AI" label pill renders BELOW the bubble (see `WidgetFab`'s `labelWrap`), so this has to clear the pill's
+ * own height too, not just the bubble's — otherwise the label dips into the tab bar at the bubble's lowest position.
+ */
+export const BOTTOM_GAP = 26;
 /** `AppTabs` pads its bottom by `max(inset, 8..10)`; use the larger so devices without a home indicator still clear it. */
 export const MIN_BOTTOM_INSET = 10;
 /** Height of a screen's own top app bar, below the status bar. The bubble stays under it. */

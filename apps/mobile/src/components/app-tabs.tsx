@@ -56,6 +56,8 @@ const LOG_SIZE = 48;
 export type AppTabsProps = BottomTabBarProps & {
   /** Badge counts by route name, e.g. `{ notes: 3 }`. A route's `tabBarBadge` option is used when this has no entry. */
   badges?: Record<string, number | undefined>;
+  /** Reports the bar's real rendered height (including its own safe-area padding) on layout and on change. */
+  onHeightChange?: (height: number) => void;
 };
 
 /**
@@ -64,7 +66,7 @@ export type AppTabsProps = BottomTabBarProps & {
  * opens every module. All ten tab routes still exist: a module that is not pinned is reached from More, and while it is
  * open the More slot shows its name and icon so the user always knows where they are.
  */
-export function AppTabs({ state, descriptors, navigation, insets, badges }: AppTabsProps) {
+export function AppTabs({ state, descriptors, navigation, insets, badges, onHeightChange }: AppTabsProps) {
   const { colors, scheme, elevation } = useTheme();
   const { t } = useTranslation('common');
   const glassActive = useGlassSupported();
@@ -121,6 +123,7 @@ export function AppTabs({ state, descriptors, navigation, insets, badges }: AppT
     <>
       <GlassSurface
         accessibilityRole="tablist"
+        onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
         // The web's bar: a hairline ring on top, no shadow in dark mode; a soft lift on the opaque fallback in light mode.
         style={[
           styles.bar,

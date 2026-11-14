@@ -20,9 +20,11 @@ const API_PORT = 3000;
  */
 export function normaliseServerUrl(value: string): string {
   const trimmed = value.trim();
+  // A bare host like "example.com" has no scheme, so `new URL(...)` below would throw; assume https.
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   let origin = trimmed;
   try {
-    origin = new URL(trimmed).origin;
+    origin = new URL(withScheme).origin;
   } catch {
     origin = trimmed.replace(/\/+$/, '');
   }

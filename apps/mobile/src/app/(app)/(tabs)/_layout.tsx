@@ -1,8 +1,9 @@
 import { Tabs, useRouter, type Href } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 
 import { FloatingAiWidget } from "@/components/ai/floating-ai-widget";
+import { TabBarHeightContext } from "@/components/ai/tab-bar-height";
 import { AppTabs } from "@/components/app-tabs";
 import { AuroraBackdrop } from "@/components/ui/aurora-backdrop";
 import { TabsHeader } from "@/components/tabs-header";
@@ -65,6 +66,8 @@ const chrome = { hasHeader: true };
 export default function TabsLayout() {
   const { colors, reduceMotion } = useTheme();
   useFirstRunFlow();
+  const [tabBarHeight, setTabBarHeight] = useState(0);
+  const tabBarHeightValue = useMemo(() => ({ height: tabBarHeight, setHeight: setTabBarHeight }), [tabBarHeight]);
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <AuroraBackdrop />
@@ -72,7 +75,7 @@ export default function TabsLayout() {
       <ChromeContext.Provider value={chrome}>
         <View style={{ flex: 1 }}>
           <Tabs
-            tabBar={(props) => <AppTabs {...props} />}
+            tabBar={(props) => <AppTabs {...props} onHeightChange={setTabBarHeight} />}
             screenOptions={{
               headerShown: false,
               // Cross-fade between tabs; none at all when the user prefers reduced motion.
@@ -111,7 +114,9 @@ export default function TabsLayout() {
           </Tabs>
         </View>
       </ChromeContext.Provider>
-      <FloatingAiWidget />
+      <TabBarHeightContext.Provider value={tabBarHeightValue}>
+        <FloatingAiWidget />
+      </TabBarHeightContext.Provider>
     </View>
   );
 }

@@ -39,6 +39,7 @@ import { MOOD_TEXT, type Mood, type ToolActivity } from '@/features/ai/mascot/mo
 import { useMascot } from '@/features/ai/mascot/selection';
 
 import { AuraFace } from './aura-face';
+import { useTabBarHeight } from './tab-bar-height';
 import { useIdlePeek, useScreenReaderEnabled } from './widget-hooks';
 import { clampY, getFabBounds, rememberPlacement, sessionPlacement, settle, sideToX, type Side } from './widget-placement';
 
@@ -76,8 +77,9 @@ function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
   const ai = accent('ai');
   const { width, height } = useWindowDimensions();
   const { top, bottom } = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const screenReader = useScreenReaderEnabled();
-  const bounds = useMemo(() => getFabBounds(width, height, { top, bottom }), [width, height, top, bottom]);
+  const bounds = useMemo(() => getFabBounds(width, height, { top, bottom }, tabBarHeight), [width, height, top, bottom, tabBarHeight]);
 
   const x = useSharedValue(sideToX(sessionPlacement.side, bounds));
   const y = useSharedValue(clampY(sessionPlacement.y ?? bounds.maxY, bounds));
@@ -143,6 +145,12 @@ function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
         scheduleOnRN(dragEnd);
       });
   }, [bounds, dir, idle, onWake, reduceMotion, startX, startY, x, y]);
+
+  // PressableScale's child is a plain RN `Pressable`, which claims the touch responder on its own; racing it against the
+  // Pan gesture (rather than composing them as simultaneous) lets its responder win on Android before `minDistance` is
+  // reached, so a drag starting on the bubble never moves it. `Gesture.Native()` tells the detector to recognize the
+  // native touchable alongside the pan instead of fighting it.
+  const dragGesture = useMemo(() => Gesture.Simultaneous(pan, Gesture.Native()), [pan]);
 
   const moveTo = useCallback(
     (side: Side, nextY: number) => {
@@ -211,7 +219,18 @@ function FabImpl({ hidden, badge, onOpen, mood, activity, onWake }: Props) {
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <GestureDetector gesture={pan}>
+      {__DEV__ ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 160, start: 8, backgroundColor: 'rgba(0,0,0,0.75)', padding: 6, borderRadius: 6, zIndex: 999 }}>
+          <Text style={{ color: '#0f0', fontSize: 10 }}>
+            {`win ${Math.round(width)}x${Math.round(height)} inset-b ${Math.round(bottom)}\n` +
+              `tabBarHeight ${Math.round(tabBarHeight)}\n` +
+              `bounds.maxY ${Math.round(bounds.maxY)} minY ${Math.round(bounds.minY)}\n` +
+              `saved y ${sessionPlacement.y == null ? 'null' : Math.round(sessionPlacement.y)}\n` +
+              `live y ${Math.round(y.get())}`}
+          </Text>
+        </View>
+      ) : null}
+      <GestureDetector gesture={dragGesture}>
         <Animated.View
           pointerEvents={hidden ? 'none' : 'auto'}
           accessibilityElementsHidden={hidden}
@@ -290,7 +309,7 @@ const styles = StyleSheet.create({
   },
   labelWrap: {
     position: 'absolute',
-    top: FAB_SIZE + spacing.xs,
+    top: FAB_SIZE + 1,
     start: -spacing.xxl,
     end: -spacing.xxl,
     alignItems: 'center',

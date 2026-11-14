@@ -3,7 +3,10 @@ import { withSpring, withTiming } from 'react-native-reanimated';
 
 import { spacing, type spring } from '@/theme';
 
-import { APP_BAR_HEIGHT, EDGE_MARGIN, FAB_SIZE, MIN_BOTTOM_INSET, TAB_BAR_CONTENT_HEIGHT } from './widget-constants';
+import { APP_BAR_HEIGHT, BOTTOM_GAP, EDGE_MARGIN, FAB_SIZE, MIN_BOTTOM_INSET, TAB_BAR_CONTENT_HEIGHT } from './widget-constants';
+
+/** Fallback reserved bottom space (guessed bar height + the minimum inset) used until the real tab bar has laid out. */
+const FALLBACK_BOTTOM_RESERVED = MIN_BOTTOM_INSET + TAB_BAR_CONTENT_HEIGHT;
 
 /** The edge the bubble rests against, in reading direction: `start` is the left in LTR and the right in RTL. */
 export type Side = 'start' | 'end';
@@ -20,18 +23,19 @@ export type FabBounds = {
  * Where the bubble may rest, in the coordinates of the full-screen overlay. `x` is measured from the start edge
  * (the overlay is anchored with `start: 0`), so multiply it by `directionSign()` to get a screen translation.
  * - Horizontally it docks `EDGE_MARGIN` from either edge.
- * - Vertically it stays below the status bar plus a top app bar, and above the bottom nav bar
- *   (`TAB_BAR_CONTENT_HEIGHT` + bottom safe-area inset), so it never covers navigation.
+ * - Vertically it stays below the status bar plus a top app bar, and above the bottom nav bar. `tabBarHeight` is the
+ *   bar's real measured height (already including its own safe-area padding) from `useTabBarHeight()`; a guess is used
+ *   only until the bar has laid out once.
  */
-export function getFabBounds(width: number, height: number, insets: { top: number; bottom: number }): FabBounds {
+export function getFabBounds(width: number, height: number, insets: { top: number; bottom: number }, tabBarHeight: number): FabBounds {
   const minY = insets.top + APP_BAR_HEIGHT + spacing.sm;
-  const bottomReserved = Math.max(insets.bottom, MIN_BOTTOM_INSET) + TAB_BAR_CONTENT_HEIGHT;
+  const bottomReserved = tabBarHeight > 0 ? tabBarHeight : FALLBACK_BOTTOM_RESERVED;
   return {
     width,
     minX: EDGE_MARGIN,
     maxX: width - FAB_SIZE - EDGE_MARGIN,
     minY,
-    maxY: Math.max(minY, height - bottomReserved - FAB_SIZE - EDGE_MARGIN),
+    maxY: Math.max(minY, height - bottomReserved - FAB_SIZE - BOTTOM_GAP),
   };
 }
 
@@ -39,7 +43,7 @@ export const sideToX = (side: Side, bounds: FabBounds) => (side === 'start' ? bo
 
 export const clampY = (y: number, bounds: FabBounds) => Math.min(bounds.maxY, Math.max(bounds.minY, y));
 
-const PLACEMENT_KEY = 'aura.aiWidget.placement.v1';
+const PLACEMENT_KEY = 'aura.aiWidget.placement.v2';
 
 /**
  * Last edge and height the user left the bubble at. Kept in module scope so it survives the widget remounting when

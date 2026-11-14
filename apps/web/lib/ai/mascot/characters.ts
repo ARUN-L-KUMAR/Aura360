@@ -13,7 +13,7 @@ export type MascotId = "Robot" | "Luffy" | "Zoro" | "Sanji" | "Chopper"
 
 export type MascotOption = { id: MascotId; name: string }
 
-/** Order shown in the picker. "robot" has its own art; the rest currently reuse it as a placeholder. */
+/** Order shown in the picker. "" has its own art; the rest currently reuse it as a placeholder. */
 export const MASCOTS: readonly MascotOption[] = [
   { id: "Robot", name: "Robot" },
   { id: "Luffy", name: "Luffy" },

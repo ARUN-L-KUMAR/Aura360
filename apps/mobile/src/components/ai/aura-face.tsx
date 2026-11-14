@@ -12,18 +12,18 @@ import { useTheme } from '@/theme';
 // Metro needs a static `require(...)` per image, so the mascot+mood -> asset mapping lives here rather than in
 // the shared, framework-agnostic characters.ts / face.ts (see those files' headers).
 const MOOD_SOURCES: Record<MascotId, Record<Mood, number>> = {
-  robot: {
-    sleeping: require('../../../assets/images/mascot/characters/robot/sleeping.png'),
-    waking: require('../../../assets/images/mascot/characters/robot/waking.png'),
-    idle: require('../../../assets/images/mascot/characters/robot/idle.png'),
-    thinking: require('../../../assets/images/mascot/characters/robot/thinking.png'),
-    searching: require('../../../assets/images/mascot/characters/robot/searching.png'),
-    found: require('../../../assets/images/mascot/characters/robot/found.png'),
-    working: require('../../../assets/images/mascot/characters/robot/working.png'),
-    talking: require('../../../assets/images/mascot/characters/robot/talking.png'),
-    asking: require('../../../assets/images/mascot/characters/robot/asking.png'),
-    happy: require('../../../assets/images/mascot/characters/robot/happy.png'),
-    oops: require('../../../assets/images/mascot/characters/robot/oops.png'),
+  Robot: {
+    sleeping: require('../../../assets/images/mascot/characters/Robot/sleeping.png'),
+    waking: require('../../../assets/images/mascot/characters/Robot/waking.png'),
+    idle: require('../../../assets/images/mascot/characters/Robot/idle.png'),
+    thinking: require('../../../assets/images/mascot/characters/Robot/thinking.png'),
+    searching: require('../../../assets/images/mascot/characters/Robot/searching.png'),
+    found: require('../../../assets/images/mascot/characters/Robot/found.png'),
+    working: require('../../../assets/images/mascot/characters/Robot/working.png'),
+    talking: require('../../../assets/images/mascot/characters/Robot/talking.png'),
+    asking: require('../../../assets/images/mascot/characters/Robot/asking.png'),
+    happy: require('../../../assets/images/mascot/characters/Robot/happy.png'),
+    oops: require('../../../assets/images/mascot/characters/Robot/oops.png'),
   },
   Luffy: {
     sleeping: require('../../../assets/images/mascot/characters/Luffy/sleeping.png'),
